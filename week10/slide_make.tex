@@ -82,6 +82,36 @@ gcc -o app main.o hello.o
 \end{frame}
 
 %------------------------------------------------
+\begin{frame}[fragile,shrink]{一个真实例子：编译课程报告}
+上周的课程报告 \texttt{report.pdf}，手工生成需要以下步骤：
+
+\textbf{第一步：创建目录}
+
+\begin{lstlisting}[language=bash]
+mkdir -p build/mplconfig figures
+mkdir -p output/jpl_compare_output build/chapters
+\end{lstlisting}
+
+\textbf{第二步：运行 Python 脚本生成图表和数据}
+
+\begin{lstlisting}[language=bash]
+conda run -n Teaching python src/Euler_vs_Verlet.py
+conda run -n Teaching python src/JPL.py
+\end{lstlisting}
+
+\textbf{第三步：编译 LaTeX（含参考文献，需多轮）}
+
+\begin{lstlisting}[language=bash]
+xelatex report.tex
+bibtex report
+xelatex report.tex
+xelatex report.tex
+\end{lstlisting}
+
+如果中间某一步出错，可能需要从头再来。
+\end{frame}
+
+%------------------------------------------------
 \begin{frame}{Make 能做什么？}
 \textbf{Make} 是一种自动化构建工具。
 
@@ -692,5 +722,12 @@ Makefile = 目标 + 依赖 + 命令
   \item 与 CMake 的关系
   \item GNU Make 官方文档
 \end{itemize}
+
+\vspace{1em}
+
+\begin{center}
+\Large 谢谢！
+\end{center}
+\end{frame}
 
 \end{document}

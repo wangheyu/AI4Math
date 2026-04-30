@@ -1,0 +1,690 @@
+\documentclass[aspectratio=169]{ctexbeamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{booktabs}
+\usepackage{fontawesome5}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codekw}{RGB}{0,92,175}
+\definecolor{codestr}{RGB}{163,21,21}
+\definecolor{codecomment}{RGB}{0,128,0}
+\definecolor{mainblue}{RGB}{40,90,180}
+\definecolor{lightblue}{RGB}{232,240,255}
+
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codekw}\bfseries,
+  stringstyle=\color{codestr},
+  commentstyle=\color{codecomment},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=4
+}
+
+\setbeamertemplate{navigation symbols}{}
+
+\title{JPL Horizons API 入门}
+\subtitle{用 curl 与 Python 获取太阳系天体星历数据}
+\author{}
+\date{}
+
+\begin{document}
+
+% ================================================================
+% 1 — 标题页
+% ================================================================
+\begin{frame}
+  \titlepage
+  \vspace{-0.6cm}
+  \begin{center}
+    \large 如何通过 HTTP 请求获取 JPL 高精度天体星历？\\[4pt]
+    \normalsize 从命令行到 Python，从直接访问到国内代理
+  \end{center}
+\end{frame}
+
+% ================================================================
+% 2 — 什么是 JPL Horizons？
+% ================================================================
+\begin{frame}{什么是 JPL Horizons？}
+\large
+
+JPL Horizons 是 NASA/JPL 提供的\alert{在线星历计算服务}，可以查询太阳系内几乎所有天体的位置、速度、轨道数据。
+
+\vspace{0.3cm}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{能查什么？}
+\begin{itemize}
+  \item 行星、卫星、小行星、彗星
+  \item 任意历元的三维位置/速度
+  \item 轨道根数
+  \item 视星等、光照条件
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{怎么查？}
+\begin{itemize}
+  \item Web 界面：\texttt{ssd.jpl.nasa.gov/horizons}
+  \item Telnet 接口（传统方式）
+  \item HTTP API（本次重点）
+  \item Email 批量接口
+\end{itemize}
+\end{columns}
+
+\vspace{0.2cm}
+
+\begin{alertblock}{核心优势}
+  精度极高（考虑多体摄动、相对论效应），是科学计算的权威数据源。
+\end{alertblock}
+\end{frame}
+
+% ================================================================
+% 3 — API 概述
+% ================================================================
+\begin{frame}[fragile,shrink]{JPL Horizons HTTP API 概述}
+\small
+
+API 地址：
+
+\begin{lstlisting}[language=bash]
+https://ssd-api.jpl.nasa.gov/api/horizons.api       # 推荐
+https://ssd.jpl.nasa.gov/api/horizons.api            # 旧版（仍可用）
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{两种请求方式：}
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.6cm]
+\node[draw, rounded corners, fill=lightblue, minimum width=3cm, minimum height=1cm, align=center] (get) {\textbf{GET}\\\small 参数拼接在 URL 中\\\small 适合简单查询};
+\node[draw, rounded corners, fill=lightblue, right=1.2cm of get, minimum width=3cm, minimum height=1cm, align=center] (post) {\textbf{POST}\\\small 参数放在请求体中\\\small 适合长查询/批量};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.15cm}
+
+\textbf{返回格式：} JSON（默认）或纯文本，通过参数控制。
+
+\vspace{0.15cm}
+
+\begin{block}{核心参数速览}
+\small
+\begin{tabular}{c|l|l}
+\toprule
+\textbf{参数} & \textbf{含义} & \textbf{示例} \\
+\midrule
+\texttt{COMMAND} & 目标天体代号 & \texttt{'499'} (火星), \texttt{'301'} (月球) \\
+\texttt{CENTER}  & 观测中心       & \texttt{'500@10'} (日心), \texttt{'500@399'} (地心) \\
+\texttt{MAKE\_EPHEM} & 输出类型   & \texttt{'YES'} (星历), \texttt{'ELEMENTS'} (轨道根数) \\
+\texttt{START\_TIME} & 起始时间    & \texttt{'2026-01-01'} \\
+\texttt{STOP\_TIME}  & 结束时间    & \texttt{'2026-01-08'} \\
+\texttt{STEP\_SIZE}  & 时间步长    & \texttt{'1d'} (1 天) \\
+\texttt{QUANTITIES}  & 输出物理量  & \texttt{'1,2'} (位置+速度) \\
+\bottomrule
+\end{tabular}
+\end{block}
+\end{frame}
+
+% ================================================================
+% 4 — curl：最简单的 GET 请求
+% ================================================================
+\begin{frame}[fragile,shrink]{入门示例 1：curl GET 请求（火星位置）}
+\small
+
+\textbf{直接访问 JPL：}
+
+\begin{lstlisting}[language=bash]
+curl -s "https://ssd-api.jpl.nasa.gov/api/horizons.api?\
+COMMAND=499&\
+CENTER=500@10&\
+MAKE_EPHEM=YES&\
+START_TIME=2026-01-01&\
+STOP_TIME=2026-01-01&\
+STEP_SIZE=1d&\
+QUANTITIES=1"
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{国内代理版本（URL 改为镜像，追加 token 参数）：}
+
+\begin{lstlisting}[language=bash]
+curl -s "http://8.216.49.176:18766/api/horizons.api?\
+COMMAND=499&\
+CENTER=500@10&\
+MAKE_EPHEM=YES&\
+START_TIME=2026-01-01&\
+STOP_TIME=2026-01-01&\
+STEP_SIZE=1d&\
+QUANTITIES=1&\
+token=fce2a741a94feded5c3b9b7ab51f6748"
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\begin{block}{参数解读}
+\begin{itemize}
+  \setlength\itemsep{1pt}
+  \item \texttt{COMMAND=499} — 火星的 JPL 代号
+  \item \texttt{CENTER=500@10} — 以太阳 (body center) 为坐标原点
+  \item \texttt{QUANTITIES=1} — 只要位置，不要速度
+  \item 代理版仅多一步：替换 URL + 追加 \texttt{token} 参数
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ================================================================
+% 5 — curl：常用天体代号
+% ================================================================
+\begin{frame}[fragile,shrink]{常用天体代号速查}
+\small
+
+\begin{center}
+\begin{tabular}{c|l|c|l}
+\toprule
+\textbf{代号} & \textbf{天体} & \textbf{代号} & \textbf{天体} \\
+\midrule
+\texttt{10}   & 太阳         & \texttt{599}  & 木星 \\
+\texttt{199}  & 水星         & \texttt{699}  & 土星 \\
+\texttt{299}  & 金星         & \texttt{799}  & 天王星 \\
+\texttt{399}  & 地球         & \texttt{899}  & 海王星 \\
+\texttt{301}  & 月球         & \texttt{999}  & 冥王星 \\
+\texttt{499}  & 火星         & \texttt{3}     & 地月系质心 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.2cm}
+
+\textbf{观测中心 (CENTER) 常用写法：}
+
+\begin{itemize}
+  \setlength\itemsep{3pt}
+  \item \texttt{500@10} — 太阳（body center）
+  \item \texttt{500@399} — 地球（body center），即地心
+  \item \texttt{500@3} — 地月系质心
+  \item \texttt{coord@399} — 地表某经纬度的观测站
+\end{itemize}
+
+\vspace{0.2cm}
+
+\begin{alertblock}{提示}
+  \texttt{500@} 表示以某天体为中心；\texttt{@10} 表示太阳，\texttt{@399} 表示地球。\\
+  坐标原点在中心天体，不在地面观测站。
+\end{alertblock}
+\end{frame}
+
+% ================================================================
+% 6 — curl：带时间范围的查询
+% ================================================================
+\begin{frame}[fragile,shrink]{入门示例 2：时间范围星历查询（地球 5 天）}
+\small
+
+\textbf{直接访问 JPL：}
+
+\begin{lstlisting}[language=bash]
+curl -s "https://ssd-api.jpl.nasa.gov/api/horizons.api?\
+COMMAND=399&\
+CENTER=500@10&\
+MAKE_EPHEM=YES&\
+START_TIME=2026-01-01&\
+STOP_TIME=2026-01-05&\
+STEP_SIZE=1d&\
+QUANTITIES=1"
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{国内代理版本：}
+
+\begin{lstlisting}[language=bash]
+curl -s "http://8.216.49.176:18766/api/horizons.api?\
+COMMAND=399&\
+CENTER=500@10&\
+MAKE_EPHEM=YES&\
+START_TIME=2026-01-01&\
+STOP_TIME=2026-01-05&\
+STEP_SIZE=1d&\
+QUANTITIES=1&\
+token=fce2a741a94feded5c3b9b7ab51f6748"
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\begin{block}{时间格式支持}
+  \texttt{2026-01-01}（JD 日历）、\texttt{2026-Jan-01}（文字月名）、
+  \texttt{JD 2460000.5}（儒略日）、\texttt{2026-01-01T12:00:00}（精确到秒）
+\end{block}
+\end{frame}
+
+% ================================================================
+% 7 — curl：获取轨道根数
+% ================================================================
+\begin{frame}[fragile,shrink]{入门示例 3：获取轨道根数（木星）}
+\small
+
+\textbf{直接访问 JPL：}
+
+\begin{lstlisting}[language=bash]
+curl -s "https://ssd-api.jpl.nasa.gov/api/horizons.api?\
+COMMAND=599&\
+CENTER=500@10&\
+MAKE_EPHEM=YES&\
+EPHEM_TYPE=ELEMENTS&\
+START_TIME=2026-01-01&\
+STOP_TIME=2026-01-01&\
+STEP_SIZE=1d"
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{国内代理版本：}
+
+\begin{lstlisting}[language=bash]
+curl -s "http://8.216.49.176:18766/api/horizons.api?\
+COMMAND=599&\
+CENTER=500@10&\
+MAKE_EPHEM=YES&\
+EPHEM_TYPE=ELEMENTS&\
+START_TIME=2026-01-01&\
+STOP_TIME=2026-01-01&\
+STEP_SIZE=1d&\
+token=fce2a741a94feded5c3b9b7ab51f6748"
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\footnotesize
+返回：EC=偏心率, A=半长轴(AU), IN=倾角(deg), OM=升交点经度, W=近日点角距, MA=平近点角
+\end{frame}
+
+% ================================================================
+% 8 — Python：用 requests 直接调用
+% ================================================================
+\begin{frame}[fragile,shrink]{入门示例 4：Python + requests 调用 API}
+\small
+
+\textbf{直接访问 JPL：}
+
+\begin{lstlisting}[language=python]
+import requests
+
+url = "https://ssd-api.jpl.nasa.gov/api/horizons.api"
+params = {
+    "COMMAND": "499",          # 火星
+    "CENTER": "500@10",        # 日心
+    "MAKE_EPHEM": "YES",
+    "START_TIME": "2026-01-01",
+    "STOP_TIME": "2026-01-01",
+    "STEP_SIZE": "1d",
+    "QUANTITIES": "1,2",       # 位置 + 速度
+}
+resp = requests.get(url, params=params)
+print(resp.json()["result"])
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{国内代理版本（URL + token 替换）：}
+
+\begin{lstlisting}[language=python]
+url = "http://8.216.49.176:18766/api/horizons.api"
+params = {
+    ...                         # 同上，参数不变
+    "token": "fce2a741a94feded5c3b9b7ab51f6748",
+}
+resp = requests.get(url, params=params)
+print(resp.json()["result"])
+\end{lstlisting}
+\end{frame}
+
+% ================================================================
+% 9 — Python：用 astroquery（推荐方式）
+% ================================================================
+\begin{frame}[fragile,shrink]{入门示例 5：用 astroquery 调用（推荐）}
+\small
+
+\textbf{直接访问：}
+
+\begin{lstlisting}[language=python]
+from astroquery.jplhorizons import Horizons
+
+obj = Horizons(
+    id="499",                   # 火星
+    location="500@10",          # 日心
+    epochs={"start": "2026-01-01",
+            "stop": "2026-01-05",
+            "step": "1d"},
+)
+vec = obj.vectors()
+print(vec["x"], vec["y"], vec["z"])   # 位置
+print(vec["vx"], vec["vy"], vec["vz"]) # 速度
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{国内代理版本（仅加一行 import）：}
+
+\begin{lstlisting}[language=python]
+from astroquery.jplhorizons import Horizons
+import jpl_forward   # 仅此一行，自动劫持为代理
+
+# 以下代码完全不变
+obj = Horizons(id="499", location="500@10",
+               epochs={"start": "2026-01-01",
+                       "stop": "2026-01-05", "step": "1d"})
+vec = obj.vectors()
+\end{lstlisting}
+\end{frame}
+
+% ================================================================
+% 10 — Python：获取轨道根数
+% ================================================================
+\begin{frame}[fragile,shrink]{入门示例 6：astroquery 获取轨道根数}
+\small
+
+\textbf{直接访问：}
+
+\begin{lstlisting}[language=python]
+from astroquery.jplhorizons import Horizons
+
+obj = Horizons(
+    id="599",                   # 木星
+    location="500@10",          # 日心
+    epochs={"start": "2026-01-01", "stop": "2026-01-01", "step": "1d"},
+)
+el = obj.elements()
+# 输出: a(AU), e, incl(deg), Omega(deg), w(deg), M(deg)
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{国内代理版本（同样一行 import 即可）：}
+
+\begin{lstlisting}[language=python]
+from astroquery.jplhorizons import Horizons
+import jpl_forward              # 自动切换代理
+
+obj = Horizons(id="599", location="500@10",
+               epochs={"start": "2026-01-01", "stop": "2026-01-01", "step": "1d"})
+el = obj.elements()
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\begin{block}{astroquery 支持的查询类型}
+\small
+\begin{tabular}{c|l}
+\toprule
+\textbf{方法} & \textbf{返回内容} \\
+\midrule
+\texttt{obj.vectors()}   & 位置 + 速度向量 (X,Y,Z,VX,VY,VZ) \\
+\texttt{obj.elements()}  & 开普勒轨道根数 (a,e,i,$\Omega$,$\omega$,M) \\
+\texttt{obj.ephemerides()} & 详细星历（含星等、光照角等） \\
+\bottomrule
+\end{tabular}
+\end{block}
+\end{frame}
+
+% ================================================================
+% 11 — 国内镜像代理：问题背景
+% ================================================================
+\begin{frame}[shrink]{为什么需要国内代理？}
+\large
+
+\begin{alertblock}{问题}
+  JPL Horizons 的官方 API 地址 \texttt{ssd-api.jpl.nasa.gov} 在某些网络环境下\\[2pt]
+  可能\alert{无法直接访问}（DNS 污染、IP 封锁、国际出口拥堵）。
+\end{alertblock}
+
+\vspace{0.3cm}
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.5cm]
+\node[draw, rounded corners, fill=red!15, minimum width=3cm, minimum height=1cm, align=center] (a) {国内机器};
+\node[draw, rounded corners, fill=red!15, right=1.5cm of a, minimum width=3cm, minimum height=1cm, align=center] (b) {\texttt{ssd-api.jpl.nasa.gov}\\\scriptsize 直接访问失败};
+\draw[->, thick, red] (a) -- (b) node[midway, above] {\footnotesize 超时 / 拒绝连接};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.3cm}
+
+\textbf{解决方案：}搭建一台能访问 JPL API 的境外服务器作为\alert{转发代理}，\\
+国内机器→代理服务器→JPL API，代理服务器仅做请求转发。
+
+\vspace{0.2cm}
+
+\begin{block}{代理的工作方式}
+  \centering
+  \texttt{你的代码} $\;\longrightarrow\;$ \texttt{http://<代理IP>:18766/api/horizons.api} $\;\longrightarrow\;$ \texttt{JPL 官方}
+\end{block}
+\end{frame}
+
+% ================================================================
+% 12 — 国内代理：Python 猴子补丁
+% ================================================================
+\begin{frame}[fragile,shrink]{国内代理方案 1：Python 猴子补丁（推荐）}
+\small
+
+\textbf{思路：}在 import astroquery 后，用一行 import 自动劫持所有 Horizons 请求。
+
+\begin{lstlisting}[language=python]
+from astroquery.jplhorizons import Horizons
+import jpl_forward   # 仅此一行，自动完成 URL 重定向
+
+# 以下代码完全不变，自动走代理
+obj = Horizons(id="499", location="500@10",
+               epochs={"start": "2026-01-01",
+                       "stop": "2026-01-05",
+                       "step": "1d"})
+vec = obj.vectors()
+print(vec)
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{jpl\_forward.py 的核心实现（仅 15 行）：}
+
+\begin{lstlisting}[language=python]
+from astroquery.jplhorizons import HorizonsClass
+
+FORWARD_URL = "http://8.216.49.176:18766/api/horizons.api"
+FORWARD_TOKEN = "fce2a741a94feded5c3b9b7ab51f6748"
+
+_original_request = HorizonsClass._request
+
+def _patched_request(self, method, url, params=None, **kwargs):
+    if params is None:
+        params = {}
+    params["token"] = FORWARD_TOKEN
+    url = FORWARD_URL
+    return _original_request(self, method, url, params=params, **kwargs)
+
+HorizonsClass._request = _patched_request
+\end{lstlisting}
+
+\begin{alertblock}{优势}
+  对现有代码\alert{零侵入}——仅加一行 import，无需改动任何业务逻辑。
+\end{alertblock}
+\end{frame}
+
+% ================================================================
+% 13 — 国内代理：curl 与 requests 使用方式
+% ================================================================
+\begin{frame}[fragile,shrink]{国内代理方案 2：curl 与 requests 直连代理}
+\small
+
+\textbf{方案 A：curl 直接请求镜像（以火星位置为例）}
+
+\begin{lstlisting}[language=bash]
+curl -s "http://8.216.49.176:18766/api/horizons.api?\
+COMMAND=499&\
+CENTER=500@10&\
+MAKE_EPHEM=YES&\
+START_TIME=2026-01-01&\
+STOP_TIME=2026-01-01&\
+STEP_SIZE=1d&\
+QUANTITIES=1&\
+token=fce2a741a94feded5c3b9b7ab51f6748"
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{方案 B：Python requests 直连代理}
+
+\begin{lstlisting}[language=python]
+import requests
+
+url = "http://8.216.49.176:18766/api/horizons.api"
+params = {
+    "COMMAND": "499",
+    "CENTER": "500@10",
+    "MAKE_EPHEM": "YES",
+    "START_TIME": "2026-01-01",
+    "STOP_TIME": "2026-01-01",
+    "STEP_SIZE": "1d",
+    "QUANTITIES": "1,2",
+    "token": "fce2a741a94feded5c3b9b7ab51f6748",
+}
+resp = requests.get(url, params=params)
+print(resp.json()["result"])
+\end{lstlisting}
+
+\begin{block}{关键区别}
+  \begin{itemize}
+    \setlength\itemsep{2pt}
+    \item URL 从 \texttt{ssd-api.jpl.nasa.gov} 改为代理地址
+    \item 必须附带 \texttt{token} 参数进行鉴权
+    \item 其他参数格式与官方 API \alert{完全一致}
+  \end{itemize}
+\end{block}
+\end{frame}
+
+% ================================================================
+% 14 — 国内代理：自建代理简介
+% ================================================================
+\begin{frame}[fragile,shrink]{自建代理服务器（进阶）}
+\small
+
+如果现有代理不可用，可以自建转发服务器。以 Flask 为例：
+
+\begin{lstlisting}[language=python]
+# proxy_server.py  —— 部署在能访问 JPL 的境外 VPS 上
+from flask import Flask, request
+import requests
+
+app = Flask(__name__)
+JPL_API = "https://ssd-api.jpl.nasa.gov/api/horizons.api"
+TOKEN = "your-secret-token"
+
+@app.route("/api/horizons.api")
+def proxy():
+    if request.args.get("token") != TOKEN:
+        return {"error": "unauthorized"}, 403
+    params = dict(request.args)
+    params.pop("token")          # 去掉 token，不传给 JPL
+    resp = requests.get(JPL_API, params=params)
+    return resp.json()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=18766)
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\begin{block}{部署步骤}
+  \begin{enumerate}
+    \setlength\itemsep{2pt}
+    \item 租一台境外 VPS（如阿里云国际、AWS、Vultr）
+    \item \texttt{pip install flask requests gunicorn}
+    \item \texttt{gunicorn -b 0.0.0.0:18766 proxy\_server:app}
+    \item（可选）配置 Nginx 反向代理 + HTTPS
+  \end{enumerate}
+\end{block}
+\end{frame}
+
+% ================================================================
+% 15 — 总结
+% ================================================================
+\begin{frame}[shrink]{总结}
+\large
+
+\begin{enumerate}
+  \setlength\itemsep{10pt}
+  \item \textbf{curl 方式}：适合快速验证、脚本调用。核心参数 6 个即可上手。
+
+  \item \textbf{Python + requests}：更灵活的编程调用，参数用 dict 管理。
+
+  \item \textbf{Python + astroquery}：\alert{推荐}。Astropy 官方封装，返回科学计算友好的 Table 对象。
+
+  \item \textbf{国内代理}：
+  \begin{itemize}
+    \item 已有代理：改 URL + 加 token 即可
+    \item 用 \texttt{jpl\_forward} 一行 import 自动劫持
+    \item 进阶可自建 Flask 转发服务器
+  \end{itemize}
+\end{enumerate}
+
+\vspace{0.3cm}
+
+\begin{block}{核心命令速记}
+\begin{center}
+\large\texttt{COMMAND + CENTER + START\_TIME + STOP\_TIME + STEP\_SIZE = 一次查询}
+\end{center}
+\end{block}
+\end{frame}
+
+% ================================================================
+% 16 — 参考资源
+% ================================================================
+\begin{frame}{参考资源与延伸阅读}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{官方文档}
+\begin{itemize}
+  \setlength\itemsep{6pt}
+  \item JPL Horizons 主页\\
+    \texttt{ssd.jpl.nasa.gov/horizons}
+  \item Horizons API 文档\\
+    {\footnotesize\texttt{ssd-api.jpl.nasa.gov/doc/horizons.html}}
+  \item astroquery 文档\\
+    \texttt{astroquery.readthedocs.io}
+\end{itemize}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{本课程相关文件}
+\begin{itemize}
+  \setlength\itemsep{6pt}
+  \item \texttt{week9/src/JPL.py}\\
+    \scriptsize 完整的数值传播与 JPL 对比示例
+  \item \texttt{week9/src/jpl\_forward.py}\\
+    \scriptsize 国内镜像转发模块
+\end{itemize}
+\end{block}
+\end{columns}
+
+\vspace{0.3cm}
+
+\begin{center}
+\Large 谢谢！
+\end{center}
+\end{frame}
+
+\end{document}

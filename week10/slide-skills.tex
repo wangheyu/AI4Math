@@ -1,0 +1,596 @@
+\documentclass[aspectratio=169]{ctexbeamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{booktabs}
+\usepackage{fontawesome5}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codekw}{RGB}{0,92,175}
+\definecolor{codestr}{RGB}{163,21,21}
+\definecolor{codecomment}{RGB}{0,128,0}
+\definecolor{mainblue}{RGB}{40,90,180}
+\definecolor{lightblue}{RGB}{232,240,255}
+
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codekw}\bfseries,
+  stringstyle=\color{codestr},
+  commentstyle=\color{codecomment},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=4
+}
+
+\setbeamertemplate{navigation symbols}{}
+
+\title{Claude Code Skills}
+\subtitle{从一次性对话到可复用技能}
+\author{}
+\date{}
+
+\begin{document}
+
+% ================================================================
+% 1 — 标题页
+% ================================================================
+\begin{frame}
+  \titlepage
+  \vspace{-0.6cm}
+  \begin{center}
+    \large 核心问题：如何将成功的 AI 协作经验固化为一键复用的“技能”？\\[4pt]
+    \normalsize 从系统内置 skills 到自定义 skills 的完整路径
+  \end{center}
+\end{frame}
+
+% ================================================================
+% 2 — 什么是 Skill？
+% ================================================================
+\begin{frame}{什么是 Skill？}
+\large
+
+Skill 是 Claude Code 中的\alert{可复用提示词模板}，将某一类任务的\alert{领域知识}、\alert{操作流程}和\alert{最佳实践}打包在一起。
+
+\vspace{0.5cm}
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.7cm]
+\node[draw, rounded corners, fill=lightblue, minimum width=3cm, minimum height=1cm, align=center] (a) {一次性提示词\\\footnotesize 每次都要重复说明};
+\node[draw, rounded corners, fill=mainblue!20, right=1.2cm of a, minimum width=3cm, minimum height=1cm, align=center] (b) {Skill\\\footnotesize 定义一次，反复调用};
+\draw[->, very thick, mainblue] (a) -- (b) node[midway, above] {\small 封装};
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.5cm}
+
+\normalsize
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{Skill 包含什么？}
+\begin{itemize}
+  \item 领域知识（该怎么做）
+  \item 操作流程（先做什么后做什么）
+  \item 格式约束（输出长什么样）
+  \item 工具权限（允许用什么）
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{调用方式}
+\begin{itemize}
+  \item \texttt{/<skill-name>} 显式调用
+  \item 自然语言自动触发
+  \item 一次加载，全对话生效
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ================================================================
+% 3 — 为什么需要 Skill？
+% ================================================================
+\begin{frame}{为什么需要 Skill？—— 动机}
+\large
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{痛点}
+\begin{itemize}
+  \item 每次做类似任务都要\alert{重新解释规则}
+  \item 团队成员的\alert{经验无法传承}
+  \item 提示词越写越长，难以维护
+  \item AI 偶尔会“忘记”约束条件
+\end{itemize}
+\end{block}
+
+\column{0.48\textwidth}
+\begin{block}{Skill 的解决方案}
+\begin{itemize}
+  \item 经验\alert{固化}为结构化文件
+  \item 团队\alert{共享}同一套 skills
+  \item 每次调用\alert{一致}的行为标准
+  \item 可以版本控制、持续优化
+\end{itemize}
+\end{block}
+\end{columns}
+
+\vspace{0.5cm}
+
+\begin{alertblock}{核心洞察}
+  Skill 的本质是\alert{把提示词工程产品化}——\\
+  从“每次想怎么说”变成“定义一次规则，AI 照着执行”。
+\end{alertblock}
+\end{frame}
+
+% ================================================================
+% 4 — Skill 的工作原理
+% ================================================================
+\begin{frame}{Skill 的工作原理：三级加载机制}
+\large
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=0.6cm,
+  box/.style={draw, rounded corners, align=center, minimum width=4cm, minimum height=1cm},
+  arrow/.style={->, very thick, mainblue}
+]
+\node[box, fill=lightblue!60] (l1) {\textbf{Level 1: 元数据}\\\small name + description（始终在上下文中）};
+\node[box, fill=lightblue!80, below=of l1] (l2) {\textbf{Level 2: SKILL.md 正文}\\\small skill 触发时加载（$<$500 行）};
+\node[box, fill=lightblue, below=of l2] (l3) {\textbf{Level 3: 捆绑资源}\\\small 按需加载：scripts/、references/、assets/};
+\draw[arrow] (l1) -- (l2);
+\draw[arrow] (l2) -- (l3);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.2cm}
+
+\normalsize
+\begin{description}
+  \setlength\itemsep{2pt}
+  \item[Level 1] 所有 skill 的元数据始终在上下文中，用于匹配触发。
+  \item[Level 2] 匹配成功时，完整 SKILL.md 正文被加载。
+  \item[Level 3] 捆绑的 scripts/、references/、assets/ 按需读取和执行。
+\end{description}
+\end{frame}
+
+% ================================================================
+% 5 — Skill 的目录结构
+% ================================================================
+\begin{frame}[fragile,shrink]{Skill 的目录结构}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\textbf{项目级 Skill（本仓库）：}
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+.claude/skills/
+  record-session/
+    SKILL.md
+\end{lstlisting}
+
+\vspace{0.3cm}
+\textbf{用户级 Plugin（全局）：}
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+~/.claude/plugins/marketplaces/
+  claude-plugins-official/
+    plugins/
+      skill-creator/skills/
+        skill-creator/SKILL.md
+\end{lstlisting}
+
+\column{0.52\textwidth}
+\textbf{完整结构：}
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+skill-name/
+  SKILL.md              # 必须
+    YAML frontmatter
+      name
+      description
+      argument-hint     (可选)
+      allowed-tools     (可选)
+    Markdown 指令正文
+  捆绑资源 (可选)
+    scripts/            # 可执行脚本
+    references/         # 参考文档
+    assets/             # 模板、字体等
+\end{lstlisting}
+\end{columns}
+
+\vspace{0.3cm}
+
+\begin{alertblock}{关键}
+  唯一必需文件是 \texttt{SKILL.md}。name 和 description 决定触发时机。\\
+  description 是\alert{最重要的字段}——Claude 据此判断是否调用该 skill。
+\end{alertblock}
+\end{frame}
+
+% ================================================================
+% 6 — Skill 的触发机制
+% ================================================================
+\begin{frame}{Skill 如何被触发？}
+\large
+
+\begin{block}{两种触发方式}
+\begin{enumerate}
+  \setlength\itemsep{4pt}
+  \item \textbf{显式调用}：用户输入 \texttt{/<skill-name>}（如 \texttt{/init}、\texttt{/record-session}）
+  \item \textbf{自动匹配}：Claude 根据 description 判断当前任务是否需要该 skill
+\end{enumerate}
+\end{block}
+
+\vspace{0.2cm}
+
+\begin{block}{description 的编写原则}
+\begin{itemize}
+  \setlength\itemsep{3pt}
+  \item 描述 \textbf{WHAT}（做什么）+ \textbf{WHEN}（何时触发）
+  \item 包含触发短语示例（"Use when the user asks to \dots"）
+  \item 稍微“主动”一些——Claude 倾向于少触发而不是多触发
+\end{itemize}
+\end{block}
+
+\vspace{0.2cm}
+
+\normalsize
+\textbf{设计哲学：}好的 description 让用户不需要记住 skill 名字，自然语言即可自动匹配。
+\end{frame}
+
+% ================================================================
+% 7 — 系统内置 Skill：/init
+% ================================================================
+\begin{frame}[fragile,shrink]{系统内置 Skill 示例：\texttt{/init}}
+\small
+
+\texttt{/init} 是 Claude Code 的\alert{系统内置 skill}，用于初始化项目的 CLAUDE.md 文件。
+
+\vspace{0.2cm}
+
+\begin{block}{\texttt{/init} 做什么？}
+\begin{itemize}
+  \setlength\itemsep{4pt}
+  \item 扫描项目目录结构、关键文件、构建系统
+  \item 分析 package.json、Makefile、配置文件等
+  \item 生成 \texttt{CLAUDE.md}，包含：
+  \begin{itemize}
+    \item 项目概述与技术栈
+    \item 常用命令（构建、测试、运行）
+    \item 代码风格与架构约定
+    \item 重要注意事项和坑位
+  \end{itemize}
+\end{itemize}
+\end{block}
+
+\vspace{0.2cm}
+
+\begin{block}{为什么 \texttt{/init} 是 Skill 的典型例子？}
+\begin{center}
+\begin{tikzpicture}[node distance=0.5cm]
+\node[draw, rounded corners, fill=lightblue, minimum width=2.6cm, minimum height=0.9cm, align=center, font=\small] (a) {领域知识\\\footnotesize 知道什么该写进\\\footnotesize CLAUDE.md};
+\node[draw, rounded corners, fill=lightblue, right=0.8cm of a, minimum width=2.6cm, minimum height=0.9cm, align=center, font=\small] (b) {操作流程\\\footnotesize 扫描 → 分析 →\\\footnotesize 生成 → 写入};
+\node[draw, rounded corners, fill=lightblue, right=0.8cm of b, minimum width=2.6cm, minimum height=0.9cm, align=center, font=\small] (c) {格式约束\\\footnotesize Markdown 格式、\\\footnotesize 固定章节结构};
+\draw[->, thick, mainblue] (a) -- (b);
+\draw[->, thick, mainblue] (b) -- (c);
+\end{tikzpicture}
+\end{center}
+\end{block}
+
+\end{frame}
+
+% ================================================================
+% 8 — /init 的工作效果
+% ================================================================
+\begin{frame}[fragile,shrink]{\texttt{/init} 的生成结果示例}
+\small
+
+\textbf{本课程项目运行 \texttt{/init} 后生成的 CLAUDE.md 片段：}
+
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+# CLAUDE.md
+## Project Overview
+Numerical simulations of celestial mechanics
+(Sun-Earth-Moon), JPL Horizons comparison,
+eclipse prediction.
+
+## Key Commands
+# week9 — Report and simulations
+cd week9 && make pdf      # run + compile
+cd week9 && make clean    # cleanup
+
+# week10 — Slides
+cd week10 && make all     # compile slides
+\end{lstlisting}
+
+\vspace{0.1cm}
+
+\begin{block}{关键价值}
+  \texttt{/init} \alert{理解项目}的目标与结构，生成一份能让后续 AI 协作更高效的“项目说明书”。
+\end{block}
+\end{frame}
+
+% ================================================================
+% 9 — 自定义 Skill：动机
+% ================================================================
+\begin{frame}{自定义 Skill：\texttt{/record-session} 的创建动机}
+\large
+
+\begin{alertblock}{场景}
+  课程中频繁使用 Claude Code，产生了大量对话记录。需要\alert{结构化保存}每次 AI 协作过程：
+  用户问了什么 → AI 分析/做了什么 → 遇到什么错误 → 最终结果
+\end{alertblock}
+
+\vspace{0.2cm}
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.6cm]
+\node[draw, rounded corners, fill=red!15, minimum width=3cm, minimum height=1cm, align=center] (a) {手动记录\\\footnotesize 容易遗漏、格式不统一};
+\node[draw, rounded corners, fill=lightblue, right=1cm of a, minimum width=3cm, minimum height=1cm, align=center] (b) {用 Skill 自动记录\\\footnotesize 格式统一、结构化、可复用};
+\draw[->, very thick, mainblue] (a) -- (b);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.15cm}
+
+\normalsize
+\textbf{目标：}每次说 \texttt{/record-session start} 即按统一模板开始记录，\texttt{stop} 结束。
+\end{frame}
+
+% ================================================================
+% 10 — 自定义 Skill 创建过程
+% ================================================================
+\begin{frame}[fragile]{\texttt{/record-session} 的创建过程}
+\small
+
+\textbf{Step 1：确定需求}\quad
+触发词：“record”、“log”、\texttt{/record} 等；输出 Markdown，5 个必填字段；\\
+权限仅限 \texttt{Read, Write, Edit, Bash(git *)}，禁止运行其他 Shell 命令。
+
+\vspace{0.15cm}
+
+\textbf{Step 2：编写 SKILL.md}
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+---
+name: record-session
+description: >
+  Begins or manages detailed session recording
+  to a Markdown file. Captures every Q&A exchange,
+  analysis, errors, fixes, and key decisions.
+argument-hint: "[start|stop|status|file-path]"
+allowed-tools: [Read, Write, Edit, Bash(git *)]
+---
+\end{lstlisting}
+
+\vspace{0.15cm}
+
+\textbf{Step 3：部署} — 放入 \texttt{.claude/skills/record-session/SKILL.md}，Claude Code 自动发现加载。
+\end{frame}
+
+% ================================================================
+% 11 — /record-session 的工作机制
+% ================================================================
+\begin{frame}[fragile]{\texttt{/record-session} 的工作机制}
+\small
+
+\begin{columns}[T]
+\column{0.45\textwidth}
+\textbf{命令（通过 \$ARGUMENTS 接收）：}
+\begin{itemize}
+  \setlength\itemsep{2pt}
+  \item \texttt{start} 或文件路径 → 开始录制
+  \item \texttt{stop} → 结束录制
+  \item \texttt{status} → 报告状态
+  \item 省略 → 默认 \texttt{claude-record.md}
+\end{itemize}
+
+\textbf{每条记录 5 个必填字段：}
+\begin{enumerate}
+  \setlength\itemsep{0pt}
+  \item 用户指令（逐字）
+  \item 分析过程（步骤+推理）
+  \item 采取的行动（文件+命令+决策）
+  \item 结果（成功/失败/验证）
+  \item 技术上下文（git、版本、路径）
+\end{enumerate}
+
+\textbf{设计原则：}仅允许 git 命令；每次交换完成后写入；统一模板。
+
+\column{0.55\textwidth}
+\textbf{格式规范（Markdown 模板）：}
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize,aboveskip=0pt,belowskip=0pt]
+## Q&A Exchange
+### User instruction
+> verbatim user request
+### Analysis process
+1. Investigated X by reading Y
+### Actions taken
+- Modified `file.py:42-58`
+### Results
+Fix confirmed via `make verify`
+### Technical context
+- Branch: main, Commit: 0939a33
+\end{lstlisting}
+\end{columns}
+\end{frame}
+
+% ================================================================
+% 12 — 用户级自定义 Skill：calculus
+% ================================================================
+\begin{frame}[fragile,shrink]{用户级 Skill 示例：\texttt{/calculus}}
+\footnotesize
+
+\begin{block}{场景：微积分问题求解}
+  课程学习中频繁遇到微积分问题（求导、积分、极限、级数、微分方程），
+  需要一个\alert{用户级全局 skill}，在任何项目中都能调用。
+\end{block}
+
+\vspace{-0.1cm}
+
+\textbf{创建过程（与项目级 skill 完全一致）：}
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
+mkdir -p ~/.claude/skills/calculus
+# 编写 ~/.claude/skills/calculus/SKILL.md
+\end{lstlisting}
+
+\vspace{-0.1cm}
+
+\begin{columns}[T]
+\column{0.42\textwidth}
+\textbf{SKILL.md 核心内容：}
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize,aboveskip=2pt,belowskip=2pt]
+---
+name: calculus
+description: Solves calculus
+  (differentiation, integration,
+   limits, series, ODEs).
+allowed-tools: [Bash, Read,
+  Write, WebSearch]
+---
+# Workflow:
+1. Identify problem type
+2. Solve analytically
+3. Verify numerically
+4. Visualize (optional)
+\end{lstlisting}
+
+\column{0.58\textwidth}
+\textbf{调用方式：}
+\begin{itemize}
+  \setlength\itemsep{2pt}
+  \item \texttt{/calculus 求 sin(x\^2) 的积分}
+  \item 自然语言：``帮我求这个极限''
+  \item 自动触发：匹配关键词
+\end{itemize}
+
+\vspace{0.1cm}
+
+\textbf{与项目级 skill 的区别：}
+\begin{itemize}
+  \setlength\itemsep{0pt}
+  \item 放在 \texttt{\~{}/.claude/skills/}，\alert{所有项目通用}
+  \item 项目级在 \texttt{.claude/skills/}，仅当前仓库可见
+  \item 创建方式完全相同，仅是\alert{部署位置不同}
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ================================================================
+% 13 — 三类 Skill 对比
+% ================================================================
+\begin{frame}{三类 Skill 对比}
+\footnotesize
+
+\begin{center}
+\begin{tabular}{p{0.22\textwidth} p{0.22\textwidth} p{0.24\textwidth} p{0.24\textwidth}}
+\toprule
+\textbf{维度} & \textbf{系统内置} & \textbf{项目级自定义} & \textbf{用户级自定义} \\
+\midrule
+示例 & \texttt{/init} & \texttt{/record-session} & \texttt{/calculus} \\
+位置 & Claude Code 内置 & \texttt{.claude/skills/} & \texttt{\~{}/.claude/skills/} \\
+范围 & 所有项目 & 当前仓库 & 所有项目 \\
+创建者 & Anthropic & 项目成员 & 用户自己 \\
+可修改 & 否 & 是 & 是 \\
+典型场景 & 通用工作流 & 项目特定流程 & 个人领域工具 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.1cm}
+
+\begin{block}{选择指南}
+  \centering
+  \footnotesize 项目特定 $\to$ 项目级 ~|~ 个人工具 $\to$ 用户级 ~|~ 团队共享 $\to$ Plugin
+\end{block}
+\end{frame}
+
+% ================================================================
+% 14 — 如何开始写自己的 Skill
+% ================================================================
+\begin{frame}{如何开始写自己的 Skill？}
+\large
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{设计阶段}
+\begin{enumerate}
+  \setlength\itemsep{6pt}
+  \item 找到一个你\alert{重复做}的任务
+  \item 记录一次完整的成功对话
+  \item 提取关键规则和格式要求
+  \item 写成 SKILL.md 初稿
+\end{enumerate}
+\end{block}
+
+\column{0.48\textwidth}
+\begin{block}{迭代优化}
+\begin{enumerate}
+  \setlength\itemsep{6pt}
+  \item 用不同输入测试
+  \item 观察 AI 是否按预期执行
+  \item 修正 description 改善触发率
+  \item 精简冗余指令
+\end{enumerate}
+\end{block}
+\end{columns}
+
+\vspace{0.5cm}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=0.6cm,
+  box/.style={draw, rounded corners, fill=lightblue, minimum width=2.2cm, minimum height=0.9cm, align=center, font=\small},
+  arrow/.style={->, thick, mainblue}
+]
+\node[box] (a) {发现\\重复任务};
+\node[box, right=of a] (b) {写初版\\SKILL.md};
+\node[box, right=of b] (c) {测试\\触发效果};
+\node[box, right=of c] (d) {优化\\迭代};
+\node[box, right=of d] (e) {分享\\给团队};
+\draw[arrow] (a) -- (b);
+\draw[arrow] (b) -- (c);
+\draw[arrow] (c) -- (d);
+\draw[arrow] (d) -- (e);
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ================================================================
+% 15 — 总结
+% ================================================================
+\begin{frame}{总结}
+\large
+
+\begin{enumerate}
+  \setlength\itemsep{6pt}
+  \item \textbf{Skill 是什么}\\
+  可复用的提示词模板，封装领域知识、操作流程、格式约束和工具权限。
+
+  \item \textbf{为什么需要 Skill}\\
+  将成功经验固化为可反复调用的能力，实现\alert{提示词工程产品化}。
+
+  \item \textbf{三类 Skill}\\
+  \begin{itemize}
+    \item 系统内置（如 \texttt{/init}）——开箱即用，覆盖通用场景
+    \item 项目级自定义（如 \texttt{/record-session}）——服务特定工作流
+    \item 用户级自定义（如 \texttt{/calculus}）——个人全局通用
+  \end{itemize}
+
+  \item \textbf{创建流程}\\
+  重复任务 → 提取规则 → 编写 SKILL.md → 部署测试 → 迭代优化
+\end{enumerate}
+
+\vspace{0.15cm}
+
+\begin{block}{核心记忆}
+  Skill = name + description + 操作指令。Description 决定 skill 是否被触发。
+\end{block}
+\end{frame}
+
+\end{document}
