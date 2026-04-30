@@ -1,22 +1,30 @@
 # LaTeX build output
 week9/build/
+week10/build/
 *.aux
 *.bbl
 *.blg
 *.fdb_latexmk
 *.fls
 *.log
+*.nav
 *.out
+*.snm
 *.toc
+*.vrb
 *.xdv
 *.synctex.gz
 *.latexmkrc
 
 # Script-generated outputs
-week9/output/jpl_compare_output/
+week9/output/
 week9/figures/circle_orbit_comparison.png
 week9/figures/conservation_errors_h1e-02.png
 week9/figures/conservation_errors_h1e-03.png
+week9/report.pdf
+
+# Generated PDF slides
+week10/*.pdf
 
 # Python cache
 __pycache__/

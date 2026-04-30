@@ -24,7 +24,8 @@ all: pdf
 
 pdf: $(FIGURE_OUTPUTS) $(JPL_OUTPUTS)
 	mkdir -p $(BUILD_DIR)/chapters
-	$(LATEXMK) -xelatex -interaction=nonstopmode -halt-on-error $(REPORT)
+	$(LATEXMK) -xelatex -outdir=$(BUILD_DIR) -interaction=nonstopmode -halt-on-error $(REPORT)
+	ln -sf $(BUILD_DIR)/$(REPORT:.tex=.pdf) $(REPORT:.tex=.pdf)
 
 $(FIGURE_OUTPUTS) &: src/Euler_vs_Verlet.py
 	mkdir -p $(MPLCONFIGDIR) figures
@@ -36,6 +37,7 @@ $(JPL_OUTPUTS) &: src/JPL.py
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -f $(REPORT:.tex=.pdf)
 	rm -f $(FIGURE_OUTPUTS)
 	rm -rf output/jpl_compare_output
 

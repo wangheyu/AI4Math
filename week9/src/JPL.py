@@ -26,6 +26,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from astroquery.jplhorizons import Horizons
+import jpl_forward  # noqa: F401  — 重定向到国内镜像
 
 # =========================
 # 1. 常数与配置
