@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-PYTHON ?= conda run -n Study python
+PYTHON ?= conda run -n Teaching python
 LATEXMK ?= latexmk
 REPORT := report.tex
 BUILD_DIR := build

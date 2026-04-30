@@ -1,0 +1,591 @@
+\documentclass[aspectratio=169]{ctexbeamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{booktabs}
+\usepackage{fontawesome5}
+
+\definecolor{mainblue}{RGB}{40,90,180}
+\definecolor{lightblue}{RGB}{232,240,255}
+\definecolor{darkgray}{RGB}{55,55,55}
+
+\setbeamertemplate{navigation symbols}{}
+
+\title{Agent Coding 工具与 Vibe Coding}
+\subtitle{从“写代码”到“指挥 AI 开发”}
+\author{}
+\date{}
+
+\begin{document}
+
+% 1 — 标题页
+\begin{frame}
+  \titlepage
+  \vspace{-0.8cm}
+  \begin{center}
+    \large 核心问题：AI 只是补全代码，还是已经开始“代理式开发”？
+  \end{center}
+\end{frame}
+
+% 2 — 什么是 Agent Coding 工具？
+\begin{frame}{什么是 Agent Coding 工具？}
+\Large
+Agent Coding 工具是能围绕一个开发目标，自动完成多步软件工程任务的 AI 编程代理。
+
+\vspace{0.6cm}
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.7cm]
+\node[draw, rounded corners, fill=lightblue, minimum width=2.7cm, minimum height=1cm] (a) {理解需求};
+\node[draw, rounded corners, fill=lightblue, right=of a, minimum width=2.7cm, minimum height=1cm] (b) {阅读代码库};
+\node[draw, rounded corners, fill=lightblue, right=of b, minimum width=2.7cm, minimum height=1cm] (c) {规划修改};
+\node[draw, rounded corners, fill=lightblue, right=of c, minimum width=2.7cm, minimum height=1cm] (d) {执行与测试};
+\draw[->, thick] (a) -- (b);
+\draw[->, thick] (b) -- (c);
+\draw[->, thick] (c) -- (d);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.5cm}
+
+\normalsize
+区别于传统代码补全：Agent Coding 不只“建议下一行代码”，而是能跨文件修改、运行命令、解释报错、提交变更。
+\end{frame}
+
+% 3 — Agent Coding 的典型能力
+\begin{frame}{Agent Coding 的典型能力}
+\Large
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{输入}
+自然语言任务：
+\begin{itemize}
+  \item “帮我修复这个 bug”
+  \item “给项目加登录功能”
+  \item “重构这个模块”
+\end{itemize}
+\end{block}
+
+\column{0.48\textwidth}
+\begin{block}{输出}
+可检查的工程结果：
+\begin{itemize}
+  \item 代码改动
+  \item 测试结果
+  \item Pull Request
+  \item 解释与迭代建议
+\end{itemize}
+\end{block}
+\end{columns}
+
+\vspace{0.15cm}
+
+\begin{alertblock}{关键变化}
+开发者的角色从“逐行实现者”变成“目标定义者、上下文提供者、结果审查者”。
+\end{alertblock}
+\end{frame}
+
+% 4 — 关键突破：概念 + 流程图
+\begin{frame}{Agent Coding 的关键突破：接入 Shell 与系统环境}
+\Large
+
+传统 AI 编程工具主要“生成代码”；Agent Coding 工具进一步具备了\alert{操作开发环境}的能力。
+
+\vspace{0.8cm}
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.8cm]
+\node[draw, rounded corners, fill=lightblue, minimum width=2.8cm, minimum height=1.1cm] (code) {修改代码};
+\node[draw, rounded corners, fill=lightblue, right=of code, minimum width=2.8cm, minimum height=1.1cm] (shell) {调用 Shell};
+\node[draw, rounded corners, fill=lightblue, right=of shell, minimum width=2.8cm, minimum height=1.1cm] (system) {管理环境};
+\node[draw, rounded corners, fill=lightblue, right=of system, minimum width=2.8cm, minimum height=1.1cm] (verify) {验证结果};
+\draw[->, thick] (code) -- (shell);
+\draw[->, thick] (shell) -- (system);
+\draw[->, thick] (system) -- (verify);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.8cm}
+
+\normalsize
+这种能力让 AI 不再只是一个“代码生成器”，\\
+而是能像工程师一样进入开发系统执行、观察、修复和验证。
+\end{frame}
+
+% 5 — 关键突破：Shell 与系统管理能力详解
+\begin{frame}{Shell 能力与系统管理能力}
+\Large
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{Shell 能力}
+\begin{itemize}
+  \item 运行测试与构建命令
+  \item 查看日志、报错和依赖状态
+  \item 执行 Git、包管理器、脚本命令
+\end{itemize}
+\end{block}
+
+\column{0.48\textwidth}
+\begin{block}{系统管理能力}
+\begin{itemize}
+  \item 安装依赖、配置环境变量
+  \item 启动服务、调试端口与进程
+  \item 根据运行结果自动迭代修复
+\end{itemize}
+\end{block}
+\end{columns}
+
+\vspace{0.3cm}
+
+\begin{alertblock}{核心理解}
+Agent Coding 的本质不只是”会写代码”，而是能进入开发系统，像工程师一样执行、观察、修复和验证。
+\end{alertblock}
+\end{frame}
+
+% 6 — 主要 Agent Coding 工具版图
+\begin{frame}{主要 Agent Coding 工具版图}
+\small
+
+\begin{tabular}{p{0.23\textwidth} p{0.33\textwidth} p{0.34\textwidth}}
+\toprule
+\textbf{工具} & \textbf{定位} & \textbf{典型场景} \\
+\midrule
+OpenAI Codex & 云端软件工程代理 & 并行处理任务、修 bug、生成 PR \\
+Claude Code & 终端 / IDE 中的 agentic coding 工具 & 读代码库、改文件、跑命令 \\
+GitHub Copilot Coding Agent & GitHub 工作流中的代码代理 & 从 issue 到 branch / PR \\
+Cursor & AI 原生 IDE & 代码库问答、多文件编辑、快速原型 \\
+Windsurf & AI IDE / agentic coding 环境 & 端到端开发流、上下文协作 \\
+Replit Agent & 从自然语言到应用 & 低门槛创建 Web App / Demo \\
+Devin & 自主软件工程代理 & 工单式任务、长链路开发 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.4cm}
+
+\footnotesize
+一句话：这些工具都在把“代码生成”推进到“任务执行”。
+\end{frame}
+
+% 7a — Claude Code 安装
+\begin{frame}{上手 Claude Code：安装}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{安装（4 步）}
+\begin{enumerate}
+  \setlength\itemsep{0pt}
+  \item 安装 nvm（Gitee 镜像）
+  \item 配置国内镜像源
+  \item \texttt{nvm install {-}{-}lts}
+  \item \texttt{npm install -g @anthropic-ai/claude-code}
+\end{enumerate}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{API 服务商（国内可用）}
+\begin{itemize}
+  \setlength\itemsep{4pt}
+  \item \textbf{DeepSeek}\\\footnotesize\texttt{api.deepseek.com/anthropic}
+  \item \textbf{通义千问}\\\footnotesize\texttt{dashscope.aliyuncs.com/apps/anthropic}
+\end{itemize}
+\end{block}
+\end{columns}
+
+\vspace{0.5cm}
+
+\begin{center}
+\footnotesize
+详细步骤见随课资料：\texttt{Claude-Code-安装攻略.md}
+\end{center}
+\end{frame}
+
+% 7b — Claude Code 配置与启动
+\begin{frame}{上手 Claude Code：配置与启动}
+\small
+
+\begin{block}{关键配置}
+\begin{itemize}
+  \setlength\itemsep{6pt}
+  \item npm 源设为 \texttt{registry.npmmirror.com}
+  \item API Key 写入 \texttt{\textasciitilde/.config/secrets/}
+  \item \texttt{ai-switch} 一键切换服务商
+\end{itemize}
+\end{block}
+
+\vspace{0.6cm}
+
+\begin{center}
+\Large\texttt{\$ claude}\\[0.3cm]
+\normalsize 自然语言驱动，终端原生体验
+\end{center}
+
+\vspace{0.4cm}
+
+\begin{center}
+\footnotesize
+详细步骤见随课资料：\texttt{Claude-Code-安装攻略.md}
+\end{center}
+\end{frame}
+
+% 8 — 获取 API Key
+\begin{frame}{准备工作：获取 API Key}
+\small
+
+使用 Claude Code 前，需要从 API 服务商获取 Key。
+
+\vspace{0.3cm}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{DeepSeek}
+\begin{enumerate}
+  \setlength\itemsep{4pt}
+  \item 访问 \texttt{platform.deepseek.com}
+  \item 注册账号，进入「API Keys」
+  \item 创建 Key，复制保存
+\end{enumerate}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{通义千问（阿里云百炼）}
+\begin{enumerate}
+  \setlength\itemsep{4pt}
+  \item 访问 \texttt{bailian.console.aliyun.com}
+  \item 注册阿里云账号并开通百炼
+  \item 进入「API-KEY 管理」创建 Key
+\end{enumerate}
+\end{block}
+\end{columns}
+
+\vspace{0.3cm}
+
+\begin{alertblock}{拿到 Key 之后}
+  将 Key 填入 \texttt{\textasciitilde/.config/secrets/anthropic-deepseek.env}（或 \texttt{anthropic-qianwen.env}），\\[2pt]
+  替换文件中的 \texttt{"你的-api-key"} 即可。通过 WSL 导入的镜像已在对应位置准备好了 env 模板。
+\end{alertblock}
+
+\end{frame}
+
+% 9 — WSL 预配环境
+\begin{frame}{WSL 预配环境：开箱即用}
+\footnotesize
+
+三个预配置的 WSL 导出文件，递进完备：
+
+\vspace{0.2cm}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=0.5cm,
+  box/.style={draw, rounded corners, minimum width=3cm, minimum height=1cm,
+              align=center, font=\footnotesize},
+  arrow/.style={->, >=stealth, thick, mainblue}
+]
+\node[box, fill=lightblue!60] (a) {\textbf{Debian-start}\\\scriptsize 纯净 Debian 系统};
+\node[box, fill=lightblue!80, right=of a] (b) {\textbf{Debian-claude-ready}\\\scriptsize 已装好 Claude Code\\\scriptsize 预配 API env};
+\node[box, fill=lightblue, right=of b] (c) {\textbf{Lecture-ready}\\\scriptsize 全部软件 + 课程资料};
+\draw[arrow] (a) -- (b);
+\draw[arrow] (b) -- (c);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.15cm}
+
+\begin{block}{下载（夸克网盘）}
+\centering
+\small
+\textbf{Debian-start}：\texttt{pan.quark.cn/s/a04a7f19781a}\qquad
+\textbf{Debian-claude-ready}：\texttt{pan.quark.cn/s/588a149f06b5}
+\end{block}
+
+\vspace{0.15cm}
+
+\begin{columns}[T]
+\column{0.58\textwidth}
+\textbf{导入命令（PowerShell）}
+\begin{itemize}
+  \setlength\itemsep{2pt}
+  \item[]\texttt{wsl {-}{-}import TEST C:\textbackslash wsl\textbackslash TEST C:\textbackslash Downloads\textbackslash Debian-start.tar}
+\end{itemize}
+\vspace{2pt}
+默认用户通过 \texttt{/etc/wsl.conf} 配置：\\[-2pt]
+\texttt{[user]\quad default=newbie}
+
+\column{0.42\textwidth}
+\textbf{导入后}
+\begin{itemize}
+  \setlength\itemsep{2pt}
+  \item \texttt{wsl -d TEST} \quad 启动
+  \item \texttt{claude} \quad 直接开始使用
+\end{itemize}
+\end{columns}
+
+\end{frame}
+
+% 10 — 上手建议与课堂练习
+\begin{frame}{上手建议与回家练习}
+\small
+
+建议优先导入 \textbf{Debian-claude-ready}，填入 API Key 即可使用。
+
+\vspace{0.3cm}
+
+\begin{columns}[T]
+\column{0.45\textwidth}
+\begin{block}{默认账户信息}
+\begin{itemize}
+  \setlength\itemsep{4pt}
+  \item 用户名：\texttt{newbie}
+  \item 密码：\texttt{newbie}
+\end{itemize}
+\end{block}
+
+\column{0.55\textwidth}
+\begin{exampleblock}{回家练习}
+\textbf{任务：}使用 Claude Code 将默认用户名从 \texttt{newbie} 改成自己的用户名。
+
+\vspace{4pt}
+\textbf{提示：}
+\begin{itemize}
+  \setlength\itemsep{0pt}
+  \item \texttt{sudo usermod -l <新用户名> newbie}
+  \item \texttt{sudo usermod -d /home/<新用户名> -m <新用户名>}
+  \item \texttt{sudo groupmod -n <新用户名> newbie}
+\end{itemize}
+\end{exampleblock}
+\end{columns}
+
+\vspace{0.3cm}
+
+\begin{alertblock}{学习目标}
+  通过这个练习，体验如何用自然语言指挥 Claude Code 执行系统管理任务——\\
+  \textbf{你不一定知道具体命令，但你知道要做什么。}
+\end{alertblock}
+
+\end{frame}
+
+% 11 — 终端持久化：screen 基础
+\begin{frame}{终端持久化：为什么要用 screen？}
+\small
+
+WSL 终端关闭后，正在运行的程序（包括 Claude Code）会被终止。\\[4pt]
+\textbf{screen} 在后台维护一个独立会话，断开后程序继续运行，随时可以重连。
+
+\vspace{0.4cm}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=0.8cm,
+  box/.style={draw, rounded corners, minimum width=2.6cm, minimum height=1cm,
+              align=center, font=\small, fill=lightblue},
+  arrow/.style={->, >=stealth, thick, mainblue}
+]
+\node[box] (start) {启动 screen};
+\node[box, right=of start] (work) {运行 Claude Code};
+\node[box, right=of work] (detach) {断开 / 关终端};
+\node[box, right=of detach] (back) {回来重新连接};
+\draw[arrow] (start) -- (work);
+\draw[arrow] (work) -- (detach);
+\draw[arrow] (detach) -- (back);
+\draw[arrow, bend left=50] (back.south) to (work.south);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.4cm}
+
+\begin{block}{核心概念}
+  \begin{description}
+    \setlength\itemsep{4pt}
+    \item[session] 一个独立的后台会话，包含若干窗口
+    \item[detach] 断开但不终止，进程继续运行
+    \item[attach] 重新连接到之前的会话
+  \end{description}
+\end{block}
+
+\end{frame}
+
+% 12 — screen 常用命令与 Claude Code 配合
+\begin{frame}{screen 常用命令 \& 配合 Claude Code}
+\small
+
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{block}{常用命令}
+\begin{itemize}
+  \setlength\itemsep{4pt}
+  \item \texttt{screen -S <name>} \quad 创建命名会话
+  \item \textbf{Ctrl+A, D} \quad 脱离会话
+  \item \texttt{screen -ls} \quad 列出会话
+  \item \texttt{screen -r <name>} \quad 重连会话
+  \item \texttt{screen -X -S <name> quit} \quad 结束会话
+\end{itemize}
+\end{block}
+
+\column{0.48\textwidth}
+\begin{exampleblock}{screen + Claude Code}
+\begin{enumerate}
+  \setlength\itemsep{4pt}
+  \item \texttt{screen -S claude}
+  \item 运行 \texttt{claude} 开始工作
+  \item \textbf{Ctrl+A, D} 脱离
+  \item 关终端，离开
+  \item \texttt{screen -r claude} 恢复
+\end{enumerate}
+\end{exampleblock}
+\end{columns}
+
+\vspace{0.3cm}
+
+\begin{alertblock}{提示}
+  screen 会话在 WSL 重启后丢失，关机前请确认任务已保存。同类工具：\texttt{tmux}。
+\end{alertblock}
+
+\end{frame}
+
+% 13 — 首次使用 Claude Code
+\begin{frame}{首次使用 Claude Code}
+\small
+
+启动后进入交互界面，直接用自然语言下达任务：
+
+\vspace{0.3cm}
+
+\begin{columns}[T]
+\column{0.45\textwidth}
+\begin{block}{启动}
+\begin{center}
+\Large\texttt{\$ claude}
+
+\vspace{0.2cm}
+\normalsize 进入交互式 REPL 界面
+\end{center}
+\end{block}
+
+\column{0.55\textwidth}
+\begin{exampleblock}{试试这些}
+\begin{itemize}
+  \setlength\itemsep{4pt}
+  \item 「帮我查看当前目录下有哪些文件」
+  \item 「解释这个项目的结构」
+  \item 「把我的用户名从 newbie 改成 zhang-san」
+\end{itemize}
+\end{exampleblock}
+\end{columns}
+
+\vspace{0.4cm}
+
+\begin{block}{你会看到 Claude Code 如何工作}
+\begin{center}
+\begin{tikzpicture}[node distance=0.6cm]
+\node[draw, rounded corners, fill=lightblue, minimum width=2.4cm, minimum height=0.9cm, font=\small] (a) {探索代码库};
+\node[draw, rounded corners, fill=lightblue, right=of a, minimum width=2.4cm, minimum height=0.9cm, font=\small] (b) {提出方案};
+\node[draw, rounded corners, fill=lightblue, right=of b, minimum width=2.4cm, minimum height=0.9cm, font=\small] (c) {执行操作};
+\node[draw, rounded corners, fill=lightblue, right=of c, minimum width=2.4cm, minimum height=0.9cm, font=\small] (d) {验证结果};
+\draw[->, thick, mainblue] (a) -- (b);
+\draw[->, thick, mainblue] (b) -- (c);
+\draw[->, thick, mainblue] (c) -- (d);
+\end{tikzpicture}
+\end{center}
+\end{block}
+
+\end{frame}
+
+% 14 — claude-fkit：跳过权限与风险提示
+\begin{frame}{claude-fkit：跳过权限 \& 风险提示}
+\small
+
+\begin{block}{定义}
+\begin{itemize}
+  \item \texttt{claude-fkit} 是 \texttt{claude --dangerously-skip-permissions} 的别名
+  \item 让 Claude Code \alert{不再逐一请求确认}，直接执行文件读写、命令运行等操作
+\end{itemize}
+\end{block}
+
+\vspace{0.3cm}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{exampleblock}{何时使用？}
+\begin{itemize}
+  \setlength\itemsep{4pt}
+  \item 快速阅读代码库、做调研
+  \item 你完全信任当前任务
+  \item 明确知道每一步的后果
+\end{itemize}
+\end{exampleblock}
+
+\column{0.5\textwidth}
+\begin{alertblock}{风险警告}
+\begin{itemize}
+  \setlength\itemsep{4pt}
+  \item 可能意外\alert{覆盖或删除}文件
+  \item 可能运行破坏性命令
+  \item 修改后不会提示你确认
+\end{itemize}
+\end{alertblock}
+\end{columns}
+
+\begin{block}{建议}
+\centering
+默认使用普通模式（每次操作经你确认），熟悉后再按需使用 \texttt{--dangerously-skip-permissions}。
+\end{block}
+
+\end{frame}
+
+% 15 — 什么是 Vibe Coding？
+\begin{frame}{什么是 Vibe Coding？}
+\Large
+
+Vibe Coding 指一种更“感觉驱动”的 AI 编程方式：
+
+\vspace{0.4cm}
+
+\begin{center}
+\begin{tikzpicture}
+\node[draw, rounded corners, fill=lightblue, minimum width=3.2cm, minimum height=1cm] (idea) {说想法};
+\node[draw, rounded corners, fill=lightblue, right=0.8cm of idea, minimum width=3.2cm, minimum height=1cm] (ai) {AI 生成};
+\node[draw, rounded corners, fill=lightblue, right=0.8cm of ai, minimum width=3.2cm, minimum height=1cm] (feel) {凭感觉试};
+\node[draw, rounded corners, fill=lightblue, right=0.8cm of feel, minimum width=3.2cm, minimum height=1cm] (iterate) {继续调};
+\draw[->, thick] (idea) -- (ai);
+\draw[->, thick] (ai) -- (feel);
+\draw[->, thick] (feel) -- (iterate);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.4cm}
+
+\normalsize
+它强调：人不一定逐行读写代码，而是通过自然语言、报错信息、运行结果，不断引导 AI 把产品”调出来”。
+
+\vspace{0.2cm}
+
+\begin{alertblock}{注意}
+Vibe Coding 适合探索、原型和小项目；严肃工程仍需要测试、代码审查和安全检查。
+\end{alertblock}
+\end{frame}
+
+% 16 — 课堂总结
+\begin{frame}{课堂总结：如何理解这次变化？}
+\Large
+
+\begin{enumerate}
+  \item \textbf{代码补全时代：} AI 帮你写下一行。
+  \item \textbf{Agent Coding 时代：} AI 能读代码、改文件、调用 Shell、运行测试、管理环境。
+  \item \textbf{Vibe Coding 时代：} 人用自然语言和反馈驱动软件生成。
+\end{enumerate}
+
+\vspace{0.6cm}
+
+\begin{block}{一句话 takeaway}
+未来的软件开发能力，写代码变得不是那么关键，
+更重要的是会不会定义问题、组织上下文、验证结果。
+\end{block}
+
+\end{frame}
+
+\end{document}

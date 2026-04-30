@@ -1,0 +1,696 @@
+\documentclass[aspectratio=169]{ctexbeamer}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{booktabs}
+\usepackage{fontawesome5}
+
+%\usepackage[UTF8]{ctex}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codekw}{RGB}{0,92,175}
+\definecolor{codestr}{RGB}{163,21,21}
+\definecolor{codecomment}{RGB}{0,128,0}
+
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codekw}\bfseries,
+  stringstyle=\color{codestr},
+  commentstyle=\color{codecomment},
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=4
+}
+
+\title{Make 入门讲座}
+\subtitle{用 Makefile 自动化构建与任务管理}
+\author{Your Name}
+\date{\today}
+
+\begin{document}
+
+%------------------------------------------------
+\begin{frame}
+  \titlepage
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{本讲内容}
+  \tableofcontents
+\end{frame}
+
+%------------------------------------------------
+\section{为什么需要 Make}
+
+\begin{frame}[fragile]{问题：手动编译很麻烦}
+假设有一个简单的 C 项目：
+
+\begin{itemize}
+  \item \texttt{main.c}
+  \item \texttt{hello.c}
+  \item \texttt{hello.h}
+\end{itemize}
+
+手动编译可能需要输入：
+
+\begin{lstlisting}[language=bash]
+gcc -c main.c
+gcc -c hello.c
+gcc -o app main.o hello.o
+\end{lstlisting}
+
+问题：
+
+\begin{itemize}
+  \item 文件多了以后命令很长
+  \item 修改一个文件后不知道该重新编译哪些文件
+  \item 容易输错命令
+  \item 不利于团队协作
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Make 能做什么？}
+\textbf{Make} 是一种自动化构建工具。
+
+它可以根据文件之间的依赖关系，自动判断哪些任务需要重新执行。
+
+\begin{block}{核心思想}
+如果目标文件不存在，或者依赖文件比目标文件更新，则重新执行命令。
+\end{block}
+
+常见用途：
+
+\begin{itemize}
+  \item 编译 C / C++ 项目
+  \item 自动运行测试
+  \item 清理临时文件
+  \item 生成文档
+  \item 执行脚本任务
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\section{Makefile 基础}
+
+\begin{frame}[fragile]{Makefile 的基本结构}
+Make 使用一个名为 \texttt{Makefile} 的文件描述构建规则。
+
+基本格式：
+
+\begin{lstlisting}[language=make]
+target: dependencies
+	command
+\end{lstlisting}
+
+含义：
+
+\begin{itemize}
+  \item \texttt{target}：目标，要生成的文件或任务名
+  \item \texttt{dependencies}：依赖，生成目标需要的文件
+  \item \texttt{command}：命令，用来生成目标
+\end{itemize}
+
+\begin{alertblock}{注意}
+命令行前面必须是 \textbf{Tab}，不能是普通空格。
+\end{alertblock}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile]{一个最简单的 Makefile}
+创建文件 \texttt{Makefile}：
+
+\begin{lstlisting}[language=make]
+hello:
+	echo "Hello, Make!"
+\end{lstlisting}
+
+在终端执行：
+
+\begin{lstlisting}[language=bash]
+make
+\end{lstlisting}
+
+输出类似：
+
+\begin{lstlisting}[language=bash]
+echo "Hello, Make!"
+Hello, Make!
+\end{lstlisting}
+
+说明：
+
+\begin{itemize}
+  \item 默认执行 Makefile 中的第一个目标
+  \item 这里第一个目标是 \texttt{hello}
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile,shrink]{指定目标执行}
+如果 Makefile 中有多个目标：
+
+\begin{lstlisting}[language=make]
+hello:
+	echo "Hello"
+
+bye:
+	echo "Bye"
+\end{lstlisting}
+
+可以指定目标：
+
+\begin{lstlisting}[language=bash]
+make hello
+make bye
+\end{lstlisting}
+
+如果只输入：
+
+\begin{lstlisting}[language=bash]
+make
+\end{lstlisting}
+
+则执行第一个目标：
+
+\begin{lstlisting}[language=make]
+hello
+\end{lstlisting}
+\end{frame}
+
+%------------------------------------------------
+\section{简单 C 项目示例}
+
+\begin{frame}[fragile]{示例项目结构}
+项目结构如下：
+
+\begin{lstlisting}
+project/
+|-- Makefile
+|-- main.c
+|-- hello.c
+`-- hello.h
+\end{lstlisting}
+
+文件 \texttt{hello.h}：
+
+\begin{lstlisting}[language=C]
+#ifndef HELLO_H
+#define HELLO_H
+
+void say_hello(void);
+
+#endif
+\end{lstlisting}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile]{示例代码：hello.c}
+文件 \texttt{hello.c}：
+
+\begin{lstlisting}[language=C]
+#include <stdio.h>
+#include "hello.h"
+
+void say_hello(void) {
+    printf("Hello, Make!\n");
+}
+\end{lstlisting}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile]{示例代码：main.c}
+文件 \texttt{main.c}：
+
+\begin{lstlisting}[language=C]
+#include "hello.h"
+
+int main(void) {
+    say_hello();
+    return 0;
+}
+\end{lstlisting}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile]{手动编译与运行}
+手动编译：
+
+\begin{lstlisting}[language=bash]
+gcc -c main.c
+gcc -c hello.c
+gcc -o app main.o hello.o
+./app
+\end{lstlisting}
+
+运行结果：
+
+\begin{lstlisting}[language=bash]
+Hello, Make!
+\end{lstlisting}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile,shrink]{第一版 Makefile}
+\begin{lstlisting}[language=make]
+app: main.o hello.o
+	gcc -o app main.o hello.o
+
+main.o: main.c hello.h
+	gcc -c main.c
+
+hello.o: hello.c hello.h
+	gcc -c hello.c
+\end{lstlisting}
+
+执行：
+
+\begin{lstlisting}[language=bash]
+make
+\end{lstlisting}
+
+Make 会分析依赖关系：
+
+\begin{itemize}
+  \item \texttt{app} 依赖 \texttt{main.o} 和 \texttt{hello.o}
+  \item \texttt{main.o} 依赖 \texttt{main.c} 和 \texttt{hello.h}
+  \item \texttt{hello.o} 依赖 \texttt{hello.c} 和 \texttt{hello.h}
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile,shrink]{Make 的增量构建}
+第一次执行：
+
+\begin{lstlisting}[language=bash]
+make
+\end{lstlisting}
+
+会编译所有文件。
+
+如果再次执行：
+
+\begin{lstlisting}[language=bash]
+make
+\end{lstlisting}
+
+可能看到：
+
+\begin{lstlisting}[language=bash]
+make: 'app' is up to date.
+\end{lstlisting}
+
+含义：
+
+\begin{itemize}
+  \item 目标文件已经是最新的
+  \item 不需要重复编译
+\end{itemize}
+
+如果修改 \texttt{hello.c}，再执行 \texttt{make}：
+
+\begin{itemize}
+  \item 只会重新编译 \texttt{hello.o}
+  \item 然后重新链接生成 \texttt{app}
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\section{常用写法}
+
+\begin{frame}[fragile,shrink]{使用变量}
+Makefile 可以定义变量，减少重复代码。
+
+\begin{lstlisting}[language=make]
+CC = gcc
+CFLAGS = -Wall -O2
+TARGET = app
+OBJS = main.o hello.o
+
+$(TARGET): $(OBJS)
+	$(CC) -o $(TARGET) $(OBJS)
+
+main.o: main.c hello.h
+	$(CC) $(CFLAGS) -c main.c
+
+hello.o: hello.c hello.h
+	$(CC) $(CFLAGS) -c hello.c
+\end{lstlisting}
+
+优点：
+
+\begin{itemize}
+  \item 修改编译器更方便
+  \item 编译参数统一管理
+  \item Makefile 更易维护
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile]{伪目标：.PHONY}
+有些目标不是文件，而是一个任务，例如 \texttt{clean}。
+
+\begin{lstlisting}[language=make]
+.PHONY: clean
+
+clean:
+	rm -f app main.o hello.o
+\end{lstlisting}
+
+执行：
+
+\begin{lstlisting}[language=bash]
+make clean
+\end{lstlisting}
+
+作用：
+
+\begin{itemize}
+  \item 删除编译生成的文件
+  \item 方便重新构建
+\end{itemize}
+
+为什么需要 \texttt{.PHONY}？
+
+\begin{itemize}
+  \item 告诉 Make：\texttt{clean} 不是一个真实文件
+  \item 即使目录中有名为 \texttt{clean} 的文件，也照样执行该任务
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}[fragile,shrink]{自动变量}
+Make 提供了一些自动变量，可以让规则更简洁。
+
+\begin{center}
+\begin{tabular}{c|l}
+\textbf{变量} & \textbf{含义} \\
+\hline
+\texttt{\$@} & 当前目标文件 \\
+\texttt{\$<} & 第一个依赖文件 \\
+\texttt{\$\textasciicircum} & 所有依赖文件 \\
+\end{tabular}
+\end{center}
+
+示例：
+
+\begin{lstlisting}[language=make]
+app: main.o hello.o
+	gcc -o $@ $^
+
+main.o: main.c hello.h
+	gcc -c $<
+
+hello.o: hello.c hello.h
+	gcc -c $<
+\end{lstlisting}
+
+解释：
+
+\begin{itemize}
+  \item \texttt{\$@} 在第一条规则中表示 \texttt{app}
+  \item \texttt{\$\textasciicircum\{\}} 表示 \texttt{main.o hello.o}
+  \item \texttt{\$<} 表示第一个依赖文件
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile]{模式规则}
+如果很多 \texttt{.c} 文件都要编译成 \texttt{.o} 文件，可以写成模式规则。
+
+\begin{lstlisting}[language=make]
+CC = gcc
+CFLAGS = -Wall -O2
+TARGET = app
+OBJS = main.o hello.o
+
+$(TARGET): $(OBJS)
+	$(CC) -o $@ $^
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+\end{lstlisting}
+
+含义：
+
+\begin{itemize}
+  \item \texttt{\%.o: \%.c} 表示任意 \texttt{.o} 文件都可以由对应的 \texttt{.c} 文件生成
+  \item 例如：\texttt{main.o} 由 \texttt{main.c} 生成
+  \item 例如：\texttt{hello.o} 由 \texttt{hello.c} 生成
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile,shrink]{加入 clean 和 run}
+一个更实用的 Makefile：
+
+\begin{lstlisting}[language=make]
+CC = gcc
+CFLAGS = -Wall -O2
+TARGET = app
+OBJS = main.o hello.o
+
+.PHONY: all clean run
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) -o $@ $^
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+run: $(TARGET)
+	./$(TARGET)
+
+clean:
+	rm -f $(TARGET) $(OBJS)
+\end{lstlisting}
+
+常用操作：
+
+\begin{lstlisting}[language=bash]
+make
+make run
+make clean
+\end{lstlisting}
+\end{frame}
+
+%------------------------------------------------
+\section{常用命令与调试}
+
+\begin{frame}[fragile]{常用 make 命令}
+\begin{lstlisting}[language=bash]
+make
+\end{lstlisting}
+执行默认目标。
+
+\begin{lstlisting}[language=bash]
+make clean
+\end{lstlisting}
+执行清理任务。
+
+\begin{lstlisting}[language=bash]
+make run
+\end{lstlisting}
+构建并运行程序。
+
+\begin{lstlisting}[language=bash]
+make -n
+\end{lstlisting}
+只打印将要执行的命令，不真正执行。
+
+\begin{lstlisting}[language=bash]
+make -j4
+\end{lstlisting}
+使用 4 个并行任务加速构建。
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile,shrink]{调试技巧}
+\textbf{1. 查看 Make 会执行什么}
+
+\begin{lstlisting}[language=bash]
+make -n
+\end{lstlisting}
+
+\textbf{2. 强制重新构建}
+
+\begin{lstlisting}[language=bash]
+make clean
+make
+\end{lstlisting}
+
+\textbf{3. 显示变量值}
+
+可以在 Makefile 中临时加入：
+
+\begin{lstlisting}[language=make]
+print:
+	echo $(CC)
+	echo $(CFLAGS)
+	echo $(OBJS)
+\end{lstlisting}
+
+执行：
+
+\begin{lstlisting}[language=bash]
+make print
+\end{lstlisting}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{常见错误}
+\begin{block}{错误 1：missing separator}
+原因通常是命令前面用了空格，而不是 Tab。
+
+\[
+\text{target: deps}
+\]
+\[
+\text{Tab + command}
+\]
+\end{block}
+
+\begin{block}{错误 2：No rule to make target}
+Make 找不到生成某个依赖文件的规则。
+
+可能原因：
+
+\begin{itemize}
+  \item 文件名写错
+  \item 依赖文件不存在
+  \item 规则没有定义
+\end{itemize}
+\end{block}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}{Make 的工作流程}
+Make 大致按照如下流程工作：
+
+\begin{enumerate}
+  \item 读取 \texttt{Makefile}
+  \item 找到默认目标或指定目标
+  \item 分析目标的依赖关系
+  \item 判断依赖文件是否比目标文件更新
+  \item 如果需要，执行对应命令
+  \item 递归处理依赖目标
+\end{enumerate}
+
+\begin{block}{一句话总结}
+Make 不是简单地顺序执行脚本，而是根据依赖关系决定是否执行命令。
+\end{block}
+\end{frame}
+
+%------------------------------------------------
+\section{课堂操作练习}
+
+\begin{frame}[fragile]{练习：创建一个简单项目}
+第一步：创建目录。
+
+\begin{lstlisting}[language=bash]
+mkdir make-demo
+cd make-demo
+\end{lstlisting}
+
+第二步：创建三个源文件。
+
+\begin{lstlisting}[language=bash]
+touch main.c hello.c hello.h
+\end{lstlisting}
+
+第三步：创建 Makefile。
+
+\begin{lstlisting}[language=bash]
+touch Makefile
+\end{lstlisting}
+
+第四步：输入前面示例中的代码和 Makefile。
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile,shrink]{练习：执行常用操作}
+构建项目：
+
+\begin{lstlisting}[language=bash]
+make
+\end{lstlisting}
+
+运行程序：
+
+\begin{lstlisting}[language=bash]
+make run
+\end{lstlisting}
+
+清理生成文件：
+
+\begin{lstlisting}[language=bash]
+make clean
+\end{lstlisting}
+
+观察增量构建：
+
+\begin{lstlisting}[language=bash]
+make
+make
+touch hello.c
+make
+\end{lstlisting}
+
+思考：
+
+\begin{itemize}
+  \item 第二次 \texttt{make} 为什么没有重新编译？
+  \item \texttt{touch hello.c} 后为什么会重新编译？
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+\section{总结}
+
+\begin{frame}[fragile]{总结}
+本讲介绍了：
+
+\begin{itemize}
+  \item Make 的作用：自动化构建
+  \item Makefile 的基本语法
+  \item 目标、依赖和命令
+  \item 变量的使用
+  \item \texttt{.PHONY} 伪目标
+  \item 自动变量：\texttt{\$@}、\texttt{\$<}、\texttt{\$\textasciicircum\{\}}
+  \item 模式规则：\texttt{\%.o: \%.c}
+  \item 常用命令：\texttt{make}、\texttt{make clean}、\texttt{make -n}、\texttt{make -j}
+\end{itemize}
+
+\begin{block}{核心记忆}
+Makefile = 目标 + 依赖 + 命令
+\end{block}
+\end{frame}
+
+%------------------------------------------------
+\begin{frame}[fragile]{推荐后续学习}
+可以继续学习：
+
+\begin{itemize}
+  \item 自动生成头文件依赖：\texttt{gcc -MMD -MP}
+  \item 多目录项目 Makefile
+  \item 静态库和动态库构建
+  \item 与 CMake 的关系
+  \item GNU Make 官方文档
+\end{itemize}
+
+\end{document}
