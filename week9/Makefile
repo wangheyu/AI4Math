@@ -38,6 +38,7 @@ $(JPL_OUTPUTS) &: src/JPL.py
 clean:
 	rm -rf $(BUILD_DIR)
 	rm -f $(REPORT:.tex=.pdf)
+	rm -f $(REPORT:.tex=.aux) $(REPORT:.tex=.out) $(REPORT:.tex=.toc) $(REPORT:.tex=.lof) $(REPORT:.tex=.lot) $(REPORT:.tex=.bbl) $(REPORT:.tex=.blg) $(REPORT:.tex=.log)
 	rm -f $(FIGURE_OUTPUTS)
 	rm -rf output/jpl_compare_output
 

@@ -69,4 +69,15 @@ AI4Math/                # Top-level
 - `jpl_forward.py` must be imported before any JPL Horizons calls — it patches `HorizonsClass._request` to redirect to a domestic mirror (`http://8.216.49.176:18766/api/horizons.api`). All scripts that call `astroquery.jplhorizons` already include `import jpl_forward`.
 - `JPL.py` and `eclipse_predict.py` cache Horizons data to avoid repeated queries (JSON caches in `week9/data/`).
 - The Makefile sets `MPLCONFIGDIR` to avoid matplotlib user-directory permission issues.
-- LaTeX compilation uses `latexmk -xelatex` with `-halt-on-error`.
+- LaTeX compilation uses `latexmk -xelatex` with `-halt-on-error`. Under the hood, latexmk runs two passes: `xelatex -no-pdf` produces `.xdv`, then `xdvipdfmx` converts `.xdv` to `.pdf`. latexmk tracks file fingerprints in `.fdb_latexmk` to skip rebuilds when nothing changed.
+- `report.tex` uses `\include` (not `\input`) for chapters, so each chapter gets its own `.aux` in `build/chapters/`. Bibliography is `qian.bib` in the week9 root.
+- Top-level `make all` builds week10 before week9: slides are pure LaTeX (fast), while week9 must run Python scripts first to generate figures and data.
+
+## Troubleshooting
+
+**latexmk exits with error but says "Nothing to do"**: This means latexmk cached a prior failure in `.fdb_latexmk`. Run `make clean && make pdf` to force a fresh build.
+
+**"Runaway argument / \@@BOOKMARK" error**: Stale `.out` file (corrupted PDF bookmark data) left in the project root from a prior compilation. The `.gitignore` already covers `*.out`, `*.aux`, `*.log` etc., so these files are not tracked. `make clean` now removes them, but if you ever run `xelatex` manually without `-outdir=build`, these files land in the week9 root and must be deleted by hand:
+```bash
+rm -f report.aux report.out report.toc report.log report.lof report.lot report.bbl report.blg
+```

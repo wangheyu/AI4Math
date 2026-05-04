@@ -23,7 +23,7 @@
   keywordstyle=\color{codekw}\bfseries,
   stringstyle=\color{codestr},
   commentstyle=\color{codecomment},
-  numbers=left,
+  numbers=none,
   numberstyle=\tiny\color{gray},
   frame=single,
   breaklines=true,
@@ -148,14 +148,14 @@ https://ssd.jpl.nasa.gov/api/horizons.api            # 旧版（仍可用）
 \textbf{直接访问 JPL：}
 
 \begin{lstlisting}[language=bash]
-curl -s "https://ssd-api.jpl.nasa.gov/api/horizons.api?\
-COMMAND=499&\
-CENTER=500@10&\
-MAKE_EPHEM=YES&\
-START_TIME=2026-01-01&\
-STOP_TIME=2026-01-01&\
-STEP_SIZE=1d&\
-QUANTITIES=1"
+curl -s "https://ssd-api.jpl.nasa.gov/api/horizons.api"\
+"?COMMAND=499"\
+"&CENTER=500@10"\
+"&MAKE_EPHEM=YES"\
+"&START_TIME=2026-01-01"\
+"&STOP_TIME=2026-01-01"\
+"&STEP_SIZE=1d"\
+"&QUANTITIES=1"
 \end{lstlisting}
 
 \vspace{0.15cm}
@@ -163,15 +163,15 @@ QUANTITIES=1"
 \textbf{国内代理版本（URL 改为镜像，追加 token 参数）：}
 
 \begin{lstlisting}[language=bash]
-curl -s "http://8.216.49.176:18766/api/horizons.api?\
-COMMAND=499&\
-CENTER=500@10&\
-MAKE_EPHEM=YES&\
-START_TIME=2026-01-01&\
-STOP_TIME=2026-01-01&\
-STEP_SIZE=1d&\
-QUANTITIES=1&\
-token=fce2a741a94feded5c3b9b7ab51f6748"
+curl -s "http://8.216.49.176:18766/api/horizons.api"\
+"?COMMAND=499"\
+"&CENTER=500@10"\
+"&MAKE_EPHEM=YES"\
+"&START_TIME=2026-01-01"\
+"&STOP_TIME=2026-01-01"\
+"&STEP_SIZE=1d"\
+"&QUANTITIES=1"\
+"&token=fce2a741a94feded5c3b9b7ab51f6748"
 \end{lstlisting}
 
 \vspace{0.15cm}
@@ -237,14 +237,14 @@ token=fce2a741a94feded5c3b9b7ab51f6748"
 \textbf{直接访问 JPL：}
 
 \begin{lstlisting}[language=bash]
-curl -s "https://ssd-api.jpl.nasa.gov/api/horizons.api?\
-COMMAND=399&\
-CENTER=500@10&\
-MAKE_EPHEM=YES&\
-START_TIME=2026-01-01&\
-STOP_TIME=2026-01-05&\
-STEP_SIZE=1d&\
-QUANTITIES=1"
+curl -s "https://ssd-api.jpl.nasa.gov/api/horizons.api"\
+"?COMMAND=399"\
+"&CENTER=500@10"\
+"&MAKE_EPHEM=YES"\
+"&START_TIME=2026-01-01"\
+"&STOP_TIME=2026-01-05"\
+"&STEP_SIZE=1d"\
+"&QUANTITIES=1"
 \end{lstlisting}
 
 \vspace{0.15cm}
@@ -252,15 +252,15 @@ QUANTITIES=1"
 \textbf{国内代理版本：}
 
 \begin{lstlisting}[language=bash]
-curl -s "http://8.216.49.176:18766/api/horizons.api?\
-COMMAND=399&\
-CENTER=500@10&\
-MAKE_EPHEM=YES&\
-START_TIME=2026-01-01&\
-STOP_TIME=2026-01-05&\
-STEP_SIZE=1d&\
-QUANTITIES=1&\
-token=fce2a741a94feded5c3b9b7ab51f6748"
+curl -s "http://8.216.49.176:18766/api/horizons.api"\
+"?COMMAND=399"\
+"&CENTER=500@10"\
+"&MAKE_EPHEM=YES"\
+"&START_TIME=2026-01-01"\
+"&STOP_TIME=2026-01-05"\
+"&STEP_SIZE=1d"\
+"&QUANTITIES=1"\
+"&token=fce2a741a94feded5c3b9b7ab51f6748"
 \end{lstlisting}
 
 \vspace{0.15cm}
@@ -280,14 +280,14 @@ token=fce2a741a94feded5c3b9b7ab51f6748"
 \textbf{直接访问 JPL：}
 
 \begin{lstlisting}[language=bash]
-curl -s "https://ssd-api.jpl.nasa.gov/api/horizons.api?\
-COMMAND=599&\
-CENTER=500@10&\
-MAKE_EPHEM=YES&\
-EPHEM_TYPE=ELEMENTS&\
-START_TIME=2026-01-01&\
-STOP_TIME=2026-01-01&\
-STEP_SIZE=1d"
+curl -s "https://ssd-api.jpl.nasa.gov/api/horizons.api"\
+"?COMMAND=599"\
+"&CENTER=500@10"\
+"&MAKE_EPHEM=YES"\
+"&EPHEM_TYPE=ELEMENTS"\
+"&START_TIME=2026-01-01"\
+"&STOP_TIME=2026-01-01"\
+"&STEP_SIZE=1d"
 \end{lstlisting}
 
 \vspace{0.15cm}
@@ -295,15 +295,15 @@ STEP_SIZE=1d"
 \textbf{国内代理版本：}
 
 \begin{lstlisting}[language=bash]
-curl -s "http://8.216.49.176:18766/api/horizons.api?\
-COMMAND=599&\
-CENTER=500@10&\
-MAKE_EPHEM=YES&\
-EPHEM_TYPE=ELEMENTS&\
-START_TIME=2026-01-01&\
-STOP_TIME=2026-01-01&\
-STEP_SIZE=1d&\
-token=fce2a741a94feded5c3b9b7ab51f6748"
+curl -s "http://8.216.49.176:18766/api/horizons.api"\
+"?COMMAND=599"\
+"&CENTER=500@10"\
+"&MAKE_EPHEM=YES"\
+"&EPHEM_TYPE=ELEMENTS"\
+"&START_TIME=2026-01-01"\
+"&STOP_TIME=2026-01-01"\
+"&STEP_SIZE=1d"\
+"&token=fce2a741a94feded5c3b9b7ab51f6748"
 \end{lstlisting}
 
 \vspace{0.15cm}
@@ -531,15 +531,15 @@ HorizonsClass._request = _patched_request
 \textbf{方案 A：curl 直接请求镜像（以火星位置为例）}
 
 \begin{lstlisting}[language=bash]
-curl -s "http://8.216.49.176:18766/api/horizons.api?\
-COMMAND=499&\
-CENTER=500@10&\
-MAKE_EPHEM=YES&\
-START_TIME=2026-01-01&\
-STOP_TIME=2026-01-01&\
-STEP_SIZE=1d&\
-QUANTITIES=1&\
-token=fce2a741a94feded5c3b9b7ab51f6748"
+curl -s "http://8.216.49.176:18766/api/horizons.api"\
+"?COMMAND=499"\
+"&CENTER=500@10"\
+"&MAKE_EPHEM=YES"\
+"&START_TIME=2026-01-01"\
+"&STOP_TIME=2026-01-01"\
+"&STEP_SIZE=1d"\
+"&QUANTITIES=1"\
+"&token=fce2a741a94feded5c3b9b7ab51f6748"
 \end{lstlisting}
 
 \vspace{0.15cm}
