@@ -1,0 +1,83 @@
+\documentclass[12pt,a4paper]{ctexart}
+
+\usepackage[a4paper,margin=2.6cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm}
+\usepackage{physics}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+\title{数学分析模拟试卷}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\textbf{总分：100 分 \quad 考试时间：120 分钟}
+\end{center}
+
+\bigskip
+
+% ==================== 一、填空题 ====================
+\section*{一、填空题（每题 5 分，共 20 分）}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.]
+  \item 设 $f(x) = \ln\frac{1+x}{1-x}$，则 $f(x)$ 是\underline{\hspace{2cm}}函数（填"奇"或"偶"），
+    其定义域为\underline{\hspace{2cm}}。
+
+  \item $\displaystyle\lim_{x\to 0}\frac{e^x - 1 - x}{x^2} = $\underline{\hspace{2cm}}。
+
+  \item 向量 $\mathbf{a} = (1,2,3)$ 与 $\mathbf{b} = (2,-1,0)$ 的夹角余弦为\underline{\hspace{2cm}}。
+
+  \item 幂级数 $\displaystyle\sum_{n=1}^{\infty}\frac{2^n}{n}x^n$ 的收敛半径为\underline{\hspace{2cm}}。
+\end{enumerate}
+
+% ==================== 二、计算题 ====================
+\section*{二、计算题（每题 10 分，共 40 分）}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=5]
+  \item 设 $y = \left(\frac{\sin x}{x}\right)^{\arctan x}\;(x>0)$，求 $\frac{dy}{dx}$。
+
+  \item 计算定积分 $I = \displaystyle\int_0^{\pi} \frac{x\sin x}{1+\cos^2 x} dx$。
+
+  \item 求微分方程 $y'' - 3y' + 2y = e^x$ 的通解。
+
+  \item 计算曲面积分 $\displaystyle\iint_S (x^2+y^2) dS$，其中 $S$ 为圆锥面
+    $z = \sqrt{x^2+y^2}$ 介于 $z=0$ 与 $z=1$ 之间的部分。
+\end{enumerate}
+
+% ==================== 三、证明题 ====================
+\section*{三、证明题（每题 15 分，共 30 分）}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=9]
+  \item 设 $f$ 在 $[0,1]$ 上连续，在 $(0,1)$ 内可导，且 $f(0)=0$，$f(1)=1$。
+    证明：
+    \begin{enumerate}
+      \item 存在 $\xi \in (0,1)$ 使 $f(\xi) = 1-\xi$；
+      \item 存在两个不同的点 $\eta_1, \eta_2 \in (0,1)$ 使 $f'(\eta_1)f'(\eta_2)=1$。
+    \end{enumerate}
+
+  \item 设 $f(x,y)$ 在全平面上二阶连续可微，且满足 Laplace 方程
+    $\frac{\partial^2 f}{\partial x^2} + \frac{\partial^2 f}{\partial y^2} = 0$。
+    若 $u(r,\theta) = f(r\cos\theta, r\sin\theta)$，证明：
+    \[
+    \frac{\partial^2 u}{\partial r^2} + \frac{1}{r}\frac{\partial u}{\partial r}
+    + \frac{1}{r^2}\frac{\partial^2 u}{\partial\theta^2} = 0.
+    \]
+\end{enumerate}
+
+% ==================== 四、综合题 ====================
+\section*{四、综合题（每题 10 分，共 10 分）}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=11]
+  \item 设 $f(x) = \sum_{n=0}^{\infty} a_n x^n$ 的收敛半径为 $R > 0$，且 $a_0 = 0$。
+    证明：
+    \begin{enumerate}
+      \item $\int_0^x \frac{f(t)}{t} dt = \sum_{n=1}^{\infty} \frac{a_n}{n} x^n$，$|x| < R$；
+      \item 利用上述结果求 $\displaystyle\sum_{n=1}^{\infty}\frac{1}{n 2^n}$ 的和。
+    \end{enumerate}
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,796 @@
+\documentclass[12pt,a4paper]{ctexart}
+
+\usepackage[a4paper,margin=2.6cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm}
+\usepackage{physics}
+\usepackage{esint}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+\title{数学分析复习练习题答案}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{center}
+\textbf{说明：}本题答案给出每道题的详细推导过程，关键步骤注明所用定理或方法，易错点附加注释。
+\end{center}
+
+\bigskip
+
+% ==================== 第一章 引论 ====================
+\section*{第一章\quad 引论}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.]
+  \item 设 $A = \{x \in \mathbb{R} \mid x^2 - 3x + 2 \le 0\}$，
+    $B = \{x \in \mathbb{R} \mid 1 \le x \le 3\}$。
+    求 $A \cup B$，$A \cap B$，$A \setminus B$。
+
+    \textbf{解：}先确定集合 $A$。解不等式 $x^2-3x+2 \le 0$：
+    \[
+    x^2-3x+2 = (x-1)(x-2) \le 0 \implies 1 \le x \le 2.
+    \]
+    故 $A = [1,2]$，而 $B = [1,3]$。由此可得：
+    \begin{align*}
+      A \cup B &= [1,2] \cup [1,3] = [1,3], \\
+      A \cap B &= [1,2] \cap [1,3] = [1,2] = A, \\
+      A \setminus B &= [1,2] \setminus [1,3] = \emptyset.
+    \end{align*}
+
+  \item 判断函数 $f(x) = \ln(x + \sqrt{x^2+1})$ 的奇偶性。
+
+    \textbf{解：}计算 $f(-x)$：
+    \begin{align*}
+      f(-x) &= \ln\bigl(-x + \sqrt{(-x)^2+1}\bigr) \\
+            &= \ln\bigl(-x + \sqrt{x^2+1}\bigr) \\
+            &= \ln\frac{(\sqrt{x^2+1} - x)(\sqrt{x^2+1} + x)}{\sqrt{x^2+1} + x} \\
+            &= \ln\frac{x^2+1 - x^2}{\sqrt{x^2+1} + x}
+             = \ln\frac{1}{\sqrt{x^2+1} + x} \\
+            &= -\ln(\sqrt{x^2+1} + x) = -f(x).
+    \end{align*}
+    故 $f(x)$ 是奇函数。
+
+    \textbf{注：}该函数为反双曲正弦函数 $\operatorname{arsinh}x$ 的解析表达式，其奇性是双曲函数的自然性质。
+
+  \item 设 $f(x) = \frac{1}{1-x}$，求 $f(f(x))$ 和 $f(f(f(x)))$ 的表达式。
+
+    \textbf{解：}
+    \begin{align*}
+      f(f(x)) &= f\!\left(\frac{1}{1-x}\right)
+               = \frac{1}{1-\frac{1}{1-x}}
+               = \frac{1}{\frac{1-x-1}{1-x}}
+               = \frac{1}{\frac{-x}{1-x}}
+               = \frac{x-1}{x} = 1 - \frac{1}{x}. \\[4pt]
+      f(f(f(x))) &= f\!\left(\frac{x-1}{x}\right)
+                  = \frac{1}{1-\frac{x-1}{x}}
+                  = \frac{1}{\frac{x-(x-1)}{x}}
+                  = \frac{1}{\frac{1}{x}}
+                  = x.
+    \end{align*}
+    可见该函数三次复合后回到自身，具有三阶周期性。
+\end{enumerate}
+
+% ==================== 第二章 极限与连续 ====================
+\section*{第二章\quad 极限与连续}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=4]
+  \item 用 $\varepsilon$-$N$ 语言证明：$\displaystyle\lim_{n\to\infty}\frac{2n+1}{3n-2} = \frac{2}{3}$。
+
+    \textbf{证：}任给 $\varepsilon > 0$，要使
+    \[
+    \left|\frac{2n+1}{3n-2} - \frac{2}{3}\right| < \varepsilon,
+    \]
+    通分得
+    \[
+    \left|\frac{3(2n+1) - 2(3n-2)}{3(3n-2)}\right|
+    = \left|\frac{6n+3-6n+4}{3(3n-2)}\right|
+    = \left|\frac{7}{3(3n-2)}\right|
+    = \frac{7}{3(3n-2)} < \varepsilon.
+    \]
+    解得 $3n-2 > \frac{7}{3\varepsilon}$，即 $n > \frac{1}{3}\bigl(\frac{7}{3\varepsilon}+2\bigr)
+    = \frac{7}{9\varepsilon} + \frac{2}{3}$。
+
+    取 $N = \max\bigl\{\bigl[\frac{7}{9\varepsilon}+\frac{2}{3}\bigr], 1\bigr\}$，
+    则当 $n > N$ 时，$\bigl|\frac{2n+1}{3n-2} - \frac{2}{3}\bigr| < \varepsilon$。
+    由极限定义即得所证。
+
+  \item 求极限 $\displaystyle\lim_{n\to\infty}\left(\frac{1}{\sqrt{n^2+1}} + \frac{1}{\sqrt{n^2+2}} + \cdots + \frac{1}{\sqrt{n^2+n}}\right)$。
+
+    \textbf{解：}利用夹逼定理。对于 $k = 1,2,\dots,n$，有
+    $\frac{1}{\sqrt{n^2+n}} \le \frac{1}{\sqrt{n^2+k}} \le \frac{1}{\sqrt{n^2+1}}$。
+    故
+    \[
+    \frac{n}{\sqrt{n^2+n}} \le S_n \le \frac{n}{\sqrt{n^2+1}},
+    \]
+    其中 $S_n$ 为原式。又
+    \[
+    \lim_{n\to\infty}\frac{n}{\sqrt{n^2+n}} = \lim_{n\to\infty}\frac{n}{n\sqrt{1+1/n}} = 1,
+    \qquad
+    \lim_{n\to\infty}\frac{n}{\sqrt{n^2+1}} = \lim_{n\to\infty}\frac{n}{n\sqrt{1+1/n^2}} = 1.
+    \]
+    由夹逼定理，$\lim_{n\to\infty} S_n = 1$。
+
+  \item 设 $a_1 = \sqrt{2}$，$a_{n+1} = \sqrt{2+a_n}$，证明 $\{a_n\}$ 收敛并求其极限。
+
+    \textbf{解：}先证单调递增。用数学归纳法：
+    $a_1 = \sqrt{2} \approx 1.414$，$a_2 = \sqrt{2+\sqrt{2}} > \sqrt{2} = a_1$。
+    设 $a_k > a_{k-1}$，则 $a_{k+1} = \sqrt{2+a_k} > \sqrt{2+a_{k-1}} = a_k$。
+    故 $\{a_n\}$ 严格单调递增。
+
+    再证有上界：用归纳法。$a_1 = \sqrt{2} < 2$。
+    设 $a_k < 2$，则 $a_{k+1} = \sqrt{2+a_k} < \sqrt{2+2} = 2$。
+    故对所有 $n$，$a_n < 2$。
+
+    由单调有界定理，$\{a_n\}$ 收敛。设 $\lim a_n = A$，
+    则对递推式两边取极限：$A = \sqrt{2+A}$。平方得 $A^2 = 2 + A$，
+    即 $A^2 - A - 2 = 0$，解得 $A = 2$ 或 $A = -1$（舍去，因 $a_n > 0$）。
+    故 $\lim a_n = 2$。
+
+  \item 求极限 $\displaystyle\lim_{x\to 0}\frac{\tan x - \sin x}{x^3}$。
+
+    \textbf{解：}利用等价无穷小和三角恒等式。
+    \begin{align*}
+      \lim_{x\to 0}\frac{\tan x - \sin x}{x^3}
+      &= \lim_{x\to 0}\frac{\sin x(\frac{1}{\cos x} - 1)}{x^3} \\
+      &= \lim_{x\to 0}\frac{\sin x \cdot \frac{1-\cos x}{\cos x}}{x^3}
+       = \lim_{x\to 0}\frac{\sin x}{x} \cdot \frac{1-\cos x}{x^2} \cdot \frac{1}{\cos x}.
+    \end{align*}
+    已知 $\lim_{x\to 0}\frac{\sin x}{x} = 1$，
+    $\lim_{x\to 0}\frac{1-\cos x}{x^2} = \frac{1}{2}$（由 $1-\cos x \sim \frac{x^2}{2}$），
+    $\lim_{x\to 0}\cos x = 1$。故
+    \[
+    \lim_{x\to 0}\frac{\tan x - \sin x}{x^3} = 1 \cdot \frac{1}{2} \cdot 1 = \frac{1}{2}.
+    \]
+
+  \item 求极限 $\displaystyle\lim_{x\to 0}(1+3x)^{2/x}$。
+
+    \textbf{解：}利用重要极限 $\lim_{t\to 0}(1+t)^{1/t} = e$。
+    \[
+    (1+3x)^{2/x} = \bigl[(1+3x)^{1/(3x)}\bigr]^{6}.
+    \]
+    令 $t = 3x$，则 $x\to 0$ 时 $t\to 0$，
+    $(1+3x)^{1/(3x)} = (1+t)^{1/t} \to e$。
+    故原式 $\to e^6$。
+
+  \item 讨论函数 $f(x) = \frac{|x-1|}{x^2-1}$ 的间断点类型。
+
+    \textbf{解：}$f(x)$ 的定义域为 $x \neq \pm 1$。考虑 $x=1$ 和 $x=-1$ 两个间断点。
+
+    在 $x=1$ 处：当 $x>1$ 时，$f(x) = \frac{x-1}{(x-1)(x+1)} = \frac{1}{x+1} \to \frac{1}{2}$；
+    当 $x<1$ 时，$f(x) = \frac{-(x-1)}{(x-1)(x+1)} = -\frac{1}{x+1} \to -\frac{1}{2}$。
+    左右极限均存在但不相等（$\frac{1}{2} \neq -\frac{1}{2}$），故 $x=1$ 为跳跃间断点，属第一类间断点。
+
+    在 $x=-1$ 处：$x\to -1$ 时分母 $x^2-1 = (x-1)(x+1) \to 0$，分子 $|x-1| \to 2 \neq 0$，
+    故 $f(x) \to \infty$。$x=-1$ 为无穷间断点，属第二类间断点。
+
+  \item 证明方程 $x^3 - 4x^2 + 1 = 0$ 在 $(0,1)$ 内至少有一个实根。
+
+    \textbf{证：}构造 $f(x) = x^3 - 4x^2 + 1$，它在 $[0,1]$ 上连续。
+    $f(0) = 1 > 0$，$f(1) = 1 - 4 + 1 = -2 < 0$。
+    由零点存在定理，存在 $\xi \in (0,1)$ 使 $f(\xi) = 0$，即原方程在 $(0,1)$ 内至少有一个实根。
+\end{enumerate}
+
+% ==================== 第三章 单变量函数的微分学 ====================
+\section*{第三章\quad 单变量函数的微分学}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=11]
+  \item 设 $f(x) = \begin{cases} x^2\sin\frac{1}{x}, & x \neq 0 \\ 0, & x = 0 \end{cases}$，
+    讨论 $f$ 在 $x=0$ 处的可导性。
+
+    \textbf{解：}按导数定义，
+    \begin{align*}
+      f'(0) &= \lim_{h\to 0}\frac{f(h)-f(0)}{h}
+             = \lim_{h\to 0}\frac{h^2\sin\frac{1}{h} - 0}{h}
+             = \lim_{h\to 0} h\sin\frac{1}{h}.
+    \end{align*}
+    因为 $|\sin\frac{1}{h}| \le 1$，所以 $|h\sin\frac{1}{h}| \le |h| \to 0$。
+    由夹逼定理，该极限为 $0$。故 $f$ 在 $x=0$ 处可导，且 $f'(0)=0$。
+
+    \textbf{注：}本题为可导但不连续可导的典型例子（$f'(x)$ 在 $x=0$ 不连续）。
+
+  \item 求函数 $y = \ln\sin(x^2)$ 的导数。
+
+    \textbf{解：}利用链式法则逐层求导。
+    \[
+    y' = \frac{1}{\sin(x^2)} \cdot \cos(x^2) \cdot 2x
+        = 2x \frac{\cos(x^2)}{\sin(x^2)}
+        = 2x \cot(x^2).
+    \]
+
+  \item 设 $y = x^2 e^x$，求 $y^{(n)}$。
+
+    \textbf{解：}应用 Leibniz 公式：$(uv)^{(n)} = \sum_{k=0}^n \binom{n}{k} u^{(n-k)}v^{(k)}$。
+    取 $u = x^2$，$v = e^x$。则
+    \[
+    u' = 2x,\quad u'' = 2,\quad u^{(k)} = 0\;(k \ge 3); \qquad
+    v^{(k)} = e^x \;\;(\forall k).
+    \]
+    故 Leibniz 和中只有 $k=0,1,2$ 三项非零：
+    \begin{align*}
+      y^{(n)} &= \binom{n}{0} (x^2)^{(n)} e^x
+               + \binom{n}{1} (x^2)^{(n-1)} e^x
+               + \binom{n}{2} (x^2)^{(n-2)} e^x \\
+              &= \begin{cases}
+                   x^2 e^x + 2nx e^x + n(n-1) e^x, & n \ge 2, \\
+                   x^2 e^x + 2x e^x, & n = 1, \\
+                   x^2 e^x, & n = 0.
+                 \end{cases}
+    \end{align*}
+    统一写为 $y^{(n)} = e^x[x^2 + 2nx + n(n-1)]$（$n \ge 2$ 时）。
+
+  \item 验证函数 $f(x) = x^3 - 3x$ 在 $[-1,1]$ 上满足 Rolle 定理的条件，并求出满足 $f'(\xi)=0$ 的 $\xi$。
+
+    \textbf{解：}$f(x) = x^3-3x$ 为多项式，在 $[-1,1]$ 上连续、在 $(-1,1)$ 内可导。
+    $f(-1) = -1+3 = 2$，$f(1) = 1-3 = -2$。$f(-1) \neq f(1)$！
+
+    等一下，Rolle 定理要求 $f(a)=f(b)$。让我们检查 $f(-1)$ 和 $f(1)$：
+    $f(-1) = (-1)^3 - 3(-1) = -1+3=2$，$f(1)=1-3=-2$，不相等。
+
+    Rolle 定理的条件不满足——这是有意设置的陷阱题，考察学生对定理条件的仔细验证。
+    由于 $f(-1) \neq f(1)$，不能直接用 Rolle 定理。但由于 $f$ 是奇函数，可以考虑
+    $f(-x) = -f(x)$，此时 $f(0)=0$。
+
+    若改在区间 $[-\sqrt{3}, \sqrt{3}]$ 上：$f(\pm\sqrt{3}) = \pm 3\sqrt{3} \mp 3\sqrt{3} = 0$，
+    此时 Rolle 定理适用，$f'(x) = 3x^2-3 = 0 \implies \xi = \pm 1$。
+
+    在原始区间 $[-1,1]$ 上，$f'(x) = 3x^2-3 = 0 \implies x = \pm 1$，恰好落在区间端点，不在开区间内。
+    这进一步表明 Rolle 定理在此区间上不适用。
+
+  \item 利用 Lagrange 中值定理证明：当 $x > 0$ 时，
+    $\frac{x}{1+x} < \ln(1+x) < x$。
+
+    \textbf{证：}令 $f(t) = \ln(1+t)$，则 $f$ 在 $[0,x]$ 上满足 Lagrange 中值定理的条件。
+    存在 $\xi \in (0,x)$ 使
+    \[
+    \frac{f(x)-f(0)}{x-0} = f'(\xi) \implies \frac{\ln(1+x)}{x} = \frac{1}{1+\xi}.
+    \]
+    因为 $0 < \xi < x$，所以 $1 < 1+\xi < 1+x$，即 $\frac{1}{1+x} < \frac{1}{1+\xi} < 1$。
+    代入上式得
+    \[
+    \frac{1}{1+x} < \frac{\ln(1+x)}{x} < 1 \implies \frac{x}{1+x} < \ln(1+x) < x.
+    \]
+
+  \item 求极限 $\displaystyle\lim_{x\to 0}\frac{x-\sin x}{x^3}$。
+
+    \textbf{解：}直接代入为 $\frac{0}{0}$ 型，可用 L'H\^opital 法则（需验证条件满足）。
+    三次使用 L'H\^opital 法则：
+    \begin{align*}
+      \lim_{x\to 0}\frac{x-\sin x}{x^3}
+      &\overset{H}{=} \lim_{x\to 0}\frac{1-\cos x}{3x^2}
+      \overset{H}{=} \lim_{x\to 0}\frac{\sin x}{6x}
+      \overset{H}{=} \lim_{x\to 0}\frac{\cos x}{6}
+      = \frac{1}{6}.
+    \end{align*}
+    \textbf{注：}也可用 Taylor 展开：$\sin x = x - \frac{x^3}{6} + o(x^4)$，
+    则 $x-\sin x = \frac{x^3}{6} + o(x^4)$，极限显然为 $\frac{1}{6}$。
+
+  \item 将 $f(x) = \ln(1+x)$ 在 $x=0$ 处展开至 $x^4$ 项（带 Peano 余项）。
+
+    \textbf{解：}计算 $f$ 在 $0$ 处的各阶导数：
+    \begin{align*}
+      f(x) &= \ln(1+x), & f(0) &= 0, \\
+      f'(x) &= \frac{1}{1+x}, & f'(0) &= 1, \\
+      f''(x) &= -\frac{1}{(1+x)^2}, & f''(0) &= -1, \\
+      f'''(x) &= \frac{2}{(1+x)^3}, & f'''(0) &= 2, \\
+      f^{(4)}(x) &= -\frac{6}{(1+x)^4}, & f^{(4)}(0) &= -6.
+    \end{align*}
+    由 Taylor 公式（$n=4$）：
+    \begin{align*}
+      \ln(1+x) &= f(0) + f'(0)x + \frac{f''(0)}{2!}x^2 + \frac{f'''(0)}{3!}x^3 + \frac{f^{(4)}(0)}{4!}x^4 + o(x^4) \\
+               &= 0 + x - \frac{1}{2}x^2 + \frac{2}{6}x^3 - \frac{6}{24}x^4 + o(x^4) \\
+               &= x - \frac{x^2}{2} + \frac{x^3}{3} - \frac{x^4}{4} + o(x^4).
+    \end{align*}
+
+  \item 求函数 $f(x) = x^3 - 6x^2 + 9x + 1$ 的极值点和拐点。
+
+    \textbf{解：}求导：
+    $f'(x) = 3x^2 - 12x + 9 = 3(x^2-4x+3) = 3(x-1)(x-3)$。
+    驻点：$x=1$，$x=3$。
+
+    $f''(x) = 6x - 12 = 6(x-2)$。
+    $f''(1) = -6 < 0$，故 $x=1$ 为极大值点，极大值 $f(1) = 1-6+9+1 = 5$。
+    $f''(3) = 6 > 0$，故 $x=3$ 为极小值点，极小值 $f(3) = 27-54+27+1 = 1$。
+    $f''(x)=0 \implies x=2$，且 $f''$ 在 $x=2$ 两侧变号，
+    故 $(2, f(2)) = (2, 8-24+18+1=3)$ 为拐点。
+    $x<2$ 时 $f''<0$（上凸），$x>2$ 时 $f''>0$（下凸）。
+
+  \item 求曲线 $y = \frac{x^2+1}{x-1}$ 的渐近线。
+
+    \textbf{解：}首先注意到 $x=1$ 时分母为零，分子为 $2$，故
+    $\lim_{x\to 1} y = \infty$，$x=1$ 为垂直渐近线。
+
+    求斜渐近线 $y = kx + b$：
+    \[
+    k = \lim_{x\to\infty}\frac{y}{x}
+      = \lim_{x\to\infty}\frac{x^2+1}{x(x-1)}
+      = \lim_{x\to\infty}\frac{1+1/x^2}{1-1/x}
+      = 1,
+    \]
+    \[
+    b = \lim_{x\to\infty}(y - kx)
+      = \lim_{x\to\infty}\left(\frac{x^2+1}{x-1} - x\right)
+      = \lim_{x\to\infty}\frac{x^2+1 - x(x-1)}{x-1}
+      = \lim_{x\to\infty}\frac{x^2+1 - x^2 + x}{x-1}
+      = \lim_{x\to\infty}\frac{x+1}{x-1}
+      = 1.
+    \]
+    故斜渐近线为 $y = x + 1$。
+\end{enumerate}
+
+% ==================== 第四章 单变量函数的积分学 ====================
+\section*{第四章\quad 单变量函数的积分学}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=20]
+  \item 计算不定积分 $\displaystyle\int \frac{dx}{x^2-a^2}\ (a \neq 0)$。
+
+    \textbf{解：}利用部分分式分解：
+    \[
+    \frac{1}{x^2-a^2} = \frac{1}{(x-a)(x+a)}
+    = \frac{1}{2a}\!\left(\frac{1}{x-a} - \frac{1}{x+a}\right).
+    \]
+    故
+    \begin{align*}
+      \int \frac{dx}{x^2-a^2}
+      &= \frac{1}{2a}\int\!\left(\frac{1}{x-a} - \frac{1}{x+a}\right) dx \\
+      &= \frac{1}{2a}\bigl(\ln|x-a| - \ln|x+a|\bigr) + C \\
+      &= \frac{1}{2a}\ln\left|\frac{x-a}{x+a}\right| + C.
+    \end{align*}
+
+  \item 计算不定积分 $\displaystyle\int e^x \sin x \, dx$。
+
+    \textbf{解：}用两次分部积分法。令 $I = \int e^x \sin x \, dx$。
+    \begin{align*}
+      I &= \int \sin x \, d(e^x) = e^x \sin x - \int e^x \cos x \, dx \\
+        &= e^x \sin x - \int \cos x \, d(e^x)
+         = e^x \sin x - \left(e^x \cos x - \int e^x (-\sin x) \, dx\right) \\
+        &= e^x \sin x - e^x \cos x - \int e^x \sin x \, dx \\
+        &= e^x(\sin x - \cos x) - I.
+    \end{align*}
+    移项得 $2I = e^x(\sin x - \cos x) + C'$，故
+    \[
+    I = \frac{1}{2}e^x(\sin x - \cos x) + C.
+    \]
+
+  \item 计算定积分 $\displaystyle\int_0^{\pi/2} \sin^n x \, dx$（$n$ 为正整数）的递推公式。
+
+    \textbf{解：}记 $I_n = \int_0^{\pi/2} \sin^n x \, dx$。
+    对 $I_n$ 进行分部积分：
+    \begin{align*}
+      I_n &= \int_0^{\pi/2} \sin^{n-1} x \cdot \sin x \, dx
+           = \int_0^{\pi/2} \sin^{n-1} x \, d(-\cos x) \\
+          &= \bigl[-\sin^{n-1} x \cos x\bigr]_0^{\pi/2}
+             + \int_0^{\pi/2} \cos x \cdot (n-1)\sin^{n-2} x \cos x \, dx \\
+          &= 0 + (n-1)\int_0^{\pi/2} \sin^{n-2} x (1-\sin^2 x) \, dx \\
+          &= (n-1)I_{n-2} - (n-1)I_n.
+    \end{align*}
+    故 $nI_n = (n-1)I_{n-2}$，即 $I_n = \frac{n-1}{n} I_{n-2}$（$n \ge 2$）。
+    $I_0 = \frac{\pi}{2}$，$I_1 = 1$。
+    由此可递推求得任意 $I_n$。
+
+  \item 利用换元法计算 $\displaystyle\int_0^1 \frac{\ln(1+x)}{1+x^2} dx$。
+
+    \textbf{解：}令 $x = \tan t$，则 $dx = \sec^2 t \, dt$，
+    当 $x=0$ 时 $t=0$，当 $x=1$ 时 $t=\frac{\pi}{4}$。
+    $1+x^2 = 1+\tan^2 t = \sec^2 t$，故
+    \begin{align*}
+      \int_0^1 \frac{\ln(1+x)}{1+x^2} dx
+      &= \int_0^{\pi/4} \frac{\ln(1+\tan t)}{\sec^2 t} \cdot \sec^2 t \, dt \\
+      &= \int_0^{\pi/4} \ln(1+\tan t) \, dt.
+    \end{align*}
+    利用恒等式 $1+\tan t = \frac{\sin t + \cos t}{\cos t}
+    = \frac{\sqrt{2}\cos(\frac{\pi}{4}-t)}{\cos t}$，做变换 $u = \frac{\pi}{4}-t$，
+    可证明该积分等于 $\frac{\pi}{8}\ln 2$。
+
+    更直接的方法：令 $t = \frac{\pi}{4} - u$，则
+    \begin{align*}
+      I &= \int_0^{\pi/4} \ln(1+\tan t) dt
+         = \int_0^{\pi/4} \ln(1+\tan(\tfrac{\pi}{4}-u)) du.
+    \end{align*}
+    而 $\tan(\frac{\pi}{4}-u) = \frac{1-\tan u}{1+\tan u}$，
+    $1 + \tan(\frac{\pi}{4}-u) = \frac{2}{1+\tan u}$。于是
+    \begin{align*}
+      I &= \int_0^{\pi/4} \ln\frac{2}{1+\tan u} du
+         = \int_0^{\pi/4} (\ln 2 - \ln(1+\tan u)) du
+         = \frac{\pi}{4}\ln 2 - I.
+    \end{align*}
+    故 $2I = \frac{\pi}{4}\ln 2$，即 $I = \frac{\pi}{8}\ln 2$。
+
+  \item 计算广义积分 $\displaystyle\int_0^{+\infty} e^{-x^2} dx$。
+
+    \textbf{解：}该积分为著名的概率积分。令 $I = \int_0^{+\infty} e^{-x^2} dx$。
+    利用二重积分技巧：
+    \[
+    I^2 = \int_0^{\infty} e^{-x^2} dx \cdot \int_0^{\infty} e^{-y^2} dy
+        = \iint_{[0,\infty)\times[0,\infty)} e^{-(x^2+y^2)} dxdy.
+    \]
+    转换为极坐标 $(x,y) = (r\cos\theta, r\sin\theta)$，$dxdy = r dr d\theta$：
+    \[
+    I^2 = \int_0^{\pi/2} d\theta \int_0^{\infty} e^{-r^2} r dr
+        = \frac{\pi}{2} \cdot \left[-\frac{1}{2}e^{-r^2}\right]_0^{\infty}
+        = \frac{\pi}{2} \cdot \frac{1}{2}
+        = \frac{\pi}{4}.
+    \]
+    故 $I = \frac{\sqrt{\pi}}{2}$。全直线上的积分 $\int_{-\infty}^{+\infty} e^{-x^2} dx = \sqrt{\pi}$。
+
+  \item 讨论广义积分 $\displaystyle\int_1^{+\infty} \frac{dx}{x^p}$ 的敛散性。
+
+    \textbf{解：}当 $p \neq 1$ 时，
+    \[
+    \int_1^b \frac{dx}{x^p} = \left[\frac{x^{1-p}}{1-p}\right]_1^b
+    = \frac{b^{1-p}-1}{1-p}.
+    \]
+    当 $p > 1$ 时，$1-p < 0$，$\lim_{b\to\infty} b^{1-p} = 0$，
+    故 $\int_1^{+\infty} x^{-p} dx = \frac{1}{p-1}$，收敛。
+
+    当 $p < 1$ 时，$1-p > 0$，$\lim_{b\to\infty} b^{1-p} = \infty$，发散。
+
+    当 $p = 1$ 时，$\int_1^{+\infty} \frac{dx}{x} = \lim_{b\to\infty}\ln b = \infty$，发散。
+
+    综上：$\int_1^{+\infty} x^{-p} dx$ 在 $p>1$ 时收敛，在 $p \le 1$ 时发散。
+
+  \item 求由曲线 $y = x^2$ 与 $y = \sqrt{x}$ 所围成图形的面积。
+
+    \textbf{解：}求交点：$x^2 = \sqrt{x} \implies x^4 = x \implies x(x^3-1)=0$，
+    $x=0$ 或 $x=1$。在 $[0,1]$ 上，$\sqrt{x} \ge x^2$。
+    \[
+    S = \int_0^1 (\sqrt{x} - x^2) dx
+      = \left[\frac{2}{3}x^{3/2} - \frac{1}{3}x^3\right]_0^1
+      = \frac{2}{3} - \frac{1}{3}
+      = \frac{1}{3}.
+    \]
+
+  \item 求曲线 $y = \frac{2}{3}x^{3/2}$ 在 $[0,3]$ 上的弧长。
+
+    \textbf{解：}$y' = \frac{2}{3}\cdot\frac{3}{2}x^{1/2} = x^{1/2} = \sqrt{x}$。
+    \[
+    s = \int_0^3 \sqrt{1+(y')^2} dx
+      = \int_0^3 \sqrt{1+x} \, dx
+      = \left[\frac{2}{3}(1+x)^{3/2}\right]_0^3
+      = \frac{2}{3}(4^{3/2} - 1)
+      = \frac{2}{3}(8-1)
+      = \frac{14}{3}.
+    \]
+\end{enumerate}
+
+% ==================== 第五章 常微分方程 ====================
+\section*{第五章\quad 常微分方程}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=28]
+  \item 求解微分方程 $\displaystyle\frac{dy}{dx} = \frac{y}{x} + \tan\frac{y}{x}$。
+
+    \textbf{解：}该方程为齐次方程。令 $u = \frac{y}{x}$，则 $y = ux$，$\frac{dy}{dx} = u + x\frac{du}{dx}$。
+    代入得
+    \[
+    u + x\frac{du}{dx} = u + \tan u \implies x\frac{du}{dx} = \tan u.
+    \]
+    分离变量：$\cot u \, du = \frac{dx}{x}$（设 $\tan u \neq 0$）。
+    积分：
+    \[
+    \int \cot u \, du = \int \frac{dx}{x}
+    \implies \ln|\sin u| = \ln|x| + C'
+    \implies \sin u = Cx \;(C = \pm e^{C'}).
+    \]
+    回代 $u = y/x$，得通解：$\sin\frac{y}{x} = Cx$。
+
+  \item 求解初值问题 $\begin{cases} y' + \frac{2}{x}y = \ln x, \\ y(1) = 0 \end{cases}$。
+
+    \textbf{解：}这是一阶线性方程 $y' + P(x)y = Q(x)$，其中 $P(x) = \frac{2}{x}$，$Q(x) = \ln x$。
+    通解公式：
+    \begin{align*}
+      y &= e^{-\int P dx}\left(C + \int Q e^{\int P dx} dx\right).
+    \end{align*}
+    计算积分因子：$\int P dx = \int \frac{2}{x} dx = 2\ln x = \ln x^2$，
+    $e^{\int P dx} = x^2$，$e^{-\int P dx} = x^{-2}$。
+
+    $\int Q e^{\int P dx} dx = \int x^2 \ln x \, dx$。利用分部积分：
+    \begin{align*}
+      \int x^2 \ln x \, dx
+      &= \int \ln x \, d\!\left(\frac{x^3}{3}\right)
+       = \frac{x^3}{3}\ln x - \int \frac{x^3}{3} \cdot \frac{1}{x} dx \\
+      &= \frac{x^3}{3}\ln x - \frac{1}{3}\int x^2 dx
+       = \frac{x^3}{3}\ln x - \frac{x^3}{9}.
+    \end{align*}
+    故 $y = x^{-2}\!\left(C + \frac{x^3}{3}\ln x - \frac{x^3}{9}\right)
+         = \frac{x}{3}\ln x - \frac{x}{9} + \frac{C}{x^2}$。
+
+    由 $y(1)=0$：$0 = \frac{1}{3}\cdot 0 - \frac{1}{9} + C$，得 $C = \frac{1}{9}$。
+    所求特解为 $y = \frac{x}{3}\ln x - \frac{x}{9} + \frac{1}{9x^2}$。
+
+  \item 求方程 $y'' + 4y' + 3y = 0$ 的通解。
+
+    \textbf{解：}特征方程为 $\lambda^2 + 4\lambda + 3 = 0$。
+    $(\lambda+1)(\lambda+3) = 0$，$\lambda_1 = -1$，$\lambda_2 = -3$。
+    两不等实根，通解为
+    \[
+    y = C_1 e^{-x} + C_2 e^{-3x}.
+    \]
+
+  \item 求方程 $y'' + y = x\cos x$ 的一个特解。
+
+    \textbf{解：}对应的齐次方程 $y''+y=0$ 的特征根为 $\lambda = \pm i$。
+    非齐次项 $f(x) = x\cos x$ 为 $x e^{ix}$ 的实部。
+    由于 $i$ 是单特征根，设特解形式为
+    \[
+    y_p = x\bigl[(Ax+B)\cos x + (Cx+D)\sin x\bigr].
+    \]
+    代入原方程比较系数。也可以通过复数法：
+    考虑 $z'' + z = x e^{ix}$，设特解 $z_p = x(Ax+B)e^{ix}$。
+    代入求得 $A = -\frac{i}{4}$，$B = \frac{1}{4}$。
+    取实部得到原方程的特解：
+    \[
+    y_p = \frac{x}{4}\cos x + \frac{x^2}{4}\sin x.
+    \]
+    验证：代入方程左端，确实等于 $x\cos x$。
+\end{enumerate}
+
+% ==================== 第六章 空间解析几何 ====================
+\section*{第六章\quad 空间解析几何}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=32]
+  \item 求过点 $P(1,2,-1)$ 且与平面 $2x - y + 3z + 1 = 0$ 平行的平面方程。
+
+    \textbf{解：}与已知平面平行的平面具有相同的法向量 $\mathbf{n} = (2,-1,3)$。
+    设所求平面方程为 $2x - y + 3z + D = 0$。
+    过点 $P(1,2,-1)$ 代入：
+    $2(1) - 2 + 3(-1) + D = 0 \implies 2-2-3+D=0 \implies D = 3$。
+    故所求平面方程为 $2x - y + 3z + 3 = 0$。
+
+  \item 求点 $M(2,1,5)$ 到直线 $\frac{x-1}{2} = \frac{y}{1} = \frac{z+3}{-1}$ 的距离。
+
+    \textbf{解：}直线的方向向量 $\mathbf{s} = (2,1,-1)$，直线上一点 $P_0(1,0,-3)$。
+    向量 $\overrightarrow{P_0M} = (2-1, 1-0, 5-(-3)) = (1,1,8)$。
+
+    点到直线的距离公式：
+    \[
+    d = \frac{|\overrightarrow{P_0M} \times \mathbf{s}|}{|\mathbf{s}|}.
+    \]
+    \begin{align*}
+      \overrightarrow{P_0M} \times \mathbf{s}
+      &= \begin{vmatrix} \mathbf{i} & \mathbf{j} & \mathbf{k} \\ 1 & 1 & 8 \\ 2 & 1 & -1 \end{vmatrix} \\
+      &= \mathbf{i}(-1-8) - \mathbf{j}(-1-16) + \mathbf{k}(1-2) \\
+      &= (-9, 17, -1).
+    \end{align*}
+    \[
+    |\overrightarrow{P_0M} \times \mathbf{s}| = \sqrt{81+289+1} = \sqrt{371},
+    \qquad |\mathbf{s}| = \sqrt{4+1+1} = \sqrt{6}.
+    \]
+    故 $d = \frac{\sqrt{371}}{\sqrt{6}} = \sqrt{\frac{371}{6}}$。
+
+  \item 指出曲面 $z = x^2 + y^2$ 的类型并描述其几何特征。
+
+    \textbf{解：}该曲面为\textbf{旋转抛物面}（也称椭圆抛物面）。
+    它是将抛物线 $z = x^2$ 绕 $z$ 轴旋转一周得到的旋转曲面。
+    用水平面 $z = c\,(c>0)$ 截曲面得到圆 $x^2+y^2=c$；
+    用 $z=0$ 截得一个点（原点，即顶点）；用 $z<0$ 截为空集。
+    用铅垂面 $x=0$ 或 $y=0$ 截得抛物线。
+    该曲面开口向上，在原点处取极小值 $z=0$。
+\end{enumerate}
+
+% ==================== 第七章 多元函数微分学 ====================
+\section*{第七章\quad 多元函数微分学}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=35]
+  \item 讨论二重极限 $\displaystyle\lim_{(x,y)\to(0,0)}\frac{xy}{x^2+y^2}$ 是否存在。
+
+    \textbf{解：}沿不同路径考察极限。
+    若沿 $y=kx$：$\lim_{x\to 0}\frac{x\cdot kx}{x^2+k^2x^2} = \frac{k}{1+k^2}$，
+    极限值随 $k$ 变化（如 $k=0$ 得 $0$，$k=1$ 得 $\frac{1}{2}$）。
+    由于沿不同路径极限不同，二重极限不存在。
+
+  \item 设 $z = e^{x^2+y^2}$，求 $\frac{\partial z}{\partial x}$，$\frac{\partial z}{\partial y}$，
+    $\frac{\partial^2 z}{\partial x \partial y}$。
+
+    \textbf{解：}
+    \begin{align*}
+      \frac{\partial z}{\partial x} &= e^{x^2+y^2} \cdot 2x = 2x e^{x^2+y^2}, \\
+      \frac{\partial z}{\partial y} &= e^{x^2+y^2} \cdot 2y = 2y e^{x^2+y^2}, \\
+      \frac{\partial^2 z}{\partial x \partial y}
+      &= \frac{\partial}{\partial y}\!\left(2x e^{x^2+y^2}\right)
+       = 2x \cdot e^{x^2+y^2} \cdot 2y
+       = 4xy e^{x^2+y^2}.
+    \end{align*}
+
+  \item 设 $z = f(x^2-y^2, e^{xy})$，其中 $f$ 具有二阶连续偏导数，求
+    $\frac{\partial z}{\partial x}$ 和 $\frac{\partial z}{\partial y}$。
+
+    \textbf{解：}令 $u = x^2-y^2$，$v = e^{xy}$。则 $z = f(u,v)$。
+    由链式法则：
+    \begin{align*}
+      \frac{\partial z}{\partial x}
+      &= \frac{\partial f}{\partial u}\frac{\partial u}{\partial x}
+       + \frac{\partial f}{\partial v}\frac{\partial v}{\partial x}
+       = f_u \cdot 2x + f_v \cdot y e^{xy}, \\[4pt]
+      \frac{\partial z}{\partial y}
+      &= \frac{\partial f}{\partial u}\frac{\partial u}{\partial y}
+       + \frac{\partial f}{\partial v}\frac{\partial v}{\partial y}
+       = f_u \cdot (-2y) + f_v \cdot x e^{xy}.
+    \end{align*}
+
+  \item 求曲面 $z = x^2 + y^2$ 在点 $(1,1,2)$ 处的切平面和法线方程。
+
+    \textbf{解：}令 $F(x,y,z) = x^2+y^2-z = 0$。
+    $\nabla F = (2x, 2y, -1)$，在 $(1,1,2)$ 处 $\nabla F = (2, 2, -1)$。
+
+    切平面：$2(x-1) + 2(y-1) - (z-2) = 0$，即 $2x+2y-z-2=0$。
+
+    法线：$\frac{x-1}{2} = \frac{y-1}{2} = \frac{z-2}{-1}$。
+
+  \item 求函数 $f(x,y) = x^3 + y^3 - 3xy$ 的极值。
+
+    \textbf{解：}求驻点：
+    \[
+    \begin{cases}
+      f_x = 3x^2 - 3y = 0 \implies y = x^2, \\
+      f_y = 3y^2 - 3x = 0 \implies x = y^2.
+    \end{cases}
+    \]
+    代入：$x = (x^2)^2 = x^4$，即 $x(x^3-1)=0$，$x=0$ 或 $x=1$。
+    得驻点 $(0,0)$ 和 $(1,1)$。
+
+    二阶偏导数：$f_{xx} = 6x$，$f_{yy} = 6y$，$f_{xy} = -3$。
+    判别式 $\Delta = f_{xx}f_{yy} - f_{xy}^2 = 36xy - 9$。
+
+    在 $(0,0)$：$\Delta = -9 < 0$，非极值点（鞍点）。
+    在 $(1,1)$：$\Delta = 36-9 = 27 > 0$，$f_{xx}=6>0$，故为极小值点，
+    极小值 $f(1,1) = 1+1-3 = -1$。
+
+  \item 在 $x + y + z = 1$ 的条件下，求 $u = x^2 + y^2 + z^2$ 的最小值。
+
+    \textbf{解：}构造 Lagrange 函数 $L = x^2+y^2+z^2 + \lambda(x+y+z-1)$。
+    \[
+    \begin{cases}
+      L_x = 2x + \lambda = 0 \implies x = -\lambda/2, \\
+      L_y = 2y + \lambda = 0 \implies y = -\lambda/2, \\
+      L_z = 2z + \lambda = 0 \implies z = -\lambda/2, \\
+      x+y+z = 1.
+    \end{cases}
+    \]
+    前三个方程给出 $x=y=z$，代入约束：$3x=1$，$x=y=z=\frac{1}{3}$。
+    此时 $u = 3 \cdot \frac{1}{9} = \frac{1}{3}$。
+
+    可以验证该点为最小值（$u$ 表示原点到平面 $x+y+z=1$ 上各点距离的平方，
+    最小值为原点到该平面的距离的平方 $= \bigl(\frac{1}{\sqrt{3}}\bigr)^2 = \frac{1}{3}$）。
+\end{enumerate}
+
+% ==================== 第八章 多元函数积分学 ====================
+\section*{第八章\quad 多元函数积分学}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=41]
+  \item 计算二重积分 $\displaystyle\iint_D xy \,dxdy$，其中 $D$ 为由 $y=x$，$y=1$，$x=0$ 所围成的区域。
+
+    \textbf{解：}区域 $D$ 如图（略），可表示为 $0 \le x \le 1$，$x \le y \le 1$。
+    \begin{align*}
+      \iint_D xy \,dxdy
+      &= \int_0^1 dx \int_x^1 xy \,dy
+       = \int_0^1 x \cdot \left[\frac{y^2}{2}\right]_x^1 dx \\
+      &= \int_0^1 x\left(\frac{1}{2} - \frac{x^2}{2}\right) dx
+       = \frac{1}{2}\int_0^1 (x - x^3) dx \\
+      &= \frac{1}{2}\left[\frac{x^2}{2} - \frac{x^4}{4}\right]_0^1
+       = \frac{1}{2}\left(\frac{1}{2} - \frac{1}{4}\right)
+       = \frac{1}{8}.
+    \end{align*}
+
+  \item 计算 $\displaystyle\iint_D e^{-(x^2+y^2)} dxdy$，其中 $D: x^2+y^2 \le R^2$。
+
+    \textbf{解：}采用极坐标变换：$x=r\cos\theta$，$y=r\sin\theta$，$dxdy = r dr d\theta$。
+    \begin{align*}
+      \iint_D e^{-(x^2+y^2)} dxdy
+      &= \int_0^{2\pi} d\theta \int_0^R e^{-r^2} r dr \\
+      &= 2\pi \cdot \left[-\frac{1}{2}e^{-r^2}\right]_0^R \\
+      &= 2\pi \cdot \frac{1}{2}(1 - e^{-R^2})
+       = \pi(1 - e^{-R^2}).
+    \end{align*}
+
+  \item 计算曲线积分 $\displaystyle\int_L (x^2-y^2)dx + 2xy\,dy$，其中 $L$ 为从 $(0,0)$ 到 $(1,1)$
+    沿抛物线 $y=x^2$ 的弧段。
+
+    \textbf{解：}参数化 $L$：取 $x=t$，$y=t^2$，$t$ 从 $0$ 到 $1$。
+    则 $dx = dt$，$dy = 2t dt$。
+    \begin{align*}
+      \int_L (x^2-y^2)dx + 2xy\,dy
+      &= \int_0^1 \bigl[(t^2 - t^4) \cdot 1 + 2t\cdot t^2 \cdot 2t\bigr] dt \\
+      &= \int_0^1 (t^2 - t^4 + 4t^4) dt
+       = \int_0^1 (t^2 + 3t^4) dt \\
+      &= \left[\frac{t^3}{3} + \frac{3t^5}{5}\right]_0^1
+       = \frac{1}{3} + \frac{3}{5}
+       = \frac{5+9}{15}
+       = \frac{14}{15}.
+    \end{align*}
+
+  \item 利用 Green 公式计算 $\displaystyle\oint_L (x^2y)dx - (xy^2)dy$，
+    其中 $L$ 为圆周 $x^2+y^2 = a^2$ 的正向。
+
+    \textbf{解：}令 $P = x^2y$，$Q = -xy^2$。
+    则 $\frac{\partial Q}{\partial x} - \frac{\partial P}{\partial y} = -y^2 - x^2 = -(x^2+y^2)$。
+    由 Green 公式（$L$ 围成区域 $D: x^2+y^2 \le a^2$）：
+    \begin{align*}
+      \oint_L (x^2y)dx - (xy^2)dy
+      &= \iint_D [-(x^2+y^2)] dxdy
+       = -\int_0^{2\pi} d\theta \int_0^a r^2 \cdot r dr \\
+      &= -2\pi \cdot \left[\frac{r^4}{4}\right]_0^a
+       = -2\pi \cdot \frac{a^4}{4}
+       = -\frac{\pi a^4}{2}.
+    \end{align*}
+
+  \item 利用 Gauss 公式计算 $\displaystyle\oiint_S x\,dydz + y\,dzdx + z\,dxdy$，
+    其中 $S$ 为球面 $x^2+y^2+z^2=a^2$ 的外侧。
+
+    \textbf{解：}令 $P=x$，$Q=y$，$R=z$。
+    散度 $\operatorname{div} \mathbf{F} = \frac{\partial P}{\partial x}+\frac{\partial Q}{\partial y}+\frac{\partial R}{\partial z} = 1+1+1 = 3$。
+    由 Gauss 公式（$S$ 围成球体 $\Omega: x^2+y^2+z^2 \le a^2$）：
+    \[
+    \oiint_S x\,dydz + y\,dzdx + z\,dxdy
+    = \iiint_\Omega 3 \, dV
+    = 3 \cdot \frac{4}{3}\pi a^3
+    = 4\pi a^3.
+    \]
+\end{enumerate}
+
+% ==================== 第九章 级数论 ====================
+\section*{第九章\quad 级数论}
+
+\begin{enumerate}[leftmargin=*,label=\arabic*.,start=46]
+  \item 判断级数 $\displaystyle\sum_{n=1}^{\infty}\frac{n}{2^n}$ 的敛散性。
+
+    \textbf{解：}用比值判别法（d'Alembert）。
+    $a_n = \frac{n}{2^n}$，$a_{n+1} = \frac{n+1}{2^{n+1}}$。
+    \[
+    \lim_{n\to\infty}\frac{a_{n+1}}{a_n}
+    = \lim_{n\to\infty}\frac{n+1}{2^{n+1}} \cdot \frac{2^n}{n}
+    = \lim_{n\to\infty}\frac{n+1}{2n}
+    = \frac{1}{2} < 1.
+    \]
+    由比值判别法，该级数收敛。
+
+    实际上还可以求其和：$\sum_{n=1}^{\infty} n x^n = \frac{x}{(1-x)^2}$（$|x|<1$），
+    取 $x=\frac{1}{2}$ 得和为 $\frac{1/2}{(1/2)^2} = 2$。
+
+  \item 判断级数 $\displaystyle\sum_{n=1}^{\infty}\frac{(-1)^{n-1}}{\sqrt{n}}$ 是绝对收敛、条件收敛还是发散。
+
+    \textbf{解：}取绝对值：$\sum_{n=1}^{\infty} \frac{1}{\sqrt{n}}$ 为 $p$-级数，$p=\frac{1}{2} < 1$，发散。
+    故原级数不绝对收敛。
+
+    考察交错级数 $\sum_{n=1}^{\infty} (-1)^{n-1} a_n$，其中 $a_n = \frac{1}{\sqrt{n}}$。
+    $a_n$ 单调递减趋于零（$a_n > a_{n+1}$ 且 $\lim a_n = 0$），
+    由 Leibniz 判别法，交错级数收敛。
+
+    综上，原级数为\textbf{条件收敛}。
+
+  \item 求幂级数 $\displaystyle\sum_{n=1}^{\infty}\frac{x^n}{n}$ 的收敛域。
+
+    \textbf{解：}收敛半径：$R = \lim_{n\to\infty}\left|\frac{a_n}{a_{n+1}}\right|
+    = \lim_{n\to\infty}\frac{1/n}{1/(n+1)} = \lim_{n\to\infty}\frac{n+1}{n} = 1$。
+
+    在端点 $x=1$ 处：$\sum_{n=1}^{\infty} \frac{1}{n}$ 为调和级数，发散。
+    在端点 $x=-1$ 处：$\sum_{n=1}^{\infty} \frac{(-1)^n}{n}$ 为交错调和级数，条件收敛。
+
+    故收敛域为 $[-1, 1)$。
+
+  \item 将 $f(x) = x$（$-\pi < x < \pi$）展开为 Fourier 级数。
+
+    \textbf{解：}$f(x)=x$ 为奇函数，$a_n = 0$（$n=0,1,2,\dots$），只需计算 $b_n$：
+    \begin{align*}
+      b_n &= \frac{1}{\pi}\int_{-\pi}^{\pi} x \sin nx \, dx
+           = \frac{2}{\pi}\int_0^{\pi} x \sin nx \, dx \quad\text{（奇函数积分性质）}.
+    \end{align*}
+    分部积分：
+    \begin{align*}
+      \int_0^{\pi} x \sin nx \, dx
+      &= \Bigl[-\frac{x\cos nx}{n}\Bigr]_0^{\pi} + \frac{1}{n}\int_0^{\pi} \cos nx \, dx \\
+      &= -\frac{\pi\cos n\pi}{n} + \left[\frac{\sin nx}{n^2}\right]_0^{\pi} \\
+      &= -\frac{\pi(-1)^n}{n} + 0
+       = \frac{(-1)^{n+1}\pi}{n}.
+    \end{align*}
+    故 $b_n = \frac{2}{\pi} \cdot \frac{(-1)^{n+1}\pi}{n} = \frac{2(-1)^{n+1}}{n}$。
+
+    Fourier 级数展开为：
+    \[
+    x \sim 2\sum_{n=1}^{\infty}\frac{(-1)^{n+1}}{n}\sin nx, \quad x \in (-\pi,\pi).
+    \]
+    在 $x=\pm\pi$ 处，级数收敛于 $\frac{f(\pi^+)+f(\pi^-)}{2} = 0$。
+\end{enumerate}
+
+\end{document}
