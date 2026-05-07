@@ -76,3 +76,17 @@ The Earth follows an elliptical orbit (`a = 3.6`, `b = 2.8`) in the XY plane. It
 - ffmpeg detected at `/usr/bin/ffmpeg`
 - Animation rendered with exit code 0
 - Output MP4 file validated as valid ISO Media format
+
+---
+
+## 2026-05-07 14:36:38 — User asked
+
+> 请检查为何 gravity_curved_space.py 不能使用
+
+
+---
+
+## 2026-05-07 15:49:22 — Session ended
+
+- **Session ID**: 6d7f9006-684e-4181-a71b-85060fb9ad19
+- **End reason**: prompt_input_exit

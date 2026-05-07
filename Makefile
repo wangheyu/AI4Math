@@ -1,10 +1,13 @@
 SHELL := /bin/bash
 
-SUBDIRS := week9 week10
+SUBDIRS := final_project/Qian week10 week9
 
 .PHONY: all clean rebuild $(SUBDIRS)
 
-all: week10 week9
+all: final_project/Qian week10 week9
+
+final_project/Qian:
+	$(MAKE) -C final_project/Qian all
 
 week9:
 	$(MAKE) -C week9 all

@@ -223,3 +223,99 @@ latexmk -xelatex -outdir=build -interaction=nonstopmode slide02.tex
 - `/home/hywang/Projects/AI4Math/week10/Makefile` — 构建自动化配置
 - `/home/hywang/Projects/AI4Math/week10/build/` — 编译产物目录
 
+
+---
+
+## 2026-05-07 15:55:57 — User asked
+
+> 递归检索各目录文件，删除所有由复制引起的windows元数据文件
+
+### 分析过程
+
+- Windows 系统在复制文件到外部存储时，会附加 Alternate Data Stream (ADS) 元数据，其中 `Zone.Identifier` 流标记文件来源区域（本地/网络/互联网）
+- 在 Linux/WSL 文件系统上，这些 ADS 显示为 `原文件名:Zone.Identifier` 的独立文件
+- 常见的 Windows 元数据文件还包括：`Thumbs.db`（缩略图缓存）、`desktop.ini`（文件夹自定义）、`~$*`（Office 临时文件）
+
+### 执行操作
+
+1. **搜索**: 使用 `find` 递归检索 4 类常见 Windows 元数据文件：
+   - `*:Zone.Identifier` — ADS 区域标识符
+   - `Thumbs.db` — 缩略图缓存
+   - `desktop.ini` — 文件夹配置
+   - `~$*` — Office 临时锁定文件
+2. **搜索**: 同时检索 macOS 资源分支文件 `._*`
+3. **结果**: 仅发现 28 个 `:Zone.Identifier` 文件，全部位于 `week11/` 目录及其子目录，无其他类型
+4. **删除**: 执行 `find ... -delete` 批量清除全部 28 个文件
+5. **验证**: 再次搜索确认残留数为 0
+
+### 涉及文件（已删除）
+
+全部位于 `week11/` 目录树下：
+- `test_0.bmp` 至 `test_9.bmp` 共 10 个 BMP 图片的 Zone.Identifier
+- `mnist.c`, `mnist_pytorch.py`, `mnist_pytorch_cnn.py`, `source.md`, `MNIST.ipynb`, `parameters.bin`, `pra.bin.bak`, `step01.bak`, `step02.c`, `step03.c` 的 Zone.Identifier
+- `.ipynb_checkpoints/` 下 3 个 checkpoint 文件的 Zone.Identifier
+- `data/MNIST/raw/` 下 8 个 MNIST 数据集文件的 Zone.Identifier
+
+### 技术上下文
+
+- Git 分支: `main`
+- 工作目录: `/home/hywang/Projects/AI4Math`
+
+
+### Analysis process
+*(Fallback: Stop hook — exchange was not recorded by LLM, captured at 2026-05-07 15:57:07)*
+
+### Actions taken
+*(Not recorded)*
+
+### Results
+*(Not recorded)*
+
+---
+
+## 2026-05-07 15:57:59 — User asked
+
+> 修改\init这个skill，一旦遇到由复制引起的windows元数据就直接删除。这个策略是否可行？
+
+
+---
+
+## 2026-05-07 15:59:26 — User asked
+
+> 采用推荐组合
+
+
+---
+
+## 2026-05-07 16:01:11 — Session ended
+
+- **Session ID**: c1f4c93d-b292-43b0-8946-9273e8cdf4e3
+- **End reason**: prompt_input_exit
+
+---
+
+## 2026-05-07 16:01:41 — User asked
+
+> 再次运行/init是否会更新CLAUDE.md?
+
+
+---
+
+## 2026-05-07 16:02:18 — User asked
+
+> /init
+
+
+---
+
+## 2026-05-07 16:05:28 — User asked
+
+> 应用更新，同时更新Makeflie
+
+
+---
+
+## 2026-05-07 16:44:20 — Session ended
+
+- **Session ID**: 4395e532-e64b-488d-b9f3-c0b0836e56f4
+- **End reason**: other
