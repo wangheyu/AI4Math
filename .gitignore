@@ -33,6 +33,23 @@ __pycache__/
 # Local tool marker
 .codex
 
+# week11 — datasets (downloadable via download_datasets.sh)
+week11/datasets/
+# week11 — LaTeX build artifacts
+week11/build/
+# week11 — compiled PDF (recompilable from .tex)
+week11/*.pdf
+# week11 — Python cache
+week11/__pycache__/
+# week11 — compiled C binary
+week11/mnist_mlp_infer
+# week11 — trained checkpoints (retrainable)
+week11/checkpoints/
+# week11 — session record (not deliverable)
+week11/claude-record.md
+# week11 — temp hand-drawn samples
+week11/samples/drawn_*
+
 # Common OS/editor noise
 .DS_Store
 Thumbs.db
