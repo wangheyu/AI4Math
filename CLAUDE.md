@@ -31,6 +31,10 @@ make pdf-jpl     # compile slide-JPL.tex only
 make pdf-skills  # compile slide-skills.tex only
 make clean       # remove build/ and generated PDF symlinks
 
+# week11 — MNIST deep learning project (work in progress)
+cd week11
+bash download_datasets.sh datasets   # download all datasets (MNIST, Fashion-MNIST, KMNIST, CIFAR-10)
+
 # final_project/Qian — Final report on Qian Xuesen's aerospace works
 cd final_project/Qian
 make all         # compile report.tex with xelatex + biber
@@ -41,6 +45,7 @@ make clean       # remove build/ and report.pdf
 
 - Python is invoked via `conda run -n Teaching python`, so all scripts expect the `Teaching` conda environment.
 - Required packages: `numpy`, `pandas`, `matplotlib`, `astroquery`, `astropy`. Matplotlib is always set to `matplotlib.use("Agg")` (non-interactive backend).
+- For `week11/`: `torch` and `torchvision` are additionally required (not yet installed in the `Teaching` environment).
 - All Python scripts are self-contained executables (run directly, not imported as modules).
 
 ## Project Structure
@@ -71,11 +76,10 @@ AI4Math/                # Top-level
 │   └── SKILLS/             # custom skill definitions for the course
 │       ├── create-review-materials/  # generate Chinese LaTeX review materials from PDFs
 │       └── organize-materials/       # organize study materials
-├── week11/             # MNIST handwritten digit recognition (C and PyTorch)
-│   ├── mnist.c             # pure C inference implementation
-│   ├── mnist_pytorch.py    # PyTorch MLP implementation
-│   ├── mnist_pytorch_cnn.py # PyTorch CNN implementation
-│   └── data/               # test BMP images
+├── week11/             # MNIST handwritten digit recognition — work in progress
+│   ├── plan.md             # 5-stage plan (MLP → CNN → C inference → generalization → unsupervised)
+│   ├── download_datasets.sh # fetch MNIST, Fashion-MNIST, KMNIST, CIFAR-10
+│   └── datasets/           # pre-downloaded datasets (MNIST, FashionMNIST, KMNIST, CIFAR10)
 └── final_project/      # End-of-term projects
     └── Qian/               # Qian Xuesen aerospace works report
         ├── report.tex          # XeLaTeX report with biber bibliography
@@ -91,7 +95,7 @@ AI4Math/                # Top-level
 - LaTeX compilation uses `latexmk -xelatex` with `-halt-on-error`. Under the hood, latexmk runs two passes: `xelatex -no-pdf` produces `.xdv`, then `xdvipdfmx` converts `.xdv` to `.pdf`. latexmk tracks file fingerprints in `.fdb_latexmk` to skip rebuilds when nothing changed.
 - `report.tex` uses `\include` (not `\input`) for chapters, so each chapter gets its own `.aux` in `build/chapters/`. Bibliography is `qian.bib` in the week9 root.
 - Top-level `make all` builds in dependency order: final_project first, then week10, then week9 last (because week9 runs Python scripts to generate figures and data).
-- `week11/` has no Makefile — it is a collection of standalone scripts and notebooks, not a buildable project.
+- `week11/` is a work-in-progress following `plan.md` (5-stage: MLP → CNN → C inference → generalization → unsupervised). Datasets are pre-downloaded under `datasets/`. No source code yet; no Makefile. PyTorch is not yet installed in the `Teaching` conda environment (`pip install torch torchvision`).
 - `final_project/Qian/` uses `xelatex` + `biber` directly (not latexmk) and requires `JPL_API.env` for Horizons API access.
 
 ## Custom Skills
