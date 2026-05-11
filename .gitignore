@@ -45,8 +45,6 @@ week11/__pycache__/
 week11/mnist_mlp_infer
 # week11 — trained checkpoints (retrainable)
 week11/checkpoints/
-# week11 — session record (not deliverable)
-week11/claude-record.md
 # week11 — temp hand-drawn samples
 week11/samples/drawn_*
 
