@@ -156,7 +156,7 @@ train_loader = DataLoader(train_data,
 \end{frame}
 
 % ═══════════ 4 — MLP 架构 + models.py ═══════════
-\begin{frame}[fragile,shrink=15]{MLP 网络结构：\texttt{models.py} 中的 \texttt{MLPClassifier}}
+\begin{frame}[fragile,shrink=20]{MLP 网络结构：\texttt{models.py} 中的 \texttt{MLPClassifier}}
 \small
 
 \begin{columns}[T]
@@ -349,7 +349,7 @@ Logits = 评委打分，Softmax = 按分数分配获奖概率。\\
 \end{frame}
 
 % ═══════════ 7 — 交叉熵损失直观解释 ═══════════
-\begin{frame}[fragile,shrink=15]{交叉熵损失 (CrossEntropyLoss)：量化"预测有多偏离正确答案"}
+\begin{frame}[fragile,shrink=27]{交叉熵损失 (CrossEntropyLoss)：量化"预测有多偏离正确答案"}
 \small
 
 \begin{center}
@@ -486,7 +486,7 @@ for images, targets in train_loader:
 \end{frame}
 
 % ═══════════ 10 — 反向传播 + 梯度下降 ═══════════
-\begin{frame}[fragile,shrink=15]{梯度下降：模型如何"学习"——在损失平面上寻找最低点}
+\begin{frame}[fragile,shrink=20]{梯度下降：模型如何"学习"——在损失平面上寻找最低点}
 \small
 
 \begin{columns}[T]
@@ -612,22 +612,20 @@ def evaluate(model, loader, ...):
 \end{frame}
 
 % ═══════════ 13 — 权重可视化 ═══════════
-\begin{frame}[shrink=20]{权重可视化：MLP 学到了什么？}
+\begin{frame}[shrink=30]{权重可视化：MLP 学到了什么？}
 \small
 
 \begin{center}
-\includegraphics[width=0.7\textwidth]{slide_assets/weight_heatmap.png}
+\includegraphics[width=0.52\textwidth]{slide_assets/weight_heatmap.png}
 \end{center}
-
-\vspace{0.1cm}
 
 \begin{columns}[T]
 \column{0.55\textwidth}
 \begin{block}{如何解读这张图？}
 \footnotesize
-每个 28$\times$28 小图 = 一个神经元的权重 reshape 回 28$\times$28。\\[2pt]
+每个 28$\times$28 小图 = 一个神经元的权重 reshape 回 28$\times$28。\\[1pt]
 \textbf{红色（正权重）：} 神经元"喜欢"该位置像素值高（兴奋）。\\
-\textbf{蓝色（负权重）：} 神经元"不喜欢"该位置像素值高（抑制）。\\[2pt]
+\textbf{蓝色（负权重）：} 神经元"不喜欢"该位置像素值高（抑制）。\\[1pt]
 \textbf{这些模式是训练自动学到的，不是人为设计。}
 \end{block}
 
@@ -646,7 +644,7 @@ def evaluate(model, loader, ...):
 \end{frame}
 
 % ═══════════ 14 — 实验结果 + 训练曲线 ═══════════
-\begin{frame}[fragile,shrink=10]{实验结果：MLP 在 MNIST 上表现如何}
+\begin{frame}[fragile,shrink=20]{实验结果：MLP 在 MNIST 上表现如何}
 \small
 
 \begin{columns}[T]
@@ -690,7 +688,7 @@ def evaluate(model, loader, ...):
 \end{frame}
 
 % ═══════════ 15 — utils.py ═══════════
-\begin{frame}[fragile,shrink=15]{\texttt{utils.py}：支撑整个训练流程的四个工具函数}
+\begin{frame}[fragile,shrink=20]{\texttt{utils.py}：支撑整个训练流程的四个工具函数}
 \footnotesize
 
 \begin{columns}[T]
@@ -741,7 +739,7 @@ def save_checkpoint(model, path):
 \end{frame}
 
 % ═══════════ 16 — 模型参数 + 总结 ═══════════
-\begin{frame}[shrink=15]{总结：模型参数 + 完整流程回顾}
+\begin{frame}[shrink=22]{总结：模型参数 + 完整流程回顾}
 \small
 
 \begin{columns}[T]
@@ -818,7 +816,7 @@ batch / shuffle    & Softmax（概率化） & 梯度下降 (Adam) \\
 % ═══════════════════════════════════════════════════════════════
 
 % ── 2.1 MLP 的局限 ──
-\begin{frame}[shrink=10]{为什么 MLP 不够？——它丢弃了图像的空间结构}
+\begin{frame}[shrink=20]{为什么 MLP 不够？——它丢弃了图像的空间结构}
 \small
 
 \begin{columns}[T]
@@ -872,13 +870,13 @@ CNN 用\textbf{卷积核} (convolution kernel) 在图像上滑动，每次只看
 \end{frame}
 
 % ── 2.2 卷积操作直观 ──
-\begin{frame}[shrink=10]{卷积操作：一个会 "滑动" 的特征检测器}
+\begin{frame}[shrink=20]{卷积操作：一个会 "滑动" 的特征检测器}
 \small
 
 \begin{columns}[T]
 \column{0.48\textwidth}
 \begin{center}
-\includegraphics[width=\textwidth]{slide_assets/conv_demo.png}
+\includegraphics[width=0.98\textwidth]{slide_assets/conv_demo.png}
 \end{center}
 
 \column{0.52\textwidth}
@@ -897,18 +895,18 @@ CNN 用\textbf{卷积核} (convolution kernel) 在图像上滑动，每次只看
 \end{itemize}
 \end{block}
 
-\vspace{0.15cm}
+\vspace{0.1cm}
 
 \begin{exampleblock}{例子：垂直边缘检测核}
 \footnotesize
-左图卷积核 $\begin{bmatrix}-1&0&1\\-1&0&1\\-1&0&1\end{bmatrix}$ 在图像中间（有竖线的地方）输出大，在平坦区域输出小。\\[2pt]
+左图卷积核 $\begin{bmatrix}-1&0&1\\-1&0&1\\-1&0&1\end{bmatrix}$ 在图像中间（有竖线的地方）输出大，在平坦区域输出小。\\[1pt]
 \textbf{训练时，这些核的数值是自动学到的——不需要人工设计！}
 \end{exampleblock}
 \end{columns}
 \end{frame}
 
 % ── 2.3 Max Pooling ──
-\begin{frame}[fragile,shrink=10]{Max Pooling（最大池化）：压缩信息、增强鲁棒性}
+\begin{frame}[fragile,shrink=20]{Max Pooling（最大池化）：压缩信息、增强鲁棒性}
 \small
 
 \begin{columns}[T]
@@ -977,7 +975,7 @@ nn.MaxPool2d(2),                 # -> 7x7
 \end{frame}
 
 % ── 2.4 CNN 结构 + 代码 ──
-\begin{frame}[fragile,shrink=15]{CNN 网络结构：\texttt{models.py} 中的 \texttt{CNNClassifier}}
+\begin{frame}[fragile,shrink=20]{CNN 网络结构：\texttt{models.py} 中的 \texttt{CNNClassifier}}
 \small
 
 \begin{columns}[T]
@@ -1053,14 +1051,14 @@ class CNNClassifier(nn.Module):
 \end{frame}
 
 % ── 2.6 MLP vs CNN 对比 ──
-\begin{frame}[shrink=15]{MLP vs CNN：全面对比}
+\begin{frame}[shrink=28]{MLP vs CNN：全面对比}
 \small
 
 \begin{center}
-\includegraphics[width=0.65\textwidth]{slide_assets/mlp_cnn_compare.png}
+\includegraphics[width=0.58\textwidth]{slide_assets/mlp_cnn_compare.png}
 \end{center}
 
-\vspace{0.05cm}
+\vspace{-0.05cm}
 
 \begin{columns}[T]
 \column{0.333\textwidth}
@@ -1068,7 +1066,8 @@ class CNNClassifier(nn.Module):
 \footnotesize
 \centering
 MLP: \textbf{109,386}\\[1pt]
-CNN: \textbf{20,490}\\[2pt]
+CNN: \textbf{20,490}
+\vspace{0.5pt}
 CNN 仅 MLP 的 \textbf{19\%}\\
 权重共享大幅降参
 \end{block}
@@ -1078,7 +1077,8 @@ CNN 仅 MLP 的 \textbf{19\%}\\
 \footnotesize
 \centering
 MLP: \textbf{97.44\%}\\[1pt]
-CNN: \textbf{98.88\%}\\[2pt]
+CNN: \textbf{98.88\%}
+\vspace{0.5pt}
 参数少 81\%\\
 准确率\textbf{反高 1.44\%}
 \end{block}
@@ -1088,14 +1088,14 @@ CNN: \textbf{98.88\%}\\[2pt]
 \footnotesize
 \centering
 MLP E1: 94.81\%\\[1pt]
-CNN E1: \textbf{97.55\%}\\[2pt]
+CNN E1: \textbf{97.55\%}
+\vspace{0.5pt}
 CNN 第 1 轮即逼近\\
-MLP 最终水平\\
-卷积\textbf{归纳偏置}天然适合图像
+MLP 最终水平
 \end{block}
 \end{columns}
 
-\vspace{0.1cm}
+\vspace{0.0cm}
 \footnotesize
 \begin{center}
 \textbf{核心原因：CNN 的卷积结构利用了图像的二维局部性——MLP 的 Flatten 操作完全丢弃了这些信息。}
@@ -1107,7 +1107,7 @@ MLP 最终水平\\
 % ═══════════════════════════════════════════════════════════════
 
 % ── 3.1 训练 vs 推理 ──
-\begin{frame}[shrink=10]{训练 vs 推理：同一个模型，两种运行模式}
+\begin{frame}[shrink=15]{训练 vs 推理：同一个模型，两种运行模式}
 \small
 
 \begin{columns}[T]
@@ -1213,7 +1213,7 @@ $\to$ Python 训练的模型，可以在 C、Rust、JavaScript 甚至嵌入式�
 \end{frame}
 
 % ── 3.3 C 推理代码 ──
-\begin{frame}[fragile,shrink=15]{C 语言推理：\texttt{mnist\_mlp\_infer.c} 核心函数}
+\begin{frame}[fragile,shrink=29]{C 语言推理：\texttt{mnist\_mlp\_infer.c} 核心函数}
 \footnotesize
 
 \begin{columns}[T]
@@ -1270,7 +1270,7 @@ int pred = argmax(logits, 10);                          // 取最大分数为预
 \end{frame}
 
 % ── 3.4 C 推理验证 ──
-\begin{frame}[fragile,shrink=10]{验证：C 推理 vs Python 推理 —— 结果完全一致}
+\begin{frame}[fragile,shrink=15]{验证：C 推理 vs Python 推理 —— 结果完全一致}
 \small
 
 \begin{columns}[T]
@@ -1391,11 +1391,1859 @@ sample\_4 & 4 & 4 & OK \\
 \end{frame}
 
 % ═══════════════════════════════════════════════════════════════
+%  阶段 4：多数据集扩展与泛化
+% ═══════════════════════════════════════════════════════════════
+
+% ── 4.1 过渡：从 MNIST 到多数据集 ──
+\begin{frame}[shrink=15]{阶段 4：同样的模型，不同的数据——泛化在哪里？}
+\small
+
+\begin{alertblock}{阶段 1--3 的核心认知}
+\footnotesize
+我们已经在 MNIST 上完成了：MLP 训练 $\to$ CNN 对比 $\to$ C 语言推理。\\
+模型在 MNIST 上表现优异：MLP 97.4\%，CNN 98.9\%。\\
+\textbf{但这是否意味着模型真正"理解"了图像？}
+\end{alertblock}
+
+\vspace{0.15cm}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{阶段 4 要回答的问题}
+\footnotesize
+\begin{enumerate}
+  \item 同样的模型结构，换一个数据集表现如何？
+  \item 为什么 Fashion-MNIST 上 MLP 准确率从 97\% 骤降至 88\%？
+  \item 什么情况下训练集好但测试集差？（过拟合）
+  \item 如何系统性地提升模型在新数据集上的表现？
+\end{enumerate}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{四个数据集}
+\footnotesize
+\centering
+\begin{tabular}{l l l}
+\toprule
+\textbf{数据集} & \textbf{内容} & \textbf{特点} \\
+\midrule
+MNIST          & 手写数字   & 简单基线 \\
+Fashion-MNIST  & 服饰图片   & 同类难度，分布不同 \\
+KMNIST         & 日文假名   & 同尺寸，文化域迁移 \\
+CIFAR-10       & 彩色自然图 & 真实图像，显著更难 \\
+\bottomrule
+\end{tabular}
+\end{block}
+\end{columns}
+
+\vspace{0.15cm}
+\footnotesize
+\textbf{核心概念：} 模型在一个数据集上表现好 $\neq$ 模型拥有通用视觉智能。只有通过跨数据集对比，才能看清模型的真实泛化能力。
+\end{frame}
+
+% ── 4.2 四个数据集一览 ──
+\begin{frame}[shrink=30]{四个数据集一览：从手写数字到彩色自然图像}
+\small
+
+\begin{center}
+\includegraphics[width=0.72\textwidth]{slide_assets/all_datasets_overview.png}
+\end{center}
+
+\vspace{-0.2cm}
+
+\begin{columns}[T]
+\column{0.25\textwidth}
+\begin{block}{MNIST}
+\footnotesize\centering
+手写数字 0--9\\
+28$\times$28 灰度\\
+60K + 10K\\
+\textbf{极简单}
+\end{block}
+
+\column{0.25\textwidth}
+\begin{block}{Fashion-MNIST}
+\footnotesize\centering
+服饰图片 10 类\\
+28$\times$28 灰度\\
+60K + 10K\\
+\textbf{分布迁移}
+\end{block}
+
+\column{0.25\textwidth}
+\begin{block}{KMNIST}
+\footnotesize\centering
+日文假名 10 类\\
+28$\times$28 灰度\\
+60K + 10K\\
+\textbf{域迁移}
+\end{block}
+
+\column{0.25\textwidth}
+\begin{block}{CIFAR-10}
+\footnotesize\centering
+自然图像 10 类\\
+32$\times$32 RGB\\
+50K + 10K\\
+\textbf{显著更难}
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 4.3 Fashion-MNIST 详解 ──
+\begin{frame}[shrink=20]{Fashion-MNIST：为什么比 MNIST 更难？}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{slide_assets/fashion_mnist_samples.png}
+\end{center}
+
+\column{0.52\textwidth}
+\begin{block}{与 MNIST 的关键区别}
+\footnotesize
+\begin{itemize}
+  \item MNIST：手写数字，线条简单，背景纯黑
+  \item Fashion-MNIST：真实商品图片，纹理复杂，灰度层次丰富
+  \item 同一类别内差异更大 —— 同样是"T恤"，款式、纹理千差万别
+  \item 类别间相似度更高 —— "衬衫" vs "T恤" vs "套头衫" 容易混淆
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{实验结果}
+\footnotesize
+\centering
+\begin{tabular}{l c c c}
+\toprule
+\textbf{模型} & \textbf{训练 Acc} & \textbf{测试 Acc} & \textbf{泛化差距} \\
+\midrule
+MLP & 90.84\% & 88.04\% & 2.80\% \\
+CNN & 92.34\% & 90.29\% & 2.05\% \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\vspace{0.1cm}
+\footnotesize
+\textbf{观察：} 同样的 MLP，MNIST 97.4\% $\to$ Fashion-MNIST 88.0\%，下降 $\sim$10\%。说明模型在 MNIST 上学到的模式\textbf{不具有通用性}。
+\end{columns}
+\end{frame}
+
+% ── 4.4 KMNIST 详解 ──
+\begin{frame}[shrink=20]{KMNIST：日文假名——域迁移的经典案例}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{slide_assets/kmnist_samples.png}
+\end{center}
+
+\column{0.52\textwidth}
+\begin{block}{域迁移 (Domain Shift)}
+\footnotesize
+KMNIST 与 MNIST 格式完全相同：28$\times$28 灰度，10 类，60K+10K。\\
+但内容是日文草书假名而非阿拉伯数字。
+
+\textbf{形式相同，分布不同——}这是检验模型是否学到"通用字符识别"还是"MNIST 专用特征"的绝佳测试。
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{实验结果}
+\footnotesize
+\centering
+\begin{tabular}{l c c c}
+\toprule
+\textbf{模型} & \textbf{训练 Acc} & \textbf{测试 Acc} & \textbf{泛化差距} \\
+\midrule
+CNN & 98.64\% & 92.26\% & \textbf{6.38\%} \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\vspace{0.1cm}
+\footnotesize
+\textbf{关键发现：} 泛化差距高达 6.38\%——远大于 MNIST（0.43\%）和 Fashion-MNIST（2.05\%）。\\
+训练 Acc 98.6\% 看起来很优秀，但测试 Acc 仅 92.3\%。\\
+\textbf{过拟合！} 模型在"背诵"假名的训练样本，而非学习可迁移的笔画特征。
+\end{columns}
+\end{frame}
+
+% ── 4.5 CIFAR-10 详解 ──
+\begin{frame}[shrink=20]{CIFAR-10：真实彩色自然图像——难度跃升}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{slide_assets/cifar10_samples.png}
+\end{center}
+
+\column{0.52\textwidth}
+\begin{block}{与 MNIST 系列的本质区别}
+\footnotesize
+\begin{itemize}
+  \item \textbf{彩色 RGB（3 通道）}：信息量是灰度图的 3 倍
+  \item \textbf{真实自然图像}：复杂背景、光照变化、姿态各异
+  \item \textbf{类间相似 + 类内差异大}：狗和猫可能很像，但不同品种的狗差异很大
+  \item \textbf{32$\times$32} 原始尺寸小，Resize 到 28$\times$28 更模糊
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{实验结果}
+\footnotesize
+\centering
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{模型} & \textbf{参数量} & \textbf{训练 Acc} & \textbf{测试 Acc} & \textbf{泛化差距} \\
+\midrule
+CNN & 41,098 & 72.52\% & 66.78\% & 5.74\% \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\vspace{0.1cm}
+\footnotesize
+\textbf{观察：} CNN 在 CIFAR-10 上仅 66.8\%——从 MNIST 的 98.9\% 骤降 32\%。\\
+\textbf{原因：} 模型容量不足、数据更复杂、Resize 丢失细节。需要更深的网络和数据增强。
+\end{columns}
+\end{frame}
+
+% ── 4.6 训练迁移：data.py 的扩展 ──
+\begin{frame}[fragile,shrink=28]{训练迁移（一）：\texttt{data.py} 如何支持四个数据集}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{\texttt{data.py} — 统一数据加载}
+\footnotesize
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+DATASET_INFO = {
+    "mnist":   {"in_channels": 1,
+                "input_dim": 784,
+                "num_classes": 10},
+    "fashion-mnist": {"in_channels": 1,
+                      "input_dim": 784,
+                      "num_classes": 10},
+    "kmnist":  {"in_channels": 1,
+                "input_dim": 784,
+                "num_classes": 10},
+    "cifar10": {"in_channels": 3,
+                "input_dim": 2352,
+                "num_classes": 10},
+}
+\end{lstlisting}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{\texttt{get\_loaders()} 关键逻辑}
+\footnotesize
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+def get_loaders(dataset_name, ...):
+    dataset_map = {
+        "mnist": datasets.MNIST,
+        "fashion-mnist":
+            datasets.FashionMNIST,
+        "kmnist": datasets.KMNIST,
+        "cifar10": datasets.CIFAR10,
+    }
+    if dataset_name == "cifar10":
+        transform = Compose([
+            Resize((28, 28)),
+            ToTensor(),
+        ])
+    else:
+        transform = ToTensor()
+    ...
+\end{lstlisting}
+\end{block}
+\end{columns}
+
+\vspace{0.1cm}
+
+\begin{exampleblock}{设计要点}
+\footnotesize
+\begin{itemize}
+  \item \texttt{DATASET\_INFO} 字典：集中管理各数据集的元信息（通道数、输入维度、类别数）
+  \item 模型根据 \texttt{DATASET\_INFO} 自动选择参数：MLP 的 input\_dim，CNN 的 in\_channels
+  \item CIFAR-10 额外 \texttt{Resize((28,28))}：统一尺寸到 28$\times$28，复用 CNN 结构
+  \item 新增数据集只需在 \texttt{DATASET\_INFO} 和 \texttt{dataset\_map} 添加一行
+\end{itemize}
+\end{exampleblock}
+\end{frame}
+
+% ── 4.7 train_classifier.py ──
+\begin{frame}[fragile,shrink=25]{训练迁移（二）：\texttt{train\_classifier.py} 统一训练入口}
+\small
+
+\begin{columns}[T]
+\column{0.52\textwidth}
+\begin{block}{命令行参数化一切}
+\footnotesize
+\begin{lstlisting}[basicstyle=\ttfamily\small, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+# 6 行命令跑完 6 个实验
+python train_classifier.py \
+  --dataset mnist --model mlp
+python train_classifier.py \
+  --dataset mnist --model cnn
+python train_classifier.py \
+  --dataset fashion-mnist --model mlp
+python train_classifier.py \
+  --dataset fashion-mnist --model cnn
+python train_classifier.py \
+  --dataset kmnist --model cnn
+python train_classifier.py \
+  --dataset cifar10 --model cnn
+\end{lstlisting}
+\end{block}
+
+\column{0.48\textwidth}
+\begin{block}{\texttt{build\_model()} 自动适配}
+\footnotesize
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+def build_model(model_type,
+                dataset_name):
+    info = DATASET_INFO[dataset_name]
+    if model_type == "mlp":
+        return MLPClassifier(
+            input_dim=
+              info["input_dim"],
+            num_classes=
+              info["num_classes"])
+    elif model_type == "cnn":
+        return CNNClassifier(
+            in_channels=
+              info["in_channels"],
+            num_classes=
+              info["num_classes"])
+\end{lstlisting}
+\end{block}
+\end{columns}
+
+\vspace{0.15cm}
+
+\begin{exampleblock}{训练迁移的关键思路}
+\footnotesize
+\textbf{不变的部分：} 训练循环 5 步（zero\_grad $\to$ forward $\to$ loss $\to$ backward $\to$ step）与数据集无关。\\
+\textbf{可变的部分：} 数据加载、模型参数（通道数/输入维度）——通过参数化切换，而非重写代码。\\
+\textbf{这就是软件工程中的"抽象"——将变化隔离在最少的地方。}
+\end{exampleblock}
+\end{frame}
+
+% ── 4.8 完整实验结果 ──
+\begin{frame}[shrink=22]{实验结果：六组实验的完整对比}
+\small
+
+\begin{center}
+\begin{tabular}{c c l r r r r}
+\toprule
+\textbf{\#} & \textbf{数据集} & \textbf{模型} & \textbf{参数量} & \textbf{Train Acc} & \textbf{Test Acc} & \textbf{泛化差距} \\
+\midrule
+1 & MNIST         & MLP & 109,386 & 99.31\% & 97.44\% & 1.87\% \\
+2 & MNIST         & CNN & 20,490  & 99.31\% & 98.88\% & 0.43\% \\
+3 & Fashion-MNIST & MLP & 109,386 & 90.84\% & 88.04\% & 2.80\% \\
+4 & Fashion-MNIST & CNN & 20,490  & 92.34\% & 90.29\% & 2.05\% \\
+5 & KMNIST        & CNN & 20,490  & 98.64\% & 92.26\% & \alert{6.38\%} \\
+6 & CIFAR-10      & CNN & 41,098  & 72.52\% & 66.78\% & 5.74\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.15cm}
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{关键发现}
+\footnotesize
+\begin{enumerate}
+  \item CNN 在所有数据集上均优于 MLP，且任务越难优势越大
+  \item 泛化差距随数据复杂度递增：MNIST(0.4--1.9\%) $\to$ Fashion(2--3\%) $\to$ CIFAR(5.7\%)
+  \item KMNIST 训练 Acc 98.6\% 但测试仅 92.3\%——\textbf{典型过拟合}
+  \item CIFAR-10 训练 Acc 才 72.5\%——\textbf{模型容量不足，欠拟合}
+\end{enumerate}
+\end{block}
+
+\column{0.52\textwidth}
+\begin{block}{三个层次的"困难"}
+\footnotesize
+\textbf{层次 1 — 数据分布变化：}\\
+Fashion-MNIST：同样 28$\times$28 灰度，但服饰纹理比手写数字复杂。\\
+\vspace{0.05cm}
+\textbf{层次 2 — 域迁移：}\\
+KMNIST：形式相同但内容完全不同（日文 vs 数字）。\\
+\vspace{0.05cm}
+\textbf{层次 3 — 本质复杂度跃升：}\\
+CIFAR-10：彩色自然图像，背景/光照/姿态大幅变化。
+\end{block}
+\end{columns}
+
+\vspace{0.1cm}
+\footnotesize
+\textbf{结论：MNIST 上的 99\% 严重高估了模型的真实图像识别能力。}一个好的基准测试需要包含不同难度的多个数据集。
+\end{frame}
+
+% ── 4.9 训练优化技巧 ──
+\begin{frame}[fragile,shrink=15]{如何进一步优化？——五项实用技巧}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{1. 学习率调度 (LR Schedule)}
+\footnotesize
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+scheduler = ReduceLROnPlateau(
+    optimizer, mode='max',
+    patience=2, factor=0.5)
+# 每个 epoch 后调用
+scheduler.step(test_acc)
+\end{lstlisting}
+验证准确率不再提升时自动降低学习率。\\
+\textbf{原理：} 训练后期用更小步长精细搜索。
+\end{block}
+
+\begin{block}{2. 早停 (Early Stopping)}
+\footnotesize
+当验证准确率连续 N 轮不提升时停止训练，防止过拟合。\\
+\textbf{实践：} patience=3，保存最佳模型。
+\end{block}
+
+\begin{block}{3. Dropout 正则化}
+\footnotesize
+训练时随机"丢弃"一部分神经元（如 25--50\%），迫使网络不过度依赖特定神经元。\\
+\textbf{代码：} \texttt{nn.Dropout(0.25)}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{4. 数据增强 (Data Augmentation)}
+\footnotesize
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+transform = transforms.Compose([
+    transforms.RandomRotation(10),
+    transforms.RandomAffine(0,
+        translate=(0.1, 0.1)),
+    transforms.ToTensor(),
+])
+\end{lstlisting}
+随机旋转/平移/缩放训练图片——\textbf{模型永远看到"新图片"}，强制学习不变性。\\
+\textbf{效果：} 对 Fashion-MNIST 和 CIFAR-10 提升最显著（+3--8\%）。
+\end{block}
+
+\begin{block}{5. 更深的网络}
+\footnotesize
+当前 CNN 仅 2 层卷积。对于 CIFAR-10：\\
+$\to$ 增加卷积层（3--4 层）\\
+$\to$ 增加卷积核数（16$\to$32$\to$64$\to$128）\\
+$\to$ 引入 BatchNorm 加速收敛
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 4.10 泛化差距：定义与直观 ──
+\begin{frame}[shrink=25]{泛化差距：模型学到的到底是"规律"还是"答案"？}
+\small
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{block}{泛化差距的正式定义}
+\footnotesize
+\textbf{泛化 (Generalization)}：模型在训练时未见过的数据上的表现能力。
+
+\vspace{0.05cm}
+\textbf{泛化差距 (Generalization Gap)}：
+\[
+\text{泛化差距} = \text{训练准确率} - \text{测试准确率}
+\]
+
+\vspace{-0.1cm}
+\begin{itemize}
+  \item \textbf{差距小}（$<$2\%）：模型学到的模式在新数据上也成立——泛化好
+  \item \textbf{差距大}（$>$5\%）：训练集上高分靠的是"背诵"，新题一做就露馅——过拟合
+\end{itemize}
+\end{block}
+
+\vspace{0.05cm}
+
+\begin{block}{直观类比：学生考试}
+\footnotesize
+\begin{center}
+\begin{tikzpicture}[node distance=0.4cm]
+  \node[draw, rounded corners, fill=lightblue!40, minimum width=6cm, minimum height=0.65cm, font=\footnotesize, align=center] (a)
+    {\textbf{场景 1：做过原题} — 考试题和作业题一模一样。\\
+     学生只需背答案就能考 99 分。这不代表他"真懂"。};
+  \node[draw, rounded corners, fill=redaccent!15, minimum width=6cm, minimum height=0.65cm, font=\footnotesize, align=center, below=of a] (b)
+    {\textbf{场景 2：新题测验} — 考试题换了数据，但知识点相同。\\
+     背答案的学生分数骤降；真正理解的学生依然高分。};
+\end{tikzpicture}
+\end{center}
+\begin{itemize}
+  \item 训练集 = 作业题（学生反复练习过）
+  \item 测试集 = 新题（从未见过，但考察同一知识点）
+  \item \textbf{泛化差距 = 作业成绩 $-$ 考试成绩}——差距大说明只会做原题
+\end{itemize}
+\end{block}
+
+\column{0.45\textwidth}
+\begin{block}{我们实验中的泛化差距}
+\footnotesize
+\centering
+\begin{tabular}{l c c c}
+\toprule
+\textbf{数据集} & \textbf{训练 Acc} & \textbf{测试 Acc} & \textbf{差距} \\
+\midrule
+MNIST MLP    & 99.3\% & 97.4\% & 1.9\% \\
+MNIST CNN    & 99.3\% & 98.9\% & 0.4\% \\
+Fashion MLP  & 90.8\% & 88.0\% & 2.8\% \\
+Fashion CNN  & 92.3\% & 90.3\% & 2.1\% \\
+KMNIST CNN   & 98.6\% & 92.3\% & \alert{6.4\%} \\
+CIFAR-10 CNN & 72.5\% & 66.8\% & 5.7\% \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\vspace{0.05cm}
+
+\begin{exampleblock}{关键观察}
+\footnotesize
+\begin{itemize}
+  \item 泛化差距随\textbf{数据复杂度}递增而增大
+  \item MNIST 差距 0.4--1.9\% $\to$ 模型确实学到了
+  \item KMNIST 差距 6.4\% $\to$ \textbf{严重过拟合}：训练 Acc 很高但泛化很差
+  \item CIFAR-10 训练 Acc 才 72.5\% $\to$ \textbf{欠拟合}：连训练集都没学好
+\end{itemize}
+\end{exampleblock}
+\end{columns}
+\end{frame}
+
+% ── 4.11 三种诊断与 MNIST 的虚假安全感 ──
+\begin{frame}[shrink=20]{三种诊断：从泛化差距判断模型处于什么状态}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{泛化差距的三种诊断}
+\footnotesize
+\centering
+\begin{tabular}{c c c l}
+\toprule
+训练 Acc & 测试 Acc & 泛化差距 & 诊断 \\
+\midrule
+高 & 高 & 小 $(<2\%)$ & \textbf{泛化良好} $\checkmark$ \\
+高 & 低 & 大 $(>5\%)$ & \textbf{过拟合} $\leftarrow$ 最常见 \\
+低 & 低 & 小 & \textbf{欠拟合} $\leftarrow$ 模型太弱 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.1cm}
+\textbf{诊断逻辑（按顺序）：}
+\begin{enumerate}
+  \item \textbf{先看训练准确率：}够高吗？不够 $\to$ 欠拟合，先解决容量/优化问题
+  \item \textbf{再看泛化差距：}差距大吗？大 $\to$ 过拟合，需要正则化
+  \item 训练高 + 差距小 = \textbf{成功}，可以尝试更难的测试
+\end{enumerate}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{alertblock}{核心认知}
+\footnotesize
+\textbf{训练准确率不能代表模型能力。} 泛化差距才是衡量模型价值的真正指标。\\
+一个好的机器学习工程师关注测试集表现和泛化差距，而非只看训练集数字。
+\end{alertblock}
+
+\column{0.5\textwidth}
+\begin{block}{为什么 MNIST 的 99\% 是"虚假的安全感"}
+\footnotesize
+\begin{itemize}
+  \item MNIST 背景纯黑，数字居中，类间差异大——\textbf{数据本身太简单}
+  \item 模型只需检测"哪里有白色像素"就能做对大部分题
+  \item 同样的 MLP：MNIST 97.4\% $\to$ Fashion-MNIST 88.0\%（骤降 9.4\%）
+  \item \textbf{模型从未真正"理解"图像，} 只学会了 MNIST 特定的像素分布
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{exampleblock}{如何正确评估模型能力？}
+\footnotesize
+\begin{itemize}
+  \item 永远在模型\textbf{从未见过}的数据上报告最终成绩
+  \item 使用\textbf{多个不同分布}的测试集（MNIST + Fashion + KMNIST + CIFAR）
+  \item 泛化差距 + 跨数据集表现 = 模型能力的完整画像
+  \item MNIST 只能作为入门的"Hello World"，不能作为能力的唯一证明
+\end{itemize}
+\end{exampleblock}
+\end{columns}
+\end{frame}
+
+% ── 4.12 过拟合与欠拟合 ── (编号接续 4.10/4.11)
+\begin{frame}[shrink=20]{过拟合 vs 欠拟合：两个方向的失败模式}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{过拟合 (Overfitting)}
+\footnotesize
+\textbf{表现：} 训练准确率 $\gg$ 测试准确率（泛化差距大）
+
+\textbf{原因：}
+\begin{itemize}
+  \item 模型容量过大，记住了训练样本的噪声
+  \item 训练数据不足或缺乏多样性
+  \item 训练轮数过多
+\end{itemize}
+
+\textbf{我们的案例：}
+\begin{itemize}
+  \item KMNIST CNN: Train 98.6\% vs Test 92.3\%（差距 6.4\%）
+  \item 模型在"背诵"假名字形而非学习笔画
+\end{itemize}
+
+\textbf{解决方案：}
+\begin{enumerate}
+  \item 数据增强（增加训练样本多样性）
+  \item Dropout 正则化
+  \item 早停（Early Stopping）
+  \item 减少模型参数
+\end{enumerate}
+\end{block}
+
+\column{0.52\textwidth}
+\begin{block}{欠拟合 (Underfitting)}
+\footnotesize
+\textbf{表现：} 训练准确率本身就很低
+
+\textbf{原因：}
+\begin{itemize}
+  \item 模型容量不足，无法捕捉数据中的模式
+  \item 优化不充分（学习率太低、训练轮数不够）
+  \item 特征表示不够（如用 MLP 处理 CIFAR-10）
+\end{itemize}
+
+\textbf{我们的案例：}
+\begin{itemize}
+  \item CIFAR-10 CNN: Train 72.5\%（训练本身就不高）
+  \item 2 层卷积 + 28$\times$28 Resize 不足以处理彩色自然图像
+\end{itemize}
+
+\textbf{解决方案：}
+\begin{enumerate}
+  \item 增加模型容量（更多层、更宽）
+  \item 使用更强的模型架构
+  \item 减小 Resize 的比例（或直接用 32$\times$32）
+  \item 调整学习率
+\end{enumerate}
+\end{block}
+\end{columns}
+
+\vspace{0.1cm}
+\footnotesize
+\begin{center}
+\textbf{关键洞察：} 过拟合和欠拟合需要相反的解决方案。诊断的第一步永远是：\textbf{先看训练准确率本身是否够高。}
+\end{center}
+\end{frame}
+
+% ── 4.13 调优方法论 ──
+\begin{frame}[shrink=20]{调优方法论：系统性地提升模型表现}
+\small
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{block}{调试优先级（从高到低）}
+\footnotesize
+\begin{enumerate}
+  \item \textbf{先确认代码正确} —— 数据加载、标签对齐、模型定义
+  \item \textbf{过拟合一个小批次} —— 取 1--2 个 batch，训练到 loss $\approx$ 0，验证模型能"记住"数据
+  \item \textbf{选一个合理的 baseline} —— 用已知能工作的配置（如 lr=1e-3, Adam）
+  \item \textbf{调整学习率} —— 最重要的超参数。过大不收敛，过小收敛慢
+  \item \textbf{增加训练轮数} —— 如果 loss 仍在下降，继续训练
+  \item \textbf{正则化} —— 如果训练准确率远高于测试，加 Dropout / 数据增强
+  \item \textbf{调模型结构} —— 加层、加宽、换架构
+  \item \textbf{调其他超参数} —— batch\_size, optimizer（Adam $\to$ SGD+Momentum）
+\end{enumerate}
+\end{block}
+
+\column{0.45\textwidth}
+\begin{block}{学习率：最重要的超参数}
+\footnotesize
+\begin{center}
+\begin{tikzpicture}[scale=0.7]
+  \draw[->] (0,0) -- (6,0) node[right] {epoch};
+  \draw[->] (0,0) -- (0,3.5) node[above] {loss};
+
+  % too high: oscillates
+  \draw[redaccent, thick, ->] (0,2.5) -- (2,2.8);
+  \draw[redaccent, thick, ->] (2,2.8) -- (4,0.5);
+  \draw[redaccent, thick, ->] (4,0.5) -- (5,3.0);
+  \node[redaccent, font=\footnotesize] at (5.5,3.0) {太大};
+
+  % too low: slow
+  \draw[gray, thick] (0,2.0) -- (5,1.5);
+  \node[gray, font=\footnotesize] at (5.5,1.5) {太小};
+
+  % just right
+  \draw[mainblue, ultra thick] (0,2.2) .. controls (2,1.8) and (4,0.6) .. (5.5,0.3);
+  \node[mainblue, font=\footnotesize] at (5.5,0.0) {合适};
+\end{tikzpicture}
+\end{center}
+
+\textbf{经验法则：}
+\begin{itemize}
+  \item Adam: 从 1e-3 开始，尝试 5e-4, 2e-3
+  \item SGD: 从 1e-2 开始，尝试 1e-3, 1e-1
+  \item 训练 loss 震荡 $\to$ 减小 lr
+  \item 训练 loss 下降极慢 $\to$ 增大 lr
+\end{itemize}
+\end{block}
+\end{columns}
+
+\vspace{0.1cm}
+
+\begin{exampleblock}{黄金法则}
+\footnotesize
+\textbf{一次只改一个变量。} 同时改学习率、模型结构和正则化，你永远不知道哪个改动起了作用。\\
+\textbf{记录每次实验结果。} 这正是 \texttt{experiments.md} 的作用——参数和结果是调优的"实验日志"。
+\end{exampleblock}
+\end{frame}
+
+% ── 4.14 阶段 4 总结 ──
+\begin{frame}[shrink=22]{阶段 4 总结：从 MNIST 到泛化的全景认知}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{五个核心收获}
+\footnotesize
+\begin{enumerate}
+  \item \textbf{同一模型，不同表现}\\
+  MLP: MNIST 97\% $\to$ Fashion-MNIST 88\%\\
+  模型学到的不是通用"视觉智能"
+
+  \item \textbf{CNN 的归纳偏置始终有效}\\
+  在所有数据集上 CNN $>$ MLP，\\
+  任务越难，CNN 优势越大
+
+  \item \textbf{泛化差距随数据复杂度递增}\\
+  MNIST(1.9\%) $\to$ Fashion(2.8\%) $\to$ CIFAR(5.7\%)
+
+  \item \textbf{过拟合与欠拟合需要区分}\\
+  训练 Acc 高 + 测试 Acc 低 = 过拟合\\
+  训练 Acc 低 = 欠拟合 $\to$ 不同的解决方案
+
+  \item \textbf{调优需要方法论}\\
+  一次一个变量，先 baseline，再正则化
+\end{enumerate}
+\end{block}
+
+\column{0.52\textwidth}
+\begin{block}{训练迁移的技术总结}
+\footnotesize
+\textbf{不变的：}
+\begin{itemize}
+  \item 训练循环（5 步流程）
+  \item 损失函数（CrossEntropyLoss）
+  \item 优化器（Adam）
+  \item 评估方法（accuracy）
+\end{itemize}
+
+\textbf{可变的：}
+\begin{itemize}
+  \item 数据加载路径（\texttt{DATASET\_INFO}）
+  \item 模型输入参数（in\_channels / input\_dim）
+  \item 预处理（Resize for CIFAR-10）
+  \item 超参数（lr, epochs, batch\_size）
+\end{itemize}
+
+\textbf{软件工程视角：}\\
+通过参数化隔离变化，\\
+用 \texttt{--dataset} 和 \texttt{--model} 切换。
+\end{block}
+\end{columns}
+
+\vspace{0.1cm}
+
+\begin{block}{下一步：阶段 5 — 无监督学习}
+\footnotesize
+去掉所有标签，模型还能学到数据结构吗？PCA $\to$ K-means $\to$ AE $\to$ DAE $\to$ VAE。
+\end{block}
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════════
+%  阶段 5：无监督学习
+% ═══════════════════════════════════════════════════════════════
+
+% ── 5.1 监督 vs 无监督 ──
+\begin{frame}[shrink=22]{阶段 5：无监督学习——没有标签，模型还能学到什么？}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{监督学习（阶段 1--4）}
+\footnotesize
+\begin{center}
+\begin{tikzpicture}[node distance=0.3cm]
+  \node[draw, rounded corners, fill=lightblue!40, minimum width=4cm, minimum height=0.5cm, font=\footnotesize, align=center] (a) {输入 $x$ + 标签 $y$};
+  \node[draw, rounded corners, fill=lightblue!50, minimum width=4cm, minimum height=0.5cm, font=\footnotesize, align=center, below=of a] (b) {模型 $f_\theta(x)$};
+  \node[draw, rounded corners, fill=lightblue!60, minimum width=4cm, minimum height=0.5cm, font=\footnotesize, align=center, below=of b] (c) {Loss($f_\theta(x)$, $y$)};
+  \draw[->, thick, mainblue] (a) -- (b);
+  \draw[->, thick, mainblue] (b) -- (c);
+\end{tikzpicture}
+\end{center}
+\textbf{目标：} 学习从 $x$ 到 $y$ 的映射。\\
+\textbf{需要：} 大量人工标注的标签。\\
+\textbf{例子：} MNIST 分类（每张图标注了数字）。
+\end{block}
+
+\column{0.52\textwidth}
+\begin{block}{无监督学习（阶段 5）}
+\footnotesize
+\begin{center}
+\begin{tikzpicture}[node distance=0.3cm]
+  \node[draw, rounded corners, fill=greenaccent!20, minimum width=4cm, minimum height=0.5cm, font=\footnotesize, align=center] (a) {只有输入 $x$（无标签）};
+  \node[draw, rounded corners, fill=greenaccent!30, minimum width=4cm, minimum height=0.5cm, font=\footnotesize, align=center, below=of a] (b) {模型自己定义目标};
+  \node[draw, rounded corners, fill=greenaccent!40, minimum width=4cm, minimum height=0.5cm, font=\footnotesize, align=center, below=of b] (c) {Loss（自监督信号）};
+  \draw[->, thick, greenaccent!70!black] (a) -- (b);
+  \draw[->, thick, greenaccent!70!black] (b) -- (c);
+\end{tikzpicture}
+\end{center}
+\textbf{目标：} 发现数据内在结构、分布、模式。\\
+\textbf{不需要：} 人工标签——模型自己找"答案"。\\
+\textbf{例子：} 将 Fashion-MNIST 图片压缩到 32 维，再还原。
+\end{block}
+\end{columns}
+
+\vspace{0.15cm}
+
+\begin{block}{阶段 5 五种方法概览}
+\footnotesize
+\centering
+\begin{tabular}{l c c l}
+\toprule
+\textbf{方法} & \textbf{类型} & \textbf{学到的表示} & \textbf{一句话原理} \\
+\midrule
+PCA       & 线性降维   & 最大方差方向   & 旋转变换找到数据"最散开"的方向 \\
+K-means   & 聚类       & 簇中心         & 将数据分成 K 组，最小化组内距离 \\
+AE        & 非线性降维 & 压缩编码       & 神经网络把图压到 32 维再还原 \\
+Denoising AE & 鲁棒表征 & 去噪编码       & 从加了噪声的图里还原干净图 \\
+VAE       & 生成模型   & 概率分布       & 学习 latent 的概率分布，可以采样生成新图 \\
+\bottomrule
+\end{tabular}
+\end{block}
+\end{frame}
+
+% ── 5.2 PCA 原理 A ──
+\begin{frame}[shrink=18]{PCA（一）：核心思想与数学推导}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{PCA 的直觉}
+\footnotesize
+\textbf{PCA (Principal Component Analysis)}——主成分分析。
+
+将 784 维像素视为 784 维空间中的点云。核心问题：\textbf{哪个方向上数据"散得最开"？}
+
+\begin{itemize}
+  \item 方差越大的方向 = 包含信息越多
+  \item PC1 = 方差最大的方向，PC2 = 与 PC1 正交且方差次大的方向
+  \item 每个主成分 = 原始特征的线性组合
+  \item 降维 = 旋转坐标系，使新轴对齐数据方差方向
+\end{itemize}
+
+\textbf{优化视角：} 寻找 $k$ 维线性子空间，最大化投影方差 $\leftrightarrow$ 最小化重构误差 $\|X - Z V_k^T\|^2$。
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{数学推导}
+\footnotesize
+\textbf{输入：} $X \in \mathbb{R}^{N \times d}$（已中心化）
+
+\textbf{步骤：}
+\begin{enumerate}
+  \item 协方差矩阵：$\Sigma = \frac{1}{N}X^T X$（$d \times d$ 对称）
+  \item 特征分解：$\Sigma = V \Lambda V^T$
+  \item $\lambda_1 \ge \dots \ge \lambda_d$ = 各方差的方差
+  \item $v_1, \dots, v_d$ = 主成分方向（互相正交）
+  \item 取前 $k$ 个：$Z = X V_k$（$N \times k$）
+\end{enumerate}
+
+\textbf{本质：} 协方差矩阵的\textbf{特征分解}。特征值 = 该方向的方差，特征向量 = 该方向。
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{协方差矩阵 $\Sigma$ 的含义}
+\footnotesize
+$\Sigma_{ij}$ = 像素 $i$ 和 $j$ 的协方差。Fashion-MNIST 中 $\Sigma$ 是 $784\times784$：
+\begin{itemize}
+  \item 对角线：单个像素的方差。非对角线：两个像素的联动模式
+  \item $v_1$ 是 784 维向量，reshape 回 $28\times28$——\textbf{像一张特征图}
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 5.2b PCA 原理 B ──
+% ── 5.2b PCA 原理 B ──
+\begin{frame}[shrink=10]{PCA（二）：线性性质、优点与局限}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{PCA 为什么是线性的？}
+\footnotesize
+每个主成分 = 原始特征的\textbf{线性组合}：
+\[
+z_1 = v_{1,1}x_1 + v_{1,2}x_2 + \dots + v_{1,784}x_{784}
+\]
+
+\textbf{几何理解：} 在 784D 空间中旋转坐标系。新轴 = 主成分方向。降维 = 丢弃方差最小的轴。
+
+\textbf{类比：} 拍摄一个倾斜摆放的物体，旋转相机使其"最宽的面"正对镜头——那就是 PC1。
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{PCA 的优点}
+\footnotesize
+\begin{itemize}
+  \item \textbf{计算快：} 只需一次特征分解（$O(d^3)$，$d=784$ 时很快）
+  \item \textbf{可解释：} 每个主成分可 reshape 为 $28\times28$ 图片——看到"PCA 学到的特征"
+  \item \textbf{确定性强：} 给定数据，PCA 结果唯一（不像神经网络依赖初始化和优化）
+  \item \textbf{无超参数：} 只需指定目标维度 $k$
+\end{itemize}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{PCA 的局限}
+\footnotesize
+\begin{itemize}
+  \item \textbf{仅线性：} 数据在曲面上 $\to$ PCA 沿切线方向（丢失弯曲结构）
+  \item \textbf{全局性：} 假设数据有一个统一的低维子空间——不适用于数据分片在不同子空间的情况
+  \item \textbf{方差 $\neq$ 信息：} 高方差方向可能对应噪声而非语义信息
+  \item \textbf{需要中心化：} 数据必须先减去均值，否则第一个主成分可能只捕获"中心位置"
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{exampleblock}{为什么 PCA 局限在 Fashion-MNIST 上体现不明显？}
+\footnotesize
+Fashion-MNIST 的变异主要由线性结构主导（前 32 维占 83\%）。这解释了为什么 AE 只比 PCA 高 1.2\%——非线性优势在更复杂的数据（CIFAR-10、自然图像）上才会充分展现。
+\end{exampleblock}
+\end{columns}
+\end{frame}
+
+% ── 5.3 PCA 结果 A ──
+\begin{frame}[shrink=10]{PCA（三）：2D 降维可视化}
+\small
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/pca_fashion_2d.png}
+\vspace{-0.1cm}
+{\footnotesize 10 类服饰在 PC1-PC2 平面上的分布（真标签仅用于着色评估，训练不可见）}
+\end{center}
+
+\column{0.45\textwidth}
+\begin{block}{2D 散点图解读}
+\footnotesize
+\begin{itemize}
+  \item \textbf{仅保留 46.81\% 方差}——大量信息丢失
+  \item T-shirt/Coat/Pullover/Shirt 四类\textbf{高度重叠}
+  \item Sandal/Sneaker/Ankle boot 三类鞋相对聚集
+  \item 2D 不足以区分 10 类——PC1-PC2 主要区分"鞋 vs 衣物"
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{什么是"真标签仅用于着色"？}
+\footnotesize
+PCA 训练时\textbf{完全不知道标签}。着色只是我们评估时附加的——让我们看到各类在 PCA 空间中的分布。颜色聚集 = PCA 无意中学到了有意义的类别结构。
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 5.3b PCA 结果 B ──
+\begin{frame}[shrink=18]{PCA（四）：累计方差与维度选择}
+\small
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{center}
+\includegraphics[width=0.95\textwidth]{results/pca_variance.png}
+\end{center}
+
+\column{0.45\textwidth}
+\begin{block}{累计方差曲线}
+\footnotesize
+\centering
+\begin{tabular}{c c}
+\toprule
+\textbf{维度} & \textbf{累计方差} \\
+\midrule
+1D  & $\sim$30\% \\
+2D  & 46.81\% \\
+10D & $\sim$67\% \\
+32D & 82.62\% \\
+100D & $\sim$95\% \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.1cm}
+\textbf{关键发现：}
+\begin{itemize}
+  \item 32 维 = 83\%：作为 AE latent\_dim 参考
+  \item 边际递减：前 $\sim$40 维贡献最大
+  \item \textbf{784 维中 80\% 方差集中于 30--40 维}——数据有强低维结构
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{exampleblock}{如何选择 $k$？}
+\footnotesize
+常见策略：选累计方差 $> 80\%$ 或 $> 90\%$ 的最小 $k$；或找"肘部"——方差曲线变平缓的位置。Fashion-MNIST 选 32 是合理的。
+\end{exampleblock}
+\end{columns}
+\end{frame}
+
+% ── 5.4 K-means 原理 ──
+\begin{frame}[shrink=15]{K-means（一）：最经典的聚类算法——原理与局限}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{K-means 要解决什么问题？}
+\footnotesize
+\textbf{给定：} $N$ 个数据点 $x_1, \dots, x_N \in \mathbb{R}^d$，指定分成 $K$ 组。
+
+\textbf{目标：} 找到 $K$ 个聚类中心 $\mu_1, \dots, \mu_K$ 和分配方案，最小化\textbf{组内平方和 (WCSS)}：
+\[
+J = \sum_{k=1}^K \sum_{x \in C_k} \|x - \mu_k\|^2
+\]
+
+\textbf{LLoyd 算法（迭代求解）：}
+\begin{enumerate}
+  \item \textbf{初始化：} 选 $K$ 个初始中心（K-means++ 策略：随机选第一个，后续选离已有中心远的点）
+  \item \textbf{分配步 (E-step)：} 每个点分配给最近的中心
+  \item \textbf{更新步 (M-step)：} 每个中心移到所属点的均值
+  \item 重复 2--3，直到中心不再移动（或达最大迭代次数）
+\end{enumerate}
+
+\textbf{关键性质：}
+\begin{itemize}
+  \item 每步都使 $J$ 减小或不变——保证收敛
+  \item 但收敛到\textbf{局部最优}（依赖初始值）——所以多次随机初始化取最佳
+\end{itemize}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{K-means 的局限}
+\footnotesize
+\textbf{1. 必须预设 $K$：} 需要事先知道聚类数（我们用 10，因为已知 Fashion-MNIST 有 10 类——但在真实无监督场景中不知道）。
+
+\textbf{2. 假设球形簇：} K-means 用欧氏距离，隐含假设每个簇是球形、等大小。如果数据实际呈细长形或不规则形状，K-means 表现差。
+
+\textbf{3. 对离群点敏感：} 一个极端值可以大幅拉偏聚类中心。
+
+\textbf{4. 线性决策边界：} K-means 的簇边界是 Voronoi 图——每个簇由超平面分隔。无法处理嵌套或环形结构。
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{为什么在像素空间和 PCA 空间都做？}
+\footnotesize
+\begin{itemize}
+  \item \textbf{原始像素 (784D)：} 维度高，欧氏距离受"维数灾难"影响——高维空间中的距离趋向均匀化
+  \item \textbf{PCA 特征 (32D)：} 降噪去冗，但丢失了 PCA 未能捕捉的（非线性）区分信息
+  \item \textbf{两者 NMI 接近（0.51 vs 0.49）：} 说明 K-means 的性能瓶颈不在维度，而在其线性/球形假设
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 5.5 K-means 结果 A ──
+\begin{frame}[shrink=22]{K-means（二）：聚类评估指标——NMI 与 ARI}
+\small
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{block}{无监督聚类的评估难题}
+\footnotesize
+\textbf{核心矛盾：} 无监督学习没有标签——如何判断聚类好坏？
+
+两种评估策略：
+\begin{enumerate}
+  \item \textbf{内部指标（无需标签）：} 簇内紧密度、簇间分离度（Silhouette Score、Davies-Bouldin Index）
+  \item \textbf{外部指标（需真标签）：} 与已知标签的一致性——用于验证、不用于训练
+\end{enumerate}
+
+这里我们用外部指标来\textbf{量化评估}，但真标签\textbf{从未参与聚类过程}。
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{NMI — 归一化互信息}
+\footnotesize
+\[
+\text{NMI}(U, V) = \frac{I(U; V)}{\sqrt{H(U) \cdot H(V)}}, \quad I(U;V) = \sum_{u,v} P(u,v) \log\frac{P(u,v)}{P(u)P(v)}
+\]
+
+\begin{itemize}
+  \item $I(U;V)$ = 互信息：知道聚类结果 $U$ 后，对真实标签 $V$ 的不确定性减少多少
+  \item $H(U), H(V)$ = 熵：各自的不确定性
+  \item 除以 $\sqrt{H(U)H(V)}$ 归一化到 $[0,1]$
+  \item \textbf{直觉：} NMI=1 表示聚类和真标签完全一致；NMI$\approx$0 表示几乎独立
+\end{itemize}
+\end{block}
+
+\column{0.45\textwidth}
+\begin{block}{ARI — 调整兰德指数}
+\footnotesize
+\textbf{兰德指数 (RI)：} 统计所有样本对中，聚类和真标签"意见一致"的比例。
+
+\textbf{问题：} 随机聚类也能得到不错的 RI（如两类各 50\%，随机猜就有 50\% 一致）。
+
+\textbf{ARI 修正了这一点：}
+\[
+\text{ARI} = \frac{\text{RI} - E[\text{RI}]}{\max(\text{RI}) - E[\text{RI}]}
+\]
+\begin{itemize}
+  \item 减去随机期望值，除以最大可能提升
+  \item $<0$ = 比随机还差，$0$ = 随机水平，$1$ = 完美
+  \item \textbf{ARI 是更诚实的指标}——不会被类别不均衡"欺骗"
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{混淆矩阵读法指南}
+\footnotesize
+每行 = 真实类别，每列 = 聚类簇。\\
+格值 = 该类被分到该簇的\textbf{比例}（行归一化）。\\
+\textbf{理想：} 对角线全 1.0。\textbf{混乱：} 一类散到多簇。
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 5.5b K-means 结果 B ──
+\begin{frame}[shrink=10]{K-means（三）：像素空间聚类——混淆矩阵解读}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/kmeans_confusion_pixel.png}
+\vspace{-0.15cm}
+{\footnotesize 原始像素 784D：NMI=0.51, ARI=0.35}
+\end{center}
+
+\column{0.52\textwidth}
+\begin{block}{混淆矩阵读法}
+\footnotesize
+行 = 真实类别，列 = 聚类簇。格值 = 该类分配到该簇的比例（行归一化）。
+\begin{itemize}
+  \item \textbf{理想：} 每行恰好一个格子为 1.0（对角线上）
+  \item \textbf{混乱：} 一行散到多个簇——聚类无法统一该类的内部变异
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{像素空间观察}
+\footnotesize
+\begin{itemize}
+  \item \textbf{T-shirt (0)、Coat (4)、Shirt (6)} 三类彼此严重混淆——像素分布天然相似
+  \item \textbf{Trouser (1)：} 聚类最纯——裤子特征鲜明
+  \item \textbf{Bag (8)：} 也较独立——形状独特
+  \item 鞋类（Sandal/Sneaker/Ankle boot）之间有一定窜扰
+\end{itemize}
+
+NMI=0.51 意味着聚类与真标签共享约一半的信息。作为纯无监督方法，这个结果是合理的——但远非完美。
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 5.5c K-means 结果 C ──
+\begin{frame}[shrink=10]{K-means（四）：PCA 特征聚类 + 对比结论}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/kmeans_confusion_pca.png}
+\vspace{-0.15cm}
+{\footnotesize PCA 32D 特征：NMI=0.49, ARI=0.34}
+\end{center}
+
+\column{0.52\textwidth}
+\begin{block}{PCA 特征聚类}
+\footnotesize
+\begin{itemize}
+  \item NMI 仅比像素空间低 0.02——\textbf{差异极小}
+  \item PCA 去噪后聚类\textbf{没有显著改善}
+  \item 说明瓶颈在 K-means 本身的假设，不在特征空间的噪声
+\end{itemize}
+\end{block}
+
+\vspace{0.15cm}
+
+\begin{alertblock}{像素 vs PCA：为什么差异这么小？}
+\footnotesize
+K-means 用欧氏距离 + 球形簇假设 + 线性决策边界（Voronoi 图）。无论输入是 784D 像素还是 32D PCA 特征，这些\textbf{结构性限制}不变。PCA 降维减少了噪声但没改变簇的形状——K-means 依然只能找到球形簇。
+
+\textbf{T-shirt/Shirt/Pullover/Coat} 在像素空间中本质相似，任何线性方法都难以分离。需要 Autoencoder 的非线性流形学习。
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+% ── 5.6 Autoencoder A ──
+\begin{frame}[shrink=18]{Autoencoder（一）：结构、原理与 PCA 对比}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{AE = Encoder + Bottleneck + Decoder}
+\footnotesize
+\textbf{Encoder：} $784 \to 256 \to 64 \to 32$\\
+\textbf{Decoder：} $32 \to 64 \to 256 \to 784$\\
+\textbf{Loss：} MSE(原图, 重构图)
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.2cm, scale=0.82]
+  \node[draw, rounded corners, fill=lightblue!30, minimum width=1.4cm, minimum height=0.5cm, font=\tiny, align=center] (in) {输入\\784D};
+  \node[draw, rounded corners, fill=lightblue!50, minimum width=1.1cm, minimum height=0.5cm, font=\tiny, align=center, right=of in] (enc) {Encoder};
+  \node[draw, rounded corners, fill=redaccent!20, minimum width=0.8cm, minimum height=0.5cm, font=\tiny, align=center, right=of enc] (z) {$z$\\32D};
+  \node[draw, rounded corners, fill=greenaccent!30, minimum width=1.1cm, minimum height=0.5cm, font=\tiny, align=center, right=of z] (dec) {Decoder};
+  \node[draw, rounded corners, fill=greenaccent!20, minimum width=1.4cm, minimum height=0.5cm, font=\tiny, align=center, right=of dec] (out) {输出\\784D};
+  \draw[->, thick] (in) -- (enc);
+  \draw[->, thick] (enc) -- (z);
+  \draw[->, thick] (z) -- (dec);
+  \draw[->, thick] (dec) -- (out);
+\end{tikzpicture}
+\end{center}
+\vspace{-0.1cm}
+
+\textbf{核心思想：} bottleneck（32 维）是信息瓶颈——网络\textbf{被迫}学习最有效的压缩。训练目标只是"还原输入本身"——\textbf{不需要任何标签}。
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{与 PCA 的本质区别}
+\footnotesize
+\begin{itemize}
+  \item \textbf{PCA：} $z = Wx$（线性）——只能旋转坐标系，找\textbf{平面}子空间
+  \item \textbf{AE：} $z = f_\theta(x)$（非线性）——ReLU 激活让它学\textbf{曲面}流形
+  \item Linear Probe：AE 82.25\% vs PCA 81.06\%（+1.2\%）
+  \item 增益有限 $\to$ Fashion-MNIST 以线性变异为主。复杂数据上 AE 优势更显著
+\end{itemize}
+\end{block}
+
+\column{0.52\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/ae_reconstruct.png}
+\vspace{-0.15cm}
+{\footnotesize 上排：原图 \quad 下排：AE 重构（latent\_dim=32, 30 epochs）}
+\end{center}
+
+\vspace{0.2cm}
+
+\begin{exampleblock}{重构质量}
+\footnotesize
+MSE=0.0091 $\to$ 平均每像素误差 $\approx 0.095$（[0,1] 范围）。\\
+32 维 bottleneck 保留了形状和纹理——压缩率达 784/32 $\approx$ 24.5 倍。
+\end{exampleblock}
+\end{columns}
+\end{frame}
+
+% ── 5.6b Autoencoder B ──
+\begin{frame}[fragile,shrink=10]{Autoencoder（二）：训练代码与瓶颈权衡}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{无监督训练循环}
+\footnotesize
+与监督学习完全相同的 5 步——唯一区别：\textbf{标签被丢弃}。
+
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+for images, _ in train_loader:  # 忽略标签
+    optimizer.zero_grad()
+    recon, z = model(images)
+    loss = F.mse_loss(recon,
+             images.flatten(1))
+    loss.backward()
+    optimizer.step()
+\end{lstlisting}
+\vspace{-0.1cm}
+\texttt{for images, \_ in loader}——标签被 \texttt{\_} 丢弃。图片自身既是输入也是监督信号。
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{Bottleneck 大小的权衡}
+\footnotesize
+\centering
+\begin{tabular}{c c c}
+\toprule
+\textbf{latent\_dim} & \textbf{重构质量} & \textbf{泛化能力} \\
+\midrule
+2  & 差 & 好（强正则化） \\
+32 & 较好（MSE 0.009） & 较好 \\
+128 & 很好 & 可能恒等映射 \\
+784 & 完美 & 无意义（无压缩） \\
+\bottomrule
+\end{tabular}
+\vspace{0.1cm}
+
+\textbf{直觉：} bottleneck 太窄 $\to$ 信息不够。太宽 $\to$ 网络偷懒学"恒等映射"（直接复制输入），latent 毫无意义。32 维在重构和压缩之间取得平衡。
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{exampleblock}{无监督 Loss 的本质}
+\footnotesize
+监督学习 loss = criterion(pred, label) —— 需要人工标注。\\
+无监督 AE loss = MSE(recon, input) —— \textbf{输入本身就是"标签"}。\\
+这种"自监督信号"是无监督学习的核心设计模式。
+\end{exampleblock}
+\end{columns}
+\end{frame}
+
+% ── 5.6c Autoencoder B2 ──
+\begin{frame}[shrink=10]{Autoencoder（二-b）：Latent 空间可视化}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/latent_space_ae.png}
+\vspace{-0.15cm}
+{\footnotesize AE 32D latent space（PCA 降到 2D 可视化）}
+\end{center}
+
+\column{0.52\textwidth}
+\begin{block}{Latent 空间结构分析}
+\footnotesize
+\begin{itemize}
+  \item 同类样本自然趋向聚集——\textbf{完全无需标签引导}
+  \item 类间边界不如监督学习清晰——AE 从未被要求"区分"类别
+  \item 鞋类（Sandal/Sneaker/Ankle boot）形成左下簇
+  \item 衣物类（T-shirt/Coat/Shirt）形成右上簇
+  \item \textbf{核心证明：} 单纯的重构任务迫使网络学到了有意义的语义结构
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{Latent 空间质量的意义}
+\footnotesize
+好的 latent 空间应当：\textbf{连续}（相近图 = 相近 latent）、\textbf{平滑}（插值有意义）、\textbf{可解释}（维度对应语义属性）。
+
+AE 的 latent 在这三方面都优于 PCA 的线性子空间——因为非线性流形可以弯曲来贴合数据的真实结构。
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 5.6c Autoencoder C ──
+\begin{frame}[shrink=10]{Autoencoder（三）：AE 小结与下一步}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{AE 学到了什么？}
+\footnotesize
+\begin{itemize}
+  \item \textbf{压缩表示：} 784 维 $\to$ 32 维（24.5 倍压缩），MSE 仅 0.009
+  \item \textbf{语义结构：} latent 空间中同类聚集——重构目标无意中引导了语义组织
+  \item \textbf{非线性流形：} 比 PCA 的线性平面更灵活——虽然 Fashion-MNIST 上增益仅 1.2\%
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{AE 的局限}
+\footnotesize
+\begin{itemize}
+  \item \textbf{Latent 不连续：} 两个样本之间的 latent 插值可能产生无意义输出
+  \item \textbf{不能生成：} AE 只能重构见过的图（或它们的组合），不能创造全新样本
+  \item \textbf{对噪声敏感：} 输入稍有扰动，重构可能大幅偏离
+\end{itemize}
+
+这些局限正是 Denoising AE 和 VAE 要解决的。
+\end{block}
+
+\column{0.5\textwidth}
+\begin{alertblock}{从 AE 到 DAE 到 VAE 的递进}
+\footnotesize
+\begin{center}
+\begin{tikzpicture}[node distance=0.4cm,
+  s/.style={draw, rounded corners, minimum width=3.5cm, minimum height=0.55cm,
+            font=\footnotesize, align=center}]
+  \node[s, fill=lightblue!30] (a) {AE: 压缩-还原};
+  \node[s, fill=lightblue!45, below=of a] (b) {DAE: 加噪声 $\to$ 更鲁棒};
+  \node[s, fill=lightblue!60, below=of b] (c) {VAE: 加概率 $\to$ 能生成};
+  \draw[->, thick, mainblue] (a) -- (b);
+  \draw[->, thick, mainblue] (b) -- (c);
+\end{tikzpicture}
+\end{center}
+\vspace{0.1cm}
+\textbf{核心递进：} 确定 $\to$ 鲁棒 $\to$ 生成。每一步解决前一步的一个局限。\\
+PCA 找到的是方差最大的平面，AE 找到的是数据所在的曲面（流形）。
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+% ── 5.7 Denoising AE ──
+\begin{frame}[shrink=18]{Denoising AE（一）：原理——从噪声中学习}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{去噪自编码器原理}
+\footnotesize
+\textbf{训练方式（与 AE 的唯一区别）：}
+\begin{enumerate}
+  \item 输入 = 原图 + 高斯噪声（$\sigma=0.3$）
+  \item 目标 = 干净的原始图像
+  \item 模型结构 = 与普通 AE 完全相同
+\end{enumerate}
+
+\textbf{为什么加噪声能让表征更鲁棒？}
+\begin{itemize}
+  \item 普通 AE：学的是"记住像素"
+  \item 去噪 AE：\textbf{必须学会区分信号和噪声}
+  \item 噪声是随机的 $\to$ 无法"背诵"——只能学本质结构
+  \item 等同于数据增强 + 正则化的效果
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{Loss 对比}
+\footnotesize
+\centering
+\begin{tabular}{l c}
+\toprule
+\textbf{模型} & \textbf{测试 MSE} \\
+\midrule
+普通 AE & 0.00907 \\
+去噪 AE & 0.01219 \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+DAE 的 MSE 更高 $\to$ 任务更难。但 MSE 高 $\neq$ 表征差！
+\end{block}
+
+\column{0.5\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/dae_denoise.png}
+\vspace{-0.15cm}
+{\footnotesize 上排：加噪输入（$\sigma$=0.3）\ 中排：去噪输出\ 下排：原始图像}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ── 5.7b Denoising AE B ──
+\begin{frame}[shrink=10]{Denoising AE（二）：训练损失与细节}
+\small
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/dae_train_loss.png}
+\end{center}
+
+\column{0.45\textwidth}
+\begin{block}{训练细节}
+\footnotesize
+\begin{itemize}
+  \item 30 epochs, Adam(lr=1e-3), ReduceLROnPlateau
+  \item 每次迭代生成新噪声——模型永远看到"新图片"
+  \item $\sigma=0.3$：太小无效，太大丢失原图信息
+  \item 参数量 440K（与 AE 完全相同）
+  \item 最佳测试 loss=0.01219
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{训练 Loss 曲线解读}
+\footnotesize
+DAE 的 test loss 始终高于 train loss——因为测试时的噪声也是随机的，“难度”一致。与分类任务不同，去噪任务不存在"训练集过拟合"的典型模式——\textbf{噪声本身就是最强的正则化}。
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 5.7c DAE C ──
+\begin{frame}[shrink=10]{Denoising AE（三）：鲁棒性直觉与自监督设计}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{alertblock}{为什么 DAE 更鲁棒？}
+\footnotesize
+\textbf{好老师不考原题，考变体。} 每张训练图加不同噪声 $\to$ 模型被迫忽略表面扰动，提取本质特征（形状 > 纹理）。
+
+\textbf{预期效果：}
+\begin{itemize}
+  \item latent 特征对输入扰动更不敏感
+  \item 学到的表示更接近数据的"不变性"
+  \item Linear Probe 可能比 AE 更高——即使 MSE 更差
+\end{itemize}
+
+\textbf{重构误差 $\neq$ 表征质量}——这是无监督学习评估中最容易犯的错误。
+\end{alertblock}
+
+\column{0.5\textwidth}
+\begin{block}{自监督信号设计}
+\footnotesize
+DAE 是\textbf{自监督学习 (Self-Supervised Learning)} 的经典案例：
+
+\begin{enumerate}
+  \item \textbf{不需要人工标签}——pretext task 自动生成监督信号
+  \item \textbf{破坏-重建范式}——加噪声破坏输入，要求还原原始信号
+  \item \textbf{模型结构零改动}——与 AE 完全相同
+  \item \textbf{目标决定表征质量}——同样的结构，不同 pretext task 学到的特征完全不同
+\end{enumerate}
+
+这是当代大模型（BERT 的 masked LM、GPT 的 next-token prediction）的核心思想雏形。
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 5.8 VAE ──
+\begin{frame}[shrink=22]{VAE（一）：从确定性编码到概率分布}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{普通 AE vs VAE}
+\footnotesize
+\textbf{普通 AE：} encoder 输出一个确定的 latent 向量 $z \in \mathbb{R}^{32}$。\\
+\textbf{问题：} latent 空间是零散的——只在训练样本附近有值。两个样本之间的 latent 可能对应无意义的输出。
+
+\textbf{VAE：} encoder 输出两个向量：
+\begin{itemize}
+  \item $\mu \in \mathbb{R}^{32}$——latent 的中心位置
+  \item $\log\sigma^2 \in \mathbb{R}^{32}$——latent 的不确定范围
+\end{itemize}
+
+\textbf{不是学一个点，而是学一个分布 $\mathcal{N}(\mu, \sigma^2)$！}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{重参数化技巧 (Reparameterization Trick)}
+\footnotesize
+\textbf{问题：} $z \sim \mathcal{N}(\mu, \sigma^2)$ 这个采样操作不可导——梯度无法流过随机节点。
+
+\textbf{技巧：} 将随机性与参数分离：
+\[
+z = \mu + \epsilon \cdot e^{\log\sigma^2/2}, \quad \epsilon \sim \mathcal{N}(0, I)
+\]
+$\epsilon$ 是纯噪声（无参数），梯度只流经 $\mu$ 和 $\log\sigma^2$。PyTorch autograd 可以正常反向传播。
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{VAE 的 Loss 函数}
+\footnotesize
+\[
+\mathcal{L} = \underbrace{\text{MSE}(x, \hat{x})}_{\text{重构项}} + \beta \cdot \underbrace{D_{\text{KL}}\big(\mathcal{N}(\mu,\sigma^2) \| \mathcal{N}(0,I)\big)}_{\text{KL 正则项}}
+\]
+
+\textbf{重构项：} 与普通 AE 相同——还原输入。
+
+\textbf{KL 正则项：} 惩罚 latent 分布偏离标准正态 $\mathcal{N}(0,I)$。
+\[
+D_{\text{KL}} = -\frac{1}{2}\sum_{j=1}^{32}\big(1 + \log\sigma_j^2 - \mu_j^2 - \sigma_j^2\big)
+\]
+
+$\beta$ 控制权衡——$\beta$ 小 = 优先重构质量，$\beta$ 大 = 优先 latent 规整性。
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{exampleblock}{直观理解}
+\footnotesize
+普通 AE = 记住每张图的压缩码。VAE = 给每张图分配一个"区域"（均值 + 范围），并且要求所有区域聚拢在原点周围。采样时从原点附近随机取点，decoder 能生成有意义的图片。
+\end{exampleblock}
+\end{columns}
+\end{frame}
+
+% ── 5.8b VAE 原理 B ──
+\begin{frame}[shrink=20]{VAE（二）：为什么能生成？——Latent 空间的连续性与 $\beta$ 权衡}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{KL 散度如何"填满" latent 空间}
+\footnotesize
+\textbf{没有 KL（= 普通 AE）：}
+\begin{itemize}
+  \item 每个训练样本占据 latent 中一个孤立点
+  \item 点之间是"死区"——采样到死区 $\to$ decoder 输出无意义的噪声
+\end{itemize}
+
+\textbf{有 KL 约束（= VAE）：}
+\begin{itemize}
+  \item 每个样本占据一个高斯"气泡"（均值 + 方差）
+  \item 所有气泡被拉向原点——latent 空间被"填满"
+  \item 采样 $z \sim \mathcal{N}(0,I)$ 大概率落在某个气泡内 $\to$ 生成有意义的图片
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{$\beta$ 的权衡（$\beta$-VAE）}
+\footnotesize
+\centering
+\begin{tabular}{c c c}
+\toprule
+$\beta$ 值 & 效果 & 适用场景 \\
+\midrule
+$\beta < 0.1$ & 重构好，latent 零散 & 需要高质量重构 \\
+$\beta = 0.1$ & 平衡（我们的选择） & 兼顾生成与重构 \\
+$\beta = 1$   & 标准 VAE & 偏生成 \\
+$\beta > 1$   & 强正则，生成多样 & 解纠缠表示学习 \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{我们的 Fashion-MNIST VAE 设置}
+\footnotesize
+\begin{itemize}
+  \item $\beta=0.1$——优先重构清晰度
+  \item latent\_dim=32（与 AE 一致，便于对比）
+  \item 30 epochs, Adam(lr=1e-3), 参数量 442K
+  \item Encoder: $784 \to 256 \to 64 \to (\mu, \log\sigma^2)$
+  \item Decoder: $32 \to 64 \to 256 \to 784 \to$ Sigmoid
+  \item 最佳测试 loss=7.38（= MSE recon + 0.1 $\cdot$ KL）
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{alertblock}{VAE 的三重身份}
+\footnotesize
+\textbf{1. 降维模型：} 和 AE 一样，32 维 bottleneck 压缩表示。\\
+\textbf{2. 生成模型：} 从 $\mathcal{N}(0,I)$ 采样即可生成新图片——这是 AE 做不到的。\\
+\textbf{3. 概率模型：} latent 不是点而是分布——天然支持不确定性量化。
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+% ── 5.9 VAE 生成结果 ──
+\begin{frame}[shrink=15]{VAE 结果：重构、生成与插值}
+\small
+
+\begin{center}
+\includegraphics[width=0.95\textwidth]{results/vae_reconstruct.png}
+\vspace{-0.15cm}
+{\footnotesize VAE 重构对比（latent\_dim=32, $\beta$=0.1）}
+\end{center}
+
+\vspace{0.1cm}
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/vae_generate.png}
+\vspace{-0.15cm}
+{\footnotesize 从 $\mathcal{N}(0,I)$ 随机采样生成}
+\end{center}
+
+\column{0.52\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/vae_latent_interp.png}
+\vspace{-0.15cm}
+{\footnotesize 两张真实图片之间 latent 线性插值（A$\to$B）}
+\end{center}
+\end{columns}
+
+\vspace{0.1cm}
+\footnotesize
+\textbf{观察：} 生成图片虽模糊但轮廓清晰——VAE 学会了服饰的基本形状。插值平滑过渡说明 latent 空间连续，$\beta=0.1$ 在生成多样性和清晰度之间取得了平衡。
+\end{frame}
+
+% ── 5.10 Linear Probe 对比 ──
+\begin{frame}[shrink=18]{Linear Probe（一）：方法——如何公平比较无监督特征？}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{Linear Probe 方法}
+\footnotesize
+\textbf{问题：} 如何公平比较不同无监督方法学到的特征质量？
+
+\textbf{方案：} 冻结特征提取器，只训练一个\textbf{线性}分类器。
+
+\textbf{步骤：}
+\begin{enumerate}
+  \item 用无监督方法提取所有图片的特征（不需要标签）
+  \item 冻结特征，在上面训练 Logistic Regression
+  \item 分类准确率 = 特征质量的代理指标
+\end{enumerate}
+
+\textbf{核心逻辑：} 如果\textbf{线性}分类器就能分好类，说明无监督特征已将不同类别自然分开了。分类器越简单，对特征质量要求越高——这是对无监督表征的\textbf{最严格测试}之一。
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{我们的实验结果}
+\footnotesize
+\centering
+\begin{tabular}{l c}
+\toprule
+\textbf{特征来源} & \textbf{Linear Probe Acc} \\
+\midrule
+原始像素 (784D) & $\sim$84\%（有监督 baseline） \\
+PCA (32D)       & 81.06\% \\
+AE (32D)        & \textbf{82.25\%} \\
+\bottomrule
+\end{tabular}
+\vspace{2pt}
+AE 略优于 PCA（+1.2\%）。非线性给了有限但实在的增益。
+\end{block}
+
+\column{0.5\textwidth}
+\begin{center}
+\includegraphics[width=\textwidth]{results/linear_probe_compare.png}
+\end{center}
+\end{columns}
+\end{frame}
+
+% ── 5.10b Linear Probe B ──
+\begin{frame}[shrink=10]{Linear Probe（二）：解读——为什么 AE 只高 1.2\%？}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{深度分析}
+\footnotesize
+\textbf{Fashion-MNIST 的变异以线性为主：}
+\begin{itemize}
+  \item 前 32 维 PCA 已保留 83\% 方差
+  \item 剩余的 17\% 中，非线性结构只占一小部分
+  \item AE 的非线性优势在 CIFAR-10、人脸等复杂数据上更显著
+\end{itemize}
+
+\textbf{Linear Probe 只是单一维度：}
+\begin{itemize}
+  \item 只测"线性可分性"——AE 的重构能力和 latent 结构未被评估
+  \item AE 可以做 PCA 做不到的事：重构可视化、去噪、生成
+\end{itemize}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{alertblock}{核心教训}
+\footnotesize
+\textbf{1. 简单的 baseline（PCA）往往是强 baseline。} 不要跳过它直接用深度学习。
+
+\textbf{2. 增益大小取决于数据复杂度。} 数据越简单，非线性方法的优势越小。MNIST/Fashion-MNIST 本质是"简单"的。
+
+\textbf{3. 单一指标不够。} Linear Probe 高 $\neq$ 特征完美。AE 的额外价值在于重构、可视化、可扩展性。
+
+\textbf{4. 无监督评估本身是开放问题。} 我们用了真标签做 Linear Probe——但真正的无监督场景没有标签。实践中常用下游任务（分类、聚类）的性能来间接评估。
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+% ── 5.11 五方法全景对比 ──
+\begin{frame}[shrink=20]{阶段 5 总结（一）：五种方法全景对比}
+\small
+
+\begin{center}
+\begin{tabular}{l c c c l}
+\toprule
+\textbf{方法} & \textbf{标签} & \textbf{参数量} & \textbf{关键指标} & \textbf{一句话} \\
+\midrule
+PCA          & 无 & 0      & 方差 82.6\% (32D)  & 线性旋转变换，最快 baseline \\
+K-means      & 无 & 0      & NMI 0.51 (像素)    & 简单聚类，T恤/衬衫易混淆 \\
+AE           & 无 & 440K  & LP 82.3\%, MSE .009 & 非线性压缩，重构清晰 \\
+Denoising AE & 无 & 440K  & MSE 0.012          & 从噪声学习，表征更鲁棒 \\
+VAE          & 无 & 442K  & loss 7.38          & 可生成新图片，latent 连续 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.15cm}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{五个核心收获}
+\footnotesize
+\begin{enumerate}
+  \item \textbf{无监督目标来自数据本身：} 重构、方差最大化、聚类紧密度——不需要人工标签
+  \item \textbf{PCA 是必须的 baseline：} 简单但有效，81\% Linear Probe——不要跳过它
+  \item \textbf{非线性（AE）带来实在增益：} +1.2\%，在更复杂数据上优势更大
+  \item \textbf{去噪 = 鲁棒性：} 牺牲 MSE，换得更鲁棒的特征——重构误差 $\neq$ 表征质量
+  \item \textbf{VAE 通向生成：} KL 约束让 latent 连续可采样——从"压缩"到"创造"
+\end{enumerate}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{关键教训}
+\footnotesize
+\begin{itemize}
+  \item \textbf{线性 baseline 不能省：} PCA 81\% vs AE 82\%——80\% 的收益来自线性
+  \item \textbf{MSE 不是全部：} DAE 的 MSE 更高但表征更鲁棒——指标取决于目标
+  \item \textbf{无监督评估是难题：} 我们用 Linear Probe（外部标签）——实践中需下游任务
+  \item \textbf{从重构到生成只需一步：} AE + KL = VAE——结构改变极小，能力跃升巨大
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 5.11b 阶段 5 总结 B ──
+\begin{frame}[shrink=29]{阶段 5 总结（二）：叙事主线与递进逻辑}
+\small
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.5cm,
+  s/.style={draw, rounded corners, minimum width=4.5cm, minimum height=0.7cm,
+            align=center, font=\footnotesize},
+  arrow/.style={->, >=stealth, ultra thick, mainblue}]
+  \node[s, fill=lightblue!25] (a) {\textbf{PCA} — 数据结构长什么样？\\{\footnotesize 线性旋转变换，找到方差最大的方向}};
+  \node[s, fill=lightblue!35, below=of a] (b) {\textbf{K-means} — 没有标签能分组吗？\\{\footnotesize 迭代分配-更新，最小化组内平方和}};
+  \node[s, fill=lightblue!45, below=of b] (c) {\textbf{Autoencoder} — 神经网络能压缩吗？\\{\footnotesize 非线性 Encoder-Decoder，重构 = 自监督信号}};
+  \node[s, fill=lightblue!55, below=of c] (d) {\textbf{Denoising AE} — 加噪声能更鲁棒吗？\\{\footnotesize 破坏-重建，迫使网络学习本质不变性}};
+  \node[s, fill=lightblue!65, below=of d] (e) {\textbf{VAE} — 压缩能变成生成吗？\\{\footnotesize 概率化 latent + KL 约束，从 $\mathcal{N}(0,I)$ 采样生成新图}};
+  \draw[arrow] (a) -- (b);
+  \draw[arrow] (b) -- (c);
+  \draw[arrow] (c) -- (d);
+  \draw[arrow] (d) -- (e);
+\end{tikzpicture}
+\end{center}
+
+\vspace{0.15cm}
+
+\begin{block}{递进逻辑}
+\footnotesize
+\centering
+\textbf{线性 $\to$ 非线性 $\to$ 鲁棒 $\to$ 概率 $\to$ 生成}
+
+\vspace{0.1cm}
+每一步解决前一步的一个根本局限：PCA 只能线性 $\to$ AE 引入非线性。\\
+AE 对噪声敏感 $\to$ DAE 强制鲁棒。AE 的 latent 零散 $\to$ VAE 用 KL 填满空间使其连续可采样。\\
+\textbf{五步走完，从"理解数据"到"创造数据"。}
+\end{block}
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════════
 %  附录：程序使用指南
 % ═══════════════════════════════════════════════════════════════
 
-% ── 程序总览 ──
-\begin{frame}[fragile,shrink=15]{配套程序使用指南（一）：训练与推理}
+% ── 程序总览 A ──
+\begin{frame}[fragile,shrink=15]{配套程序使用指南（一）：训练与导出}
 \footnotesize
 
 \begin{columns}[T]
@@ -1404,39 +3252,37 @@ sample\_4 & 4 & 4 & OK \\
 \begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
 conda run -n Teaching python mnist_mlp.py
 \end{lstlisting}
-\vspace{-0.3cm}
+\vspace{-0.35cm}
 \begin{itemize}
   \item 训练三层 MLP（784$\to$128$\to$64$\to$10）
-  \item 产出 \texttt{checkpoints/mnist\_mlp.pt}
-  \item 测试准确率 $\approx$ 97.4\%，约 1—2 分钟
+  \item 产出 \texttt{checkpoints/mnist\_mlp.pt}，准确率 $\approx$ 97.4\%
 \end{itemize}
 \end{block}
 
-\vspace{0.1cm}
+\vspace{0.05cm}
 
 \begin{block}{\texttt{mnist\_cnn.py} — CNN 训练}
 \begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
 conda run -n Teaching python mnist_cnn.py
 \end{lstlisting}
-\vspace{-0.3cm}
+\vspace{-0.35cm}
 \begin{itemize}
-  \item 训练 CNN（2 层卷积+池化）
-  \item 产出 \texttt{checkpoints/mnist\_cnn.pt}
-  \item 20K 参数，准确率 $\approx$ 98.9\%，约 2—3 分钟
+  \item 训练 CNN（2 层卷积+池化），20K 参数
+  \item 产出 \texttt{checkpoints/mnist\_cnn.pt}，准确率 $\approx$ 98.9\%
 \end{itemize}
 \end{block}
 
-\vspace{0.1cm}
+\vspace{0.05cm}
 
-\begin{block}{\texttt{sampling.py} — 手写交互采样}
+\begin{block}{\texttt{train\_classifier.py} — 多数据集训练}
 \begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
-conda run -n Teaching python sampling.py
+conda run -n Teaching python train_classifier.py \
+  --dataset fashion-mnist --model cnn
 \end{lstlisting}
-\vspace{-0.3cm}
+\vspace{-0.35cm}
 \begin{itemize}
-  \item 鼠标写数字 $\to$ 28$\times$28 灰度图
-  \item 支持实时 MLP 预测（需先训练）
-  \item s:保存(png) t:保存(文本) p:预测 c:清空
+  \item 支持 MNIST / Fashion-MNIST / KMNIST / CIFAR-10
+  \item 支持 MLP / CNN，命令行切换参数
 \end{itemize}
 \end{block}
 
@@ -1445,51 +3291,114 @@ conda run -n Teaching python sampling.py
 \begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
 conda run -n Teaching python export_mlp_params.py
 \end{lstlisting}
-\vspace{-0.3cm}
+\vspace{-0.35cm}
 \begin{itemize}
-  \item 导出 6 个张量为文本文件到 \texttt{params/}
+  \item 导出 6 个张量到 \texttt{params/}（纯文本）
   \item 导出 5 张测试样本到 \texttt{samples/}
-  \item 自动验证：numpy vs PyTorch 误差 $<$ 10$^{-6}$
 \end{itemize}
 \end{block}
 
-\vspace{0.1cm}
+\vspace{0.05cm}
 
 \begin{block}{\texttt{mnist\_mlp\_infer.c} — C 语言推理}
 \begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
 $ gcc -o mnist_mlp_infer mnist_mlp_infer.c -lm
 $ ./mnist_mlp_infer samples/sample_0.txt
-Prediction: 7
 \end{lstlisting}
-\vspace{-0.3cm}
+\vspace{-0.35cm}
 \begin{itemize}
-  \item 纯 C 实现：矩阵乘 + 加法 + ReLU + argmax
-  \item 与 Python 推理结果完全一致
+  \item 纯 C：矩阵乘 + 加法 + ReLU + argmax
+  \item 5/5 样本与 Python 推理结果一致
 \end{itemize}
 \end{block}
 
-\vspace{0.1cm}
+\vspace{0.05cm}
 
+\begin{block}{\texttt{sampling.py} — 手写交互采样}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+conda run -n Teaching python sampling.py
+\end{lstlisting}
+\vspace{-0.35cm}
+鼠标写数字 $\to$ 28$\times$28，支持实时 MLP 预测。
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 程序总览 B ──
+\begin{frame}[fragile,shrink=10]{配套程序使用指南（二）：数据与辅助}
+\footnotesize
+
+\begin{columns}[T]
+\column{0.5\textwidth}
 \begin{block}{\texttt{download\_datasets.sh} — 下载数据}
 \begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
 bash download_datasets.sh datasets
 \end{lstlisting}
-\vspace{-0.3cm}
-下载 MNIST / Fashion-MNIST / KMNIST / CIFAR-10。
+\vspace{-0.35cm}
+下载 MNIST / Fashion-MNIST / KMNIST / CIFAR-10 到 \texttt{datasets/}。
+\end{block}
+
+\vspace{0.05cm}
+
+\begin{block}{\texttt{gen\_slide\_assets.py} — 生成幻灯片素材}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+conda run -n Teaching python gen_slide_assets.py
+\end{lstlisting}
+\vspace{-0.35cm}
+生成 MNIST 样本图、权重热力图、训练曲线等 \texttt{slide\_assets/}。
+\end{block}
+
+\vspace{0.05cm}
+
+\begin{block}{\texttt{gen\_dataset\_samples.py} — 数据集样本图}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+conda run -n Teaching python gen_dataset_samples.py
+\end{lstlisting}
+\vspace{-0.35cm}
+生成 Fashion-MNIST / KMNIST / CIFAR-10 样本图 + 四数据集总览。
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{关键文件依赖}
+\footnotesize
+\begin{center}
+\begin{tikzpicture}[
+  node distance=0.15cm and 0.1cm,
+  f/.style={draw, rounded corners, font=\scriptsize\ttfamily, minimum width=2.0cm,
+            minimum height=0.35cm, align=center, fill=lightblue!30},
+  arrow/.style={->, >=stealth, gray}
+]
+  \node[f] (data) {data.py / utils.py};
+  \node[f, below=of data] (models) {models.py};
+  \node[f, below=of models, fill=greenaccent!20] (mlp) {mnist\_mlp.py};
+  \node[f, right=of mlp, fill=greenaccent!20] (cnn) {mnist\_cnn.py};
+  \node[f, below=of mlp, fill=redaccent!15] (exp) {export\_mlp\_params.py};
+  \node[f, below=of exp, fill=redaccent!15] (c) {mnist\_mlp\_infer.c};
+  \node[f, right=of exp, fill=mainblue!15] (train) {train\_classifier.py};
+  \draw[arrow] (data) -- (models);
+  \draw[arrow] (models) -- (mlp);
+  \draw[arrow] (models) -- (cnn);
+  \draw[arrow] (mlp) -- (exp);
+  \draw[arrow] (exp) -- (c);
+  \draw[arrow] (models) -- (train);
+\end{tikzpicture}
+\end{center}
+\vspace{-0.15cm}
+\scriptsize 绿色=训练，红色=阶段3，蓝色=阶段4。
 \end{block}
 \end{columns}
 \end{frame}
 
 % ── 典型工作流 ──
-\begin{frame}[fragile,shrink=10]{配套程序使用指南（二）：典型工作流}
+\begin{frame}[fragile,shrink=32]{配套程序使用指南（三）：典型工作流}
 \small
 
 \begin{block}{第一次使用：从头训练}
 \footnotesize
 \begin{center}
 \begin{tikzpicture}[
-  node distance=0.4cm,
-  wfbox/.style={draw, rounded corners, minimum width=2.8cm, minimum height=0.65cm,
+  node distance=0.2cm and 0.3cm,
+  wfbox/.style={draw, rounded corners, minimum width=2.4cm, minimum height=0.55cm,
                align=center, font=\footnotesize, fill=lightblue!40},
   arrow/.style={->, >=stealth, thick, mainblue}
 ]
@@ -1508,25 +3417,23 @@ bash download_datasets.sh datasets
 \end{center}
 \end{block}
 
-\vspace{0.15cm}
+\vspace{0.0cm}
 
 \begin{columns}[T]
 \column{0.48\textwidth}
 \begin{block}{模型已训练：快速推理}
 \footnotesize
 \textbf{Python 推理：}
-\begin{lstlisting}[basicstyle=\ttfamily\footnotesize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
-import torch
-from models import MLPClassifier
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
 model = MLPClassifier()
 model.load_state_dict(
   torch.load("checkpoints/mnist_mlp.pt"))
 model.eval()
-# ... forward pass ...
+# forward pass ...
 \end{lstlisting}
 
 \textbf{C 推理：}
-\begin{lstlisting}[basicstyle=\ttfamily\footnotesize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
 ./mnist_mlp_infer samples/drawn_000.txt
 \end{lstlisting}
 \end{block}
@@ -1536,9 +3443,9 @@ model.eval()
 \footnotesize
 \begin{center}
 \begin{tikzpicture}[
-  node distance=0.3cm and 0.2cm,
-  f/.style={draw, rounded corners, font=\footnotesize\ttfamily, minimum width=2.6cm,
-            minimum height=0.5cm, align=center, fill=lightblue!30},
+  node distance=0.15cm and 0.1cm,
+  f/.style={draw, rounded corners, font=\scriptsize\ttfamily, minimum width=2.0cm,
+            minimum height=0.35cm, align=center, fill=lightblue!30},
   arrow/.style={->, >=stealth, gray}
 ]
   \node[f] (data) {data.py / utils.py};
@@ -1556,9 +3463,150 @@ model.eval()
   \draw[arrow] (mlp) -- (samp);
 \end{tikzpicture}
 \end{center}
-\vspace{-0.1cm}
-绿色=训练脚本，红色=阶段3（C推理），蓝色=交互测试。
+\vspace{-0.15cm}
+\scriptsize 绿色=训练，红色=阶段3，蓝色=交互。
 \end{exampleblock}
+\end{columns}
+\end{frame}
+
+% ── 阶段 5 程序 A ──
+\begin{frame}[fragile,shrink=15]{配套程序使用指南（四）：无监督学习（上）}
+\small
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\begin{block}{\texttt{pca\_kmeans.py} — PCA 降维 + K-means}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+conda run -n Teaching python pca_kmeans.py
+\end{lstlisting}
+\vspace{-0.35cm}
+\begin{itemize}
+  \item PCA 降到 2D/32D，累计方差曲线
+  \item K-means（k=10）在像素/PCA 特征上聚类
+  \item NMI/ARI 评估，混淆矩阵可视化
+  \item 产出 \texttt{results/pca\_*.png, kmeans\_*.png}
+  \item 依赖：\texttt{scikit-learn}
+\end{itemize}
+\end{block}
+
+\vspace{0.05cm}
+
+\begin{block}{\texttt{autoencoder.py} — MLP Autoencoder 训练}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+conda run -n Teaching python autoencoder.py
+\end{lstlisting}
+\vspace{-0.35cm}
+\begin{itemize}
+  \item 784$\to$256$\to$64$\to$32$\to$64$\to$256$\to$784
+  \item 30 epochs, Adam(lr=1e-3), ReduceLROnPlateau
+  \item 产出 \texttt{checkpoints/autoencoder.pt}
+  \item 重构对比图 + loss 曲线到 \texttt{results/}
+\end{itemize}
+\end{block}
+
+\column{0.5\textwidth}
+\begin{block}{\texttt{visualize\_latent.py} — 潜在空间分析}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+conda run -n Teaching python visualize_latent.py
+\end{lstlisting}
+\vspace{-0.35cm}
+\begin{itemize}
+  \item 加载 AE encoder, 提取 latent 特征
+  \item PCA/t-SNE 2D 可视化 latent space
+  \item Linear Probe (Logistic Regression)
+  \item 对比 PCA vs AE 特征质量
+  \item 依赖：\texttt{checkpoints/autoencoder.pt}
+\end{itemize}
+\end{block}
+
+\vspace{0.05cm}
+
+\begin{block}{\texttt{denoising\_autoencoder.py} — 去噪 AE}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+conda run -n Teaching python denoising_autoencoder.py
+\end{lstlisting}
+\vspace{-0.35cm}
+\begin{itemize}
+  \item 输入加噪声（$\sigma$=0.3），目标为干净原图
+  \item 30 epochs，产出 \texttt{checkpoints/denoising\_ae.pt}
+  \item 三排对比图（噪声/去噪/原图）
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+% ── 阶段 5 程序 B ──
+\begin{frame}[fragile,shrink=20]{配套程序使用指南（五）：无监督学习（下）— VAE 与工作流}
+\small
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\begin{block}{\texttt{vae.py} — 变分自编码器}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+conda run -n Teaching python vae.py
+\end{lstlisting}
+\vspace{-0.35cm}
+\begin{itemize}
+  \item VAE: encoder$\to$($\mu$,$\log\sigma^2$) + decoder
+  \item $\beta$=0.1, 30 epochs, Adam(lr=1e-3)
+  \item Loss = MSE(recon) + $\beta \cdot$ KL
+  \item 产出 \texttt{checkpoints/vae.pt}
+  \item 随机生成 + latent 插值到 \texttt{results/}
+\end{itemize}
+\end{block}
+
+\vspace{0.1cm}
+
+\begin{block}{阶段 5 执行顺序}
+\footnotesize
+\begin{center}
+\begin{tikzpicture}[node distance=0.25cm and 0.25cm,
+  s/.style={draw, rounded corners, minimum width=2.0cm, minimum height=0.45cm,
+            font=\footnotesize\ttfamily, align=center, fill=lightblue!30},
+  arrow/.style={->, >=stealth, thick, mainblue}]
+  \node[s] (a) {pca\_kmeans.py};
+  \node[s, right=of a] (b) {autoencoder.py};
+  \node[s, right=of b] (c) {visualize\_latent.py};
+  \node[s, below=of c] (d) {denoising\_autoencoder.py};
+  \node[s, left=of d] (e) {vae.py};
+  \draw[arrow] (a) -- (b);
+  \draw[arrow] (b) -- (c);
+  \draw[arrow] (c) -- (d);
+  \draw[arrow] (d) -- (e);
+\end{tikzpicture}
+\end{center}
+\vspace{-0.1cm}
+{\footnotesize PCA baseline $\to$ AE 训练 $\to$ 表征评估 $\to$ 去噪升级 $\to$ 生成模型}
+\end{block}
+
+\column{0.52\textwidth}
+\begin{block}{\texttt{models.py} 新增类}
+\footnotesize
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize, frame=none, numbers=none, backgroundcolor=\color{codebg}]
+class Autoencoder(nn.Module):
+    # encoder->latent, decoder->Sigmoid
+    # forward: recon, z
+
+class VAE(nn.Module):
+    # trunk->fc_mu, fc_logvar
+    # reparam: z=mu+eps*exp(logvar/2)
+    # forward: recon, mu, logvar
+    # sample: z~N(0,I)->decoder
+\end{lstlisting}
+\end{block}
+
+\vspace{0.05cm}
+
+\begin{block}{依赖关系}
+\footnotesize
+\begin{itemize}
+  \item \texttt{pca\_kmeans.py}：独立（仅需 sklearn）
+  \item \texttt{autoencoder.py}：依赖 data/models/utils
+  \item \texttt{visualize\_latent.py}：依赖 autoencoder.pt
+  \item \texttt{denoising\_autoencoder.py, vae.py}：独立训练
+\end{itemize}
+\textbf{核心依赖链：} 只需先跑 \texttt{autoencoder.py}，再跑 \texttt{visualize\_latent.py}。其余独立。
+\end{block}
 \end{columns}
 \end{frame}
 

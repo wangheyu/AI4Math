@@ -1,10 +1,11 @@
 """
 模型定义模块
 -----------
-定义 MLP（多层感知机）分类器。
-后续阶段会在此文件新增 CNN 分类器，以对比不同模型结构的差异。
+MLPClassifier / CNNClassifier — 监督学习分类器
+Autoencoder / VAE           — 无监督学习模型
 """
 
+import torch
 import torch.nn as nn
 
 
@@ -132,3 +133,103 @@ class CNNClassifier(nn.Module):
 
     def forward(self, x):
         return self.net(x)
+
+
+class Autoencoder(nn.Module):
+    """
+    MLP Autoencoder — 无监督重构模型。
+
+    Encoder: input_dim → 256 → 64 → latent_dim
+    Decoder: latent_dim → 64 → 256 → input_dim
+
+    Fashion-MNIST: input_dim=784 (28×28 灰度), latent_dim 默认 32
+
+    训练时不需要标签，loss = MSE(input, output)。
+    """
+
+    def __init__(self, input_dim: int = 784, latent_dim: int = 32) -> None:
+        super().__init__()
+        self.input_dim = input_dim
+        self.latent_dim = latent_dim
+
+        self.encoder = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(input_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.Linear(64, latent_dim),
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, 256),
+            nn.ReLU(),
+            nn.Linear(256, input_dim),
+            nn.Sigmoid(),  # 输出归一化到 [0,1]，匹配 ToTensor 范围
+        )
+
+    def forward(self, x):
+        z = self.encoder(x)
+        recon = self.decoder(z)
+        return recon, z
+
+    def encode(self, x):
+        return self.encoder(x)
+
+
+class VAE(nn.Module):
+    """
+    Variational Autoencoder — 生成模型。
+
+    Encoder 输出 mu 和 logvar（各 latent_dim 维），
+    通过重参数化技巧采样 z = mu + eps * exp(logvar/2)。
+
+    Loss = MSE(recon, x) + beta * KL( N(mu, sigma^2) || N(0,I) )
+    """
+
+    def __init__(self, input_dim: int = 784, latent_dim: int = 32) -> None:
+        super().__init__()
+        self.input_dim = input_dim
+        self.latent_dim = latent_dim
+
+        # shared encoder trunk
+        self.encoder_trunk = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(input_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 64),
+            nn.ReLU(),
+        )
+        self.fc_mu = nn.Linear(64, latent_dim)
+        self.fc_logvar = nn.Linear(64, latent_dim)
+
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, 256),
+            nn.ReLU(),
+            nn.Linear(256, input_dim),
+            nn.Sigmoid(),
+        )
+
+    def encode(self, x):
+        h = self.encoder_trunk(x)
+        return self.fc_mu(h), self.fc_logvar(h)
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    def forward(self, x):
+        mu, logvar = self.encode(x)
+        z = self.reparameterize(mu, logvar)
+        recon = self.decoder(z)
+        return recon, mu, logvar
+
+    def sample(self, num_samples: int, device):
+        """从标准正态分布采样 z，解码生成新图片。"""
+        z = torch.randn(num_samples, self.latent_dim, device=device)
+        return self.decoder(z)

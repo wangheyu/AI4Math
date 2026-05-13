@@ -17,7 +17,7 @@ MNIST 手写数字识别 —— MLP 训练与测试脚本
 """
 
 import os
-import torch
+import torch  #pytorch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm  # 进度条库，让训练过程可视化

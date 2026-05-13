@@ -60,6 +60,13 @@ def gen_mnist_samples():
 # ── 2. Weight matrix heatmap ──
 def gen_weight_heatmap():
     """Load trained MLP and visualize first Linear layer weights."""
+    # Switch to CJK font for Chinese labels in this figure
+    cjk_path = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+    if os.path.exists(cjk_path):
+        fm.fontManager.addfont(cjk_path)
+        cjk_prop = fm.FontProperties(fname=cjk_path)
+        plt.rcParams["font.family"] = cjk_prop.get_name()
+
     model = MLPClassifier()
     ckpt = torch.load("checkpoints/mnist_mlp.pt", map_location="cpu", weights_only=True)
     model.load_state_dict(ckpt)
@@ -67,21 +74,28 @@ def gen_weight_heatmap():
     # First layer: (128, 784) — visualize first 32 neurons as 28x28 images
     w = model.net[1].weight.data.numpy()  # (128, 784)
     n_neurons = 32
-    fig, axes = plt.subplots(4, 8, figsize=(12, 7))
+    # Wider figure + constrained_layout to prevent colorbar/image overlap
+    fig, axes = plt.subplots(4, 8, figsize=(14, 7.5), constrained_layout=True)
     for i in range(n_neurons):
         ax = axes[i // 8][i % 8]
         w_img = w[i].reshape(28, 28)
         im = ax.imshow(w_img, cmap="RdBu_r", vmin=-0.3, vmax=0.3)
         ax.axis("off")
-        ax.set_title(f"Neuron {i+1}", fontsize=8)
-    plt.colorbar(im, ax=axes, shrink=0.6, label="Weight Value")
-    plt.suptitle("First Hidden Layer: 32 of 128 Neuron Weights\n"
-                  "Red = Positive (excitatory), Blue = Negative (inhibitory)\n"
-                  "Shape reveals the pattern each neuron detects",
-                  fontsize=12, y=1.01)
-    plt.tight_layout()
+        ax.set_title(f"神经元 {i+1}", fontsize=8)
+
+    # Colorbar with proper padding to avoid overlap
+    cbar = fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.7, pad=0.02, label="权重值")
+    cbar.ax.yaxis.label.set_size(10)
+
+    fig.suptitle("第一隐藏层：128 个神经元中的 32 个权重可视化\n"
+                 "红色 = 正权重（兴奋），蓝色 = 负权重（抑制）\n"
+                 "每个图案展示了该神经元检测的特征形状",
+                 fontsize=12, y=1.02)
     plt.savefig("slide_assets/weight_heatmap.png", dpi=150, bbox_inches="tight")
     plt.close()
+
+    # Restore English font for subsequent figures
+    plt.rcParams["font.family"] = "DejaVu Sans"
     print("✓ slide_assets/weight_heatmap.png")
 
 
