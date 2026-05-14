@@ -153,6 +153,66 @@ Bottleneck 的大小是最关键的设计选择：
 
 这些局限正是 Denoising AE 和 VAE 要解决的。
 
+### 4.7 延伸讨论：Autoencoder 得到了什么？
+
+训练完成后，AE 得到了两样东西：
+
+**1. 一个压缩表示（Encoder）**
+
+将任意 784 维图片映射到 32 维 latent 向量。这个 32 维向量不是随机的——同类图片的 latent 自然聚集（如鞋类和衣物类形成两个大簇）。这说明 **encoder 学到了 Fashion-MNIST 的语义结构**，尽管训练时从未见过标签。
+
+**2. 一个重构能力（Decoder）**
+
+从 32 维 latent 还原出 $28\times28$ 图片。MSE 仅 0.009，说明 **decoder 学会了"服饰图片长什么样"**——这不是记住训练样本，而是学到了一个从低维编码到图片的生成映射。
+
+**本质：** 训练完的 AE 是一个 24.5 倍的有损压缩器（$784 \to 32$）。但与传统压缩算法不同，它的压缩方式**利用了数据本身的语义规律**——这正是 latent 空间出现类别结构的原因。模型不知道"这是 T 恤"，但它知道"这些图片之间相似，那些图片之间不同"。
+
+### 4.8 延伸讨论：Autoencoder 如何做分类？
+
+AE 本身是**无监督模型**——它只学会压缩-还原，不会直接输出类别。要做分类，有三种方式：
+
+**方式一：Linear Probe（最简单，已实现）**
+
+冻结训练好的 encoder，在 latent 特征之上接一个线性分类器：
+
+```python
+model = Autoencoder()
+model.load_state_dict(torch.load("checkpoints/autoencoder.pt"))
+model.eval()
+
+features = model.encode(images)  # (N, 32)
+clf = LogisticRegression()
+clf.fit(features_train, labels_train)
+acc = clf.score(features_test, labels_test)
+```
+
+实验结果：AE 32D + Linear Probe = **82.25%**（略优于 PCA 的 81.06%）。线性分类器能分好类，证明无监督特征已经将类别自然分开了。
+
+**方式二：Fine-tuning（微调）**
+
+在 encoder 后面接一个 `Linear(32, 10)` 分类头，然后用标签训练：
+
+```python
+class AEClassifier(nn.Module):
+    def __init__(self, ae_checkpoint):
+        super().__init__()
+        ae = Autoencoder()
+        ae.load_state_dict(torch.load(ae_checkpoint))
+        self.encoder = ae.encoder
+        self.classifier = nn.Linear(32, 10)
+
+    def forward(self, x):
+        return self.classifier(self.encoder(x))
+```
+
+相比从头训练，AE 预训练的 encoder 已经学到了有意义的特征结构，fine-tune 收敛更快、需要的标签更少。
+
+**方式三：半监督场景（AE 最有价值的应用）**
+
+标签很少，但无标签数据很多。先在所有无标签数据上训练 AE → 然后在少量有标签数据上接分类器。预训练学到的特征结构大幅降低了对标签量的需求。这是 AE 在医学影像、遥感等标注昂贵领域的核心价值。
+
+**核心逻辑：** AE 做分类的价值不在于"AE 本身能分类"，而在于它通过重构任务学到的压缩表示已经捕捉了数据的语义结构，使得后续分类器只需很少参数和标签就能达到不错的效果。
+
 ---
 
 ## 五、Denoising Autoencoder：加噪声，表征更鲁棒
