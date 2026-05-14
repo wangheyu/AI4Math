@@ -379,6 +379,76 @@ AE 仅比 PCA 高 1.2%。这个结果值得深入解读。
 
 **实践中：** 如果你的下游任务确实会用非线性分类器，那么用非线性分类器评估也是合理的。但报告结果时应该同时报告两种——线性结果说明特征的"原生质量"，非线性结果说明特征的"实用价值"。只报非线性结果而隐藏线性结果，是无监督学习论文中常见的"作弊"手段。
 
+### 7.6 延伸讨论：工程应用中，能否用无监督特征 + 非线性分类器做到最优？
+
+**可以，而且这正是当代深度学习的标准范式的核心思想。** 这个范式叫做 **Pretrain + Fine-tune（预训练 + 微调）**。
+
+**完整流程：**
+
+```
+阶段 1（无监督预训练）：大量无标签数据 → 训练 AE/DAE/VAE → 得到预训练 encoder
+阶段 2（监督微调）：    少量/大量有标签数据 + 预训练 encoder + 非线性分类头 → 联合训练
+```
+
+**具体做法：**
+
+```python
+# 阶段 1：无监督预训练（已实现）
+model = Autoencoder()
+# ... 在 Fashion-MNIST 上训练 30 epochs，不需要标签 ...
+torch.save(model.state_dict(), "checkpoints/autoencoder.pt")
+
+# 阶段 2：监督微调——在预训练 encoder 上接非线性分类器
+class FineTunedClassifier(nn.Module):
+    def __init__(self, ae_checkpoint):
+        super().__init__()
+        ae = Autoencoder()
+        ae.load_state_dict(torch.load(ae_checkpoint))
+        self.encoder = ae.encoder          # 预训练的 encoder
+        self.classifier = nn.Sequential(    # 非线性分类头
+            nn.Linear(32, 64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, 10),
+        )
+
+    def forward(self, x):
+        return self.classifier(self.encoder(x))
+
+# 用标签训练整个网络（encoder 也参与梯度更新）
+model = FineTunedClassifier("checkpoints/autoencoder.pt")
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)  # 更低的学习率
+# ... 标准监督训练循环 ...
+```
+
+**为什么这比从头训练更好？**
+
+| | 从头训练 MLP/CNN | Pretrain + Fine-tune |
+|---|---|---|
+| 初始状态 | 随机权重，encoder 什么都不会 | encoder 已经会提取有意义的特征 |
+| 收敛速度 | 慢（前几轮 loss 下降缓慢） | 快（encoder 已有好起点） |
+| 标签需求量 | 多 | 少——encoder 已学到数据结构 |
+| 最终准确率 | 取决于标签量 | 通常更高，尤其标签少时 |
+| 泛化能力 | 容易过拟合 | 更好——预训练 = 隐式正则化 |
+
+**现实世界中的成功案例：**
+
+- **BERT (2018)**：在大规模无标签文本上做 masked language model（遮词预测）预训练 → 在 11 个 NLP 任务上 fine-tune，全部刷新记录。核心思想与我们 Fashion-MNIST 上的 AE 完全一致。
+- **GPT 系列**：在大规模文本上做 next-token prediction（无监督）→ fine-tune / RLHF 对齐人类偏好。
+- **SimCLR / MoCo (2020)**：在 ImageNet 无标签数据上做对比学习预训练 → linear probe 或 fine-tune 达到接近监督学习的水平。
+- **MAE (2021)**：随机遮住图片 75% 的区域，训练模型还原——本质是 AE 的大规模版本。Fine-tune 后在 ImageNet 上达到 SOTA。
+
+**回到我们实验的数字：**
+
+- AE 32D + **Linear** Probe：82.25%
+- AE 32D + **Nonlinear** Probe（MLP 分类头，encoder 冻结）：预计 84--86%
+- AE 32D + **Fine-tune**（encoder 微调 + MLP 分类头）：预计 88--91%
+- 有监督 CNN 从头训练：90.29%
+
+**核心洞察：** 无监督预训练 + 微调，可以在标签量更少的情况下逼近甚至超越纯监督学习的表现。当标签极其稀缺（如医学影像只有几十个标注样本）时，这个范式的优势尤其巨大——预训练把所有无标签数据中的结构知识"注入"了 encoder，监督微调只需教会分类头如何利用这些知识。
+
+这就是为什么**线性探针只是评估工具，而预训练+微调是工程方案**。前者用来回答"特征好不好"，后者用来回答"效果能不能做到最好"——两者不是非此即彼，而是同一个流程中的不同阶段。
+
 ---
 
 ## 八、总结：五步递进的全景
