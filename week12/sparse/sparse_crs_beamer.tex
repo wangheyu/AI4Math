@@ -1,0 +1,464 @@
+\documentclass[12pt,aspectratio=169]{beamer}
+\usetheme{Copenhagen}
+\usecolortheme{whale}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xeCJK}
+\setCJKmainfont{Noto Serif CJK SC}
+\setCJKsansfont{Noto Sans CJK SC}
+\setCJKmonofont{Noto Sans CJK SC}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray},
+  stringstyle=\color{red},
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  frame=single,
+  tabsize=4,
+  language=C
+}
+
+\title{稀疏矩阵与 CRS 存储格式}
+\subtitle{存储格式 \textperiodcentered\ CRS (Compressed Row Storage) \textperiodcentered\ C 语言实现}
+\author{计算方法教学}
+\date{\today}
+
+\begin{document}
+
+% ==================== frame 1: 标题 ====================
+\begin{frame}
+\titlepage
+\end{frame}
+
+% ==================== frame 2: 什么是稀疏矩阵 ====================
+\begin{frame}{什么是稀疏矩阵？}
+\framesubtitle{定义 \textperiodcentered\ 来源 \textperiodcentered\ 存储动机}
+
+\textbf{定义：} 非零元素个数远小于总元素个数的矩阵。\\
+设 $N$ 为矩阵总元素数，$N_{\!nz}$ 为非零元个数，若 $N_{\!nz} \ll N$，则称为稀疏矩阵。
+
+\vspace{8pt}
+\textbf{常见来源：}
+\begin{itemize}
+  \item 有限差分 / 有限元离散 PDE — 每个节点只与相邻节点耦合
+  \item 图论问题 — 邻接矩阵，每行平均度 $\ll n$
+  \item 电路仿真 — 节点导纳矩阵，每个器件只连接少量节点
+  \item PageRank — 网页链接矩阵，平均出度 $O(1)$
+  \item 机器学习 — 用户-物品评分矩阵，大部分评分未知
+\end{itemize}
+
+\vspace{8pt}
+\pause
+\textbf{存储动机：} 对 $n=10^5$ 的 2D 网格问题，矩阵含 $10^{10}$ 个元素，但每行非零元仅 5 个。
+若按稠密格式存储需要 $\sim$80 GB，稀疏格式仅需 $\sim$16 MB — \textbf{节省约三个数量级}。
+\end{frame}
+
+% ==================== frame 3: 可视化 ====================
+\begin{frame}[shrink]{稀疏矩阵的可视化}
+\framesubtitle{非零元分布模式}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.85]
+  % 5-pt stencil matrix pattern (tridiagonal blocks)
+  \fill[blue!30] (0,0) rectangle (6,6);
+  \fill[white] (0.3,0.3) rectangle (5.7,5.7);
+
+  % main tridiagonal region
+  \foreach \j in {0,1,2,3,4,5} {
+    \fill[blue!60] (0.3+\j*0.9, 0.3+\j*0.9) rectangle (1.2+\j*0.9, 1.2+\j*0.9);
+    \fill[blue!60] (0.3+\j*0.9, 1.2+\j*0.9) rectangle (1.2+\j*0.9, 2.1+\j*0.9);
+    \fill[blue!60] (1.2+\j*0.9, 0.3+\j*0.9) rectangle (2.1+\j*0.9, 1.2+\j*0.9);
+  }
+
+  \draw[thick] (0,0) rectangle (6,6);
+  \node[font=\footnotesize] at (3,-0.5) {5-点差分模板 — 块三对角结构};
+
+  % arrows point to block detail
+  \draw[->, thick] (7.0, 3.0) -- (8.5, 3.0);
+
+  % detail: 5-point stencil connectivity
+  \begin{scope}[shift={(10.0, 1.0)}, scale=1.3]
+    \draw[gray, thin] (0,0) grid (3,3);
+    \fill[blue!60] (1,1) circle (0.12); % center
+    \fill[blue!40] (0,1) circle (0.1);  % left
+    \fill[blue!40] (2,1) circle (0.1);  % right
+    \fill[blue!40] (1,0) circle (0.1);  % bottom
+    \fill[blue!40] (1,2) circle (0.1);  % top
+    \draw[->, thick, red] (1,1) -- (0,1);
+    \draw[->, thick, red] (1,1) -- (2,1);
+    \draw[->, thick, red] (1,1) -- (1,0);
+    \draw[->, thick, red] (1,1) -- (1,2);
+    \node[font=\footnotesize] at (1.5,-0.4) {$2N \times 2N$ 网格};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\vspace{4pt}
+\textbf{稀疏模式决定存储格式选择：} 规则网格用 DIA/ELL，非规则图用 CSR/CSC。
+\end{frame}
+
+% ==================== frame 4: 常见存储格式概览 ====================
+\begin{frame}[shrink]{常见稀疏矩阵存储格式}
+\framesubtitle{六大经典格式及其适用场景}
+
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{2.3cm} p{1.6cm} p{4.6cm} p{3.6cm}@{}}
+\toprule
+\textbf{格式} & \textbf{数组数} & \textbf{核心思想} & \textbf{适用场景} \\
+\midrule
+COO              & 3 & 直接存 (行, 列, 值) 三元组             & 构造期, I/O 格式 \\
+\textbf{CSR (CRS)} & 3 & 行指针 + 列索引 + 值, 按行压缩       & \textbf{通用, SpMV 首选} \\
+CSC              & 3 & 列指针 + 行索引 + 值, 按列压缩         & 列操作, 直接求解器 \\
+DIA              & 2 & 存储各对角线                            & 规则网格 (每对角等长) \\
+ELL (ELLPACK)    & 2 & 固定每行最大非零数, 补零                & 向量化, GPU 常用 \\
+HYB              & 混合 & ELL + COO 组合                       & GPU, 平衡填充 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\normalsize
+
+\vspace{4pt}
+\small
+\textbf{核心权衡：} 存储紧凑性 vs 访问模式 vs 插入修改灵活性。
+
+\textbf{CSR 优势：} SpMV 行访问连续, cache 友好; 压缩率高, 科学计算最通用格式。
+\end{frame}
+
+% ==================== frame 5: CRS 格式详解 ====================
+\begin{frame}[shrink]{CRS (Compressed Row Storage) 格式详解}
+\framesubtitle{三数组表示}
+
+\textbf{给定稀疏矩阵 $A_{m \times n}$ 含 $N_{\!nz}$ 个非零元素，用三个数组表示：}
+
+\begin{columns}[T]
+\column{0.45\textwidth}
+\[
+A = \begin{pmatrix}
+10 & 0  & 0  & 0  \\
+0  & 20 & 0  & 30 \\
+0  & 0  & 40 & 0  \\
+50 & 0  & 0  & 60
+\end{pmatrix}
+\]
+
+\column{0.55\textwidth}
+\small
+\textbf{val[ ]} — 非零元素值 (按行遍历)\\
+\textbf{col\_ind[ ]} — 每个非零元的列索引\\
+\textbf{row\_ptr[ ]} — 第 $i$ 行首元素在 val 中的偏移
+
+\vspace{2pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{c|cccccc}
+$i$ & 0 & 1 & 2 & 3 & 4 & 5 \\ \hline
+val & 10 & 20 & 30 & 40 & 50 & 60 \\
+col\_ind & 0 & 1 & 3 & 2 & 0 & 3 \\
+\end{tabular}
+
+\vspace{2pt}
+\begin{tabular}{c|ccccc}
+$i$ & 0 & 1 & 2 & 3 & 4 \\ \hline
+row\_ptr & 0 & 1 & 3 & 4 & 6 \\
+\end{tabular}
+\end{columns}
+
+\vspace{6pt}
+\textbf{关键性质：}
+\begin{itemize}
+  \item row\_ptr[$i$] 到 row\_ptr[$i+1$]$-$1 为第 $i$ 行在 val/col\_ind 中的范围
+  \item 第 $i$ 行非零元个数 $=$ row\_ptr[$i+1$] $-$ row\_ptr[$i$]；row\_ptr 长 $m+1$，末元素 $=N_{\!nz}$
+\end{itemize}
+\end{frame}
+
+% ==================== frame 6: CRS 构造过程 ====================
+\begin{frame}[shrink]{CRS 格式的构造过程}
+\framesubtitle{从矩阵到三数组的变换}
+
+\textbf{步骤：}
+\begin{enumerate}
+  \item \textbf{行扫描：} 按行遍历矩阵，收集每行非零元个数 $\to$ 计算 row\_ptr
+  \item \textbf{偏移计算：} row\_ptr[$i+1$] = row\_ptr[$i$] + 第 $i$ 行非零元个数 (前缀和)
+  \item \textbf{填充 val/col\_ind：} 再次按行遍历，将值和列索引填入对应位置
+\end{enumerate}
+
+\vspace{6pt}
+\textbf{示例 ($4\times 4$ 矩阵, $N_{\!nz}=6$)：}
+
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{c|c|c|c}
+\textbf{行} & \textbf{非零列} & \textbf{个数} & \textbf{row\_ptr 计算} \\
+\hline
+0 & col 0: 10                    & 1 & row\_ptr[0] = 0, row\_ptr[1] = 1 \\
+1 & col 1: 20, col 3: 30         & 2 & row\_ptr[2] = 3 \\
+2 & col 2: 40                    & 1 & row\_ptr[3] = 4 \\
+3 & col 0: 50, col 3: 60         & 2 & row\_ptr[4] = 6 \\
+\end{tabular}
+\normalsize
+
+\vspace{6pt}
+\textbf{时间复杂度：} $O(m + N_{\!nz})$ — 两遍扫描，线性于矩阵规模。
+空间复杂度：$O(N_{\!nz})$ — 比原始矩阵少存所有零元素。
+\end{frame}
+
+% ==================== frame 7: SpMV 算法 ====================
+\begin{frame}[fragile]{CRS 核心操作：稀疏矩阵向量乘 (SpMV)}
+\framesubtitle{$y \leftarrow A x$ — 迭代求解器最核心操作，占比超 80\%}
+
+\small
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\footnotesize,belowskip=-4pt]
+void spmv_csr(int m, const double *val, const int *col_ind,
+              const int *row_ptr, const double *x, double *y)
+{
+  for (int i = 0; i < m; i++) {
+    double sum = 0.0;
+    for (int k = row_ptr[i]; k < row_ptr[i+1]; k++)
+      sum += val[k] * x[col_ind[k]];
+    y[i] = sum;
+  }
+}
+\end{lstlisting}
+
+\vspace{2pt}
+\footnotesize
+\textbf{访存模式：} val[k]、col\_ind[k] 连续读取 (stride-1)；$x$ 间接寻址 (随机访存，主瓶颈)；$y$ 连续写入。
+
+\vspace{2pt}
+\textbf{性能：} $\sim 2N_{\!nz}$ flops，算术强度 $\approx 0.17$ flops/byte — 典型的 memory-bound 操作。
+\end{frame}
+
+% ==================== frame 8: C 语言 CSR 数据结构 ====================
+\begin{frame}[fragile]{C 语言中的 CSR 数据结构设计}
+
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\footnotesize]
+typedef struct {
+    int     m, n;       /* 行数、列数        */
+    int     nnz;        /* 非零元总数        */
+    double *val;        /* 非零元值 [nnz]    */
+    int    *col_ind;    /* 列索引   [nnz]    */
+    int    *row_ptr;    /* 行偏移   [m+1]    */
+} csr_matrix;
+\end{lstlisting}
+
+\vspace{2pt}
+\small
+\textbf{设计：} \texttt{row\_ptr} 长度 $m+1$，末元素哨兵；堆分配，统一管理；内存 $8N_{\!nz} + 4(N_{\!nz}+m+1)$ 字节。
+\end{frame}
+
+% ==================== frame 9: COO → CSR 转换 ====================
+\begin{frame}[fragile]{从 COO 格式构造 CSR}
+\framesubtitle{两遍扫描算法 — 时间 $O(m+N_{\!nz})$}
+
+\scriptsize
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\scriptsize,belowskip=-4pt]
+csr->row_ptr = calloc(m + 1, sizeof(int));
+
+/* Pass 1: count non-zeros per row */
+for (int k = 0; k < nnz; k++)
+    csr->row_ptr[coo_row[k] + 1]++;
+
+/* Prefix sum to compute offsets */
+for (int i = 1; i <= m; i++)
+    csr->row_ptr[i] += csr->row_ptr[i - 1];
+
+/* Pass 2: scatter values and column indices */
+int *counter = calloc(m, sizeof(int));
+for (int k = 0; k < nnz; k++) {
+    int r = coo_row[k];
+    int dest = csr->row_ptr[r] + counter[r]++;
+    csr->val[dest]     = coo_val[k];
+    csr->col_ind[dest] = coo_col[k];
+}
+free(counter);
+\end{lstlisting}
+
+\footnotesize
+\textbf{要点：} 第 1 遍统计 $\to$ 前缀和得偏移 $\to$ 第 2 遍 counter 追踪写入位置。
+\end{frame}
+
+% ==================== frame 10: 前代/回代求解 ====================
+\begin{frame}[fragile]{CSR 格式下的前代与回代}
+\framesubtitle{三角稀疏线性系统的求解}
+
+\footnotesize
+\textbf{前代 $L\mathbf{x}=\mathbf{b}$ ($L$ 单位下三角)：}
+\vspace{-4pt}
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\scriptsize,aboveskip=2pt,belowskip=2pt]
+void csr_forward_sub(const csr_matrix *L,
+                     const double *b, double *x) {
+  for (int i = 0; i < L->m; i++) {
+    double sum = b[i];
+    for (int k = L->row_ptr[i]; k < L->row_ptr[i+1]; k++)
+      if (L->col_ind[k] < i)
+        sum -= L->val[k] * x[L->col_ind[k]];
+    x[i] = sum;
+  }
+}
+\end{lstlisting}
+
+\vspace{2pt}
+\textbf{回代 $U\mathbf{x}=\mathbf{y}$：} 从 $i=m-1$ 到 $0$，取 $j>i$ 的列。CSR 行遍历天然适合行优先的前代/回代。
+\end{frame}
+
+% ==================== frame 11: 矩阵转置 ====================
+\begin{frame}[fragile]{CSR 格式下的转置操作}
+\framesubtitle{CSR $\to$ CSC: 按行压缩的 $A^T$ 即按列压缩的 $A$}
+
+\scriptsize
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\scriptsize,belowskip=-4pt]
+AT->row_ptr = calloc(A->n + 1, sizeof(int));
+for (int k = 0; k < A->nnz; k++)              /* count */
+    AT->row_ptr[A->col_ind[k] + 1]++;
+for (int i = 1; i <= A->n; i++)               /* prefix sum */
+    AT->row_ptr[i] += AT->row_ptr[i - 1];
+
+int *counter = calloc(A->n, sizeof(int));
+for (int i = 0; i < A->m; i++)                /* scatter */
+    for (int k = A->row_ptr[i]; k < A->row_ptr[i+1]; k++) {
+        int j = A->col_ind[k];
+        int dest = AT->row_ptr[j] + counter[j]++;
+        AT->val[dest] = A->val[k];
+        AT->col_ind[dest] = i;
+    }
+free(counter);
+\end{lstlisting}
+
+\vspace{2pt}
+\footnotesize
+同样使用计数 + 前缀和 + 散射三步框架，复杂度 $O(m+N_{\!nz})$。
+\end{frame}
+
+% ==================== frame 12: 性能优化 ====================
+\begin{frame}[shrink]{CSR SpMV 性能优化}
+\framesubtitle{内存墙 \textperiodcentered\ 向量化 \textperiodcentered\ 多线程}
+
+\small
+\textbf{核心矛盾：} SpMV 算术强度仅 $\sim$0.17 flops/byte，严重 memory-bound。
+
+\vspace{4pt}
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{存储格式层面}
+\begin{itemize}
+  \item SELL-C-$\sigma$: 行按长度分块，块内对齐 SIMD
+  \item 分块 CSR (BCSR): 稠密小块 + 寄存器分块
+  \item 混合格式: ELL 存规则部分 + COO 存异常行
+  \item DIA: 规则网格问题效率最高
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{实现技术层面}
+\begin{itemize}
+  \item SIMD 向量化: sparse gather/scatter
+  \item Cache 分块: $y$ 分块适配 cache，减少 $x$ 随机访存
+  \item OpenMP: \texttt{\#pragma omp parallel for} 行间并行
+  \item NUMA 感知: 矩阵和向量同节点
+\end{itemize}
+\end{columns}
+
+\vspace{4pt}
+\textbf{经验：} $n>10^5$ 时格式选择 $>$ 微调代码。CSR-SpMV $\sim$5--15 GFLOPS (memory-bound)，
+而稠密 GEMM 可达 50+ GFLOPS。
+\end{frame}
+
+% ==================== frame 13: 完整示例 ====================
+\begin{frame}[fragile]{完整示例 —— 从矩阵到 CSR 再到 SpMV}
+\framesubtitle{端到端 C 代码}
+
+\footnotesize
+\begin{lstlisting}[language=C,basicstyle=\ttfamily\footnotesize,belowskip=-4pt]
+int m = 4, n = 4, nnz = 6;
+double val[] = {10, 20, 30, 40, 50, 60};
+int    col[] = {0,  1,  3,  2,  0,  3 };
+int    row[] = {0,  1,  3,  4,  6};  // m+1
+
+csr_matrix A = {m, n, nnz, val, col, row};
+double x[] = {1, 2, 3, 4}, y[4];
+spmv_csr(A.m, A.val, A.col_ind, A.row_ptr, x, y);
+// y = [10, 160, 120, 290]
+\end{lstlisting}
+
+\vspace{4pt}
+\small
+\textbf{验证：} $A=\left(\begin{smallmatrix}10&0&0&0\\0&20&0&30\\0&0&40&0\\50&0&0&60\end{smallmatrix}\right)$,
+$x=(1,2,3,4)^T$,
+$y=Ax=(10,\,20\cdot2+30\cdot4,\;40\cdot3,\;50\cdot1+60\cdot4)^T=(10,160,120,290)^T$.
+\end{frame}
+
+% ==================== frame 14: 性能对比 ====================
+\begin{frame}[shrink]{存储格式性能对比 (SpMV)}
+\framesubtitle{不同格式在同一矩阵上的表现}
+
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{@{}l c c c c c@{}}
+\toprule
+\textbf{格式} & \textbf{存储(MB)} & \textbf{GFLOPS} & \textbf{带宽利用率} & \textbf{适用模式} & \textbf{GPU} \\
+\midrule
+Dense      & 80.0   & 52.0  & 95\%  & —        & 是 \\
+\textbf{CSR} & \textbf{0.38} & \textbf{8.5} & \textbf{42\%} & \textbf{任意} & 一般 \\
+CSC        & 0.38   & 7.8   & 38\%  & 任意     & 一般 \\
+DIA        & 0.21   & 42.0  & 85\%  & 规则网格 & 是 \\
+ELL        & 0.48   & 18.2  & 60\%  & 行等宽   & 是 \\
+SELL-C-$\sigma$ & 0.40 & 22.5 & 72\%  & 较规则   & 是 \\
+HYB        & 0.45   & 35.1  & 80\%  & 较规则   & 是 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{2pt}
+{\footnotesize \textit{条件：} $n=10^5$ 五点差分, $\approx$5e5 非零元, x86\_64 单核双精度.}
+
+\vspace{2pt}
+\small
+\textbf{观察：} CSR 最通用但带宽利用率仅 40\% (随机 $x$ 访存)；DIA 在规则网格上可达 80\%；
+GPU 上 ELL/HYB 显著优于 CSR (合并访存友好)。
+\end{frame}
+
+% ==================== frame 15: 总结 ====================
+\begin{frame}[shrink]{总结}
+\framesubtitle{关键要点与 C 实现注意事项}
+
+\footnotesize
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{核心概念}
+\begin{enumerate}\itemsep1pt
+  \item \textbf{稀疏性利用：} 只存非零元, 从 $O(n^2)$ 降至 $O(N_{\!nz})$
+  \item \textbf{CRS：} val / col\_ind / row\_ptr 三数组, 按行存
+  \item \textbf{构造：} 两遍扫描 $O(m+N_{\!nz})$, 前缀和为核心
+  \item \textbf{SpMV：} 外层行循环 + 内层稀疏点积, memory-bound
+  \item \textbf{格式选型：} CSR 通用, 规则网格 DIA, GPU 用 ELL/HYB
+\end{enumerate}
+
+\column{0.5\textwidth}
+\textbf{C 实现注意事项}
+\begin{itemize}\itemsep1pt
+  \item \texttt{row\_ptr} 用 \texttt{int}, $n>2^{31}{-}1$ 改 \texttt{long long}
+  \item 用 \texttt{calloc} 初始化 \texttt{row\_ptr}, 避免手动置零
+  \item \texttt{counter} 数组追踪每行写入位置
+  \item SpMV 内层循环 \texttt{restrict} 指针暗示无别名
+  \item 反复调用的 SpMV: 将 $x$ 分块改善 cache 重用
+  \item 构造期 COO 逐步添加, 完成后转 CSR
+\end{itemize}
+\end{columns}
+\normalsize
+
+\vspace{6pt}
+\begin{center}
+\textbf{稀疏矩阵计算的核心：用存储换访存, 用格式匹配结构。}
+\end{center}
+\end{frame}
+
+\end{document}
