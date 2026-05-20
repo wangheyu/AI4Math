@@ -1,0 +1,329 @@
+\documentclass[12pt,a4paper]{ctexart}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{multirow}
+
+\geometry{margin=2.5cm}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  language=C++,
+  showstringspaces=false,
+}
+
+\title{\textbf{三维 Poisson 方程大规模稀疏求解器对比测试}}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+针对三维 Poisson 方程 $-\Delta u = 1$ 在单位立方体上的有限差分离散，构建了规模为 $n=970{,}299$ 未知数、$\mathrm{nnz}=6{,}733{,}287$ 非零元的大规模稀疏线性方程组。
+在 Intel i7-6800K CPU 和 NVIDIA GTX 1080 Ti GPU 平台上，系统对比了 8 种求解配置：三种 BLAS 后端（OpenBLAS、Intel MKL、NVIDIA cuBLAS）、三种预处理策略（无、IC(0)、代数多重网格 AMG）的组合。
+结果表明，基于 AMGCL 库的代数多重网格预处理共轭梯度法在 4 层 V-cycle 下仅需 17 次迭代即收敛至 $6.7\times10^{-9}$，GPU 加速版求解阶段仅耗时 64ms（CPU 版的 1/25）。
+IC(0) 预处理将无预处理 CG 的 247 次迭代减至 98 次，但收敛精度始终受限于 $10^{-5}$ 量级。
+纯 CG 在 GPU 上用 cuBLAS 实现可获得 14.7 倍加速（172ms vs 2536ms），性价比突出。
+\end{abstract}
+
+\section{控制方程}
+
+考虑三维 Poisson 方程的第一类边值问题：
+\begin{equation}\label{eq:poisson}
+-\Delta u = f(\mathbf{x}), \quad \mathbf{x} \in \Omega = [0,1]^3,
+\end{equation}
+其中 $u = 0$ 在 $\partial\Omega$ 上。本次实验取 $f(\mathbf{x}) \equiv 1$，即常值右端项，以测试各类求解器在通用载荷下的收敛行为。
+
+\section{有限差分离散}
+
+采用均匀网格剖分，每方向取 $N=101$ 个节点（含边界），网格间距 $h = 1/(N-1) = 0.01$。
+内点个数为 $(N-2)^3 = 99^3 = 970{,}299$。使用 7-点中心差分 stencil：
+\begin{equation}\label{eq:stencil}
+\frac{6u_{i,j,k} - u_{i-1,j,k} - u_{i+1,j,k} - u_{i,j-1,k} - u_{i,j+1,k} - u_{i,j,k-1} - u_{i,j,k+1}}{h^2} = 1.
+\end{equation}
+
+\section{稀疏矩阵}
+
+将内点按字典序 $(i,j,k)$ 编号为 row-major 一维索引：
+\begin{equation}
+\mathrm{idx}(i,j,k) = i + n\cdot j + n^2\cdot k, \quad n = N-2 = 99.
+\end{equation}
+每一行最多 7 个非零元（对角线 + 至多 6 个邻居）。矩阵存储采用 CSR (Compressed Sparse Row) 格式：
+\begin{itemize}
+\item \texttt{val[nnz]} — 非零元数值（对角线 $6/h^2$，非对角线 $-1/h^2$）
+\item \texttt{col\_ind[nnz]} — 列索引
+\item \texttt{row\_ptr[n+1]} — 行指针
+\end{itemize}
+矩阵规模 $970{,}299 \times 970{,}299$，非零元 $6{,}733{,}287$，稀疏度 $\approx 7.1\times10^{-6}$。
+CSR 三数组存储为二进制文件 \texttt{mat.dat}（约 81MB）。
+
+\section{求解算法}
+
+全部测试采用共轭梯度法 (Conjugate Gradient, CG)。统一参数：容差 $\mathrm{tol}=10^{-8}$，最大迭代 10000。
+
+\subsection{无预处理 CG}
+
+标准 CG 迭代：
+\begin{align}
+\mathbf{r}_0 &= \mathbf{b} - A\mathbf{x}_0, \quad \mathbf{p}_0 = \mathbf{r}_0, \\
+\alpha_k &= \frac{\mathbf{r}_k^T\mathbf{r}_k}{\mathbf{p}_k^T A\mathbf{p}_k}, \\
+\mathbf{x}_{k+1} &= \mathbf{x}_k + \alpha_k \mathbf{p}_k, \\
+\mathbf{r}_{k+1} &= \mathbf{r}_k - \alpha_k A\mathbf{p}_k, \\
+\beta_k &= \frac{\mathbf{r}_{k+1}^T\mathbf{r}_{k+1}}{\mathbf{r}_k^T\mathbf{r}_k}, \\
+\mathbf{p}_{k+1} &= \mathbf{r}_{k+1} + \beta_k \mathbf{p}_k.
+\end{align}
+每次迭代核心操作为稀疏矩阵向量乘 (SpMV) 和两个内积、三个向量更新。
+手写 CSR SpMV + CBLAS 接口调用 \texttt{cblas\_ddot} / \texttt{cblas\_daxpy} / \texttt{cblas\_dnrm2}。
+
+\subsection{IC(0) 预处理 CG}
+
+不完全 Cholesky 分解（无填充，IC(0)）保持矩阵下三角部分的稀疏结构：
+\begin{equation}
+M = L D L^T \approx A,
+\end{equation}
+其中 $L$ 为单位下三角矩阵（对角元隐含为 1），$D$ 为对角缩放。预处理器应用 $M^{-1}\mathbf{r}$：
+\begin{enumerate}
+\item 前代：解 $L\mathbf{y} = \mathbf{r}$（$L$ 单位下三角）
+\item 缩放：$\mathbf{y} \leftarrow D^{-1}\mathbf{y}$
+\item 回代：解 $L^T\mathbf{z} = \mathbf{y}$
+\end{enumerate}
+IC 分解使用 Eigen 3.4 的 \texttt{IncompleteCholesky}，参数 \texttt{NaturalOrdering<int>}（保稀疏模式）、\texttt{Lower}（取下三角）、初始位移 $\mathrm{shift} = 10^{-4}$。
+
+\subsection{AMG 预处理 CG}
+
+代数多重网格 (Algebraic Multigrid, AMG) 使用 AMGCL 库实现，配置如下：
+\begin{itemize}
+\item 粗化策略：smoothed aggregation
+\item 松弛算子：SPAI0 (Sparse Approximate Inverse, order 0)
+\item 最粗层直接求解器：skyline LU
+\end{itemize}
+对于 $\sim$970k 问题自动生成 4 层层次结构。
+
+\section{计算库与后端}
+
+\subsection{BLAS 库}
+
+\begin{itemize}
+\item \textbf{OpenBLAS 0.3.29}：编译自源码，\texttt{DYNAMIC\_ARCH=1 TARGET=HASWELL USE\_OPENMP=1}，安装至 \texttt{/usr/local/lib}
+\item \textbf{Intel MKL}：通过 conda 安装 \texttt{mkl-devel}，动态链接 \texttt{libmkl\_rt.so}。MKL 与 OpenBLAS 共用标准 CBLAS 接口，同一份 CG 源码通过链接时切换后端
+\item \textbf{NVIDIA cuBLAS 12.4}：GPU 端 BLAS，提供 \texttt{cublasDdot} / \texttt{cublasDaxpy} / \texttt{cublasDnrm2} / \texttt{cublasDscal}
+\end{itemize}
+
+\subsection{稀疏线性代数库}
+
+\begin{itemize}
+\item \textbf{AMGCL 1.4.8}：头文件库，提供 CPU (\texttt{backend::builtin}) 及 CUDA (\texttt{backend::cuda}) 后端的多重网格 CG 求解器
+\item \textbf{Eigen 3.4.0}：提供 IC(0) 分解 (\texttt{IncompleteCholesky})
+\item \textbf{cuSPARSE 12.4}：GPU 端稀疏矩阵运算，提供 \texttt{cusparseSpMV}（SpMV）和 \texttt{cusparseSpSV}（三角求解）
+\end{itemize}
+
+\subsection{硬件环境}
+
+\begin{itemize}
+\item CPU：Intel Core i7-6800K，6 核 12 线程 @ 3.4GHz，AVX2（无 AVX-512）
+\item GPU：NVIDIA GeForce GTX 1080 Ti，11 GB VRAM，Pascal 架构 (CC 6.1)
+\item 内存：62 GB
+\item 编译：g++/nvcc 14.2.0，CUDA 12.4.131
+\end{itemize}
+
+\section{实验设计}
+
+\subsection{测试矩阵}
+
+共设计 8 项测试，覆盖三种 BLAS 后端 × 三种预处理策略的组合：
+
+\begin{table}[htbp]
+\centering
+\caption{8 项测试配置}
+\label{tab:design}
+\begin{tabular}{ccllc}
+\toprule
+\# & 测试名称 & 预处理器 & BLAS 后端 & 编译器 \\
+\midrule
+1 & OpenBLAS CG & 无 & OpenBLAS & g++ \\
+2 & OpenBLAS IC(0) CG & IC(0) (Eigen) & OpenBLAS & g++ \\
+3 & MKL CG & 无 & MKL & g++ \\
+4 & MKL IC(0) CG & IC(0) (Eigen) & MKL & g++ \\
+5 & AMGCL CPU AMG CG & AMG (4 层) & AMGCL 内置 & g++ \\
+6 & AMGCL CUDA AMG CG & AMG (4 层) & cuSPARSE+Thrust & nvcc \\
+7 & cuBLAS CG & 无 & cuBLAS+cuSPARSE & nvcc \\
+8 & cuBLAS IC(0) CG & IC(0) (Eigen$\to$GPU) & cuBLAS+cuSPARSE & nvcc \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{对比维度}
+
+\begin{itemize}
+\item \textbf{预处理效果}：行 1/2/5 对比无/IC(0)/AMG 对迭代次数的减少
+\item \textbf{BLAS 后端}：行 1/3/7 对比 OpenBLAS/MKL/cuBLAS 纯 CG 性能
+\item \textbf{CPU vs GPU}：行 5/6（AMG）和 2/8（IC(0)）分别对比同算法的 GPU 加速比
+\item \textbf{AMG vs IC(0)}：行 2 vs 5、行 6 vs 8 对比不同预处理策略在同一硬件上的表现
+\end{itemize}
+
+\subsection{计时方法}
+
+\begin{itemize}
+\item CPU 端：\texttt{std::chrono::high\_resolution\_clock}
+\item GPU 端：\texttt{cudaEvent\_t}（GPU kernel 级精度）
+\item Setup 时间：预处理器构建/GPU 数据传输
+\item Solve 时间：纯 CG 迭代循环
+\end{itemize}
+
+\section{实验结果}
+
+\subsection{完整测试数据}
+
+\begin{table}[htbp]
+\centering
+\caption{全部 8 项测试结果（$f=1$, $n=970{,}299$, $\mathrm{tol}=10^{-8}$）}
+\label{tab:results}
+\begin{tabular}{clrrrrr}
+\toprule
+\# & 测试 & 迭代 & 残差 & Setup(ms) & Solve(ms) & 总耗时(ms) \\
+\midrule
+1 & OpenBLAS CG & 247 & $8.1\times10^{-6}$ & — & 3105 & 3105 \\
+2 & OpenBLAS IC(0) CG & 98 & $9.7\times10^{-6}$ & 434 & 3532 & 3966 \\
+3 & MKL CG & 247 & $8.1\times10^{-6}$ & — & 2536 & 2536 \\
+4 & MKL IC(0) CG & 98 & $9.7\times10^{-6}$ & 445 & 3021 & 3466 \\
+5 & AMGCL CPU AMG CG & 17 & $6.7\times10^{-9}$ & 1030 & 1626 & 2656 \\
+6 & AMGCL CUDA AMG CG & 17 & $6.7\times10^{-9}$ & 1095 & \textbf{64} & \textbf{1160} \\
+7 & cuBLAS CG & 247 & $8.1\times10^{-6}$ & — & 172 & 172 \\
+8 & cuBLAS IC(0) CG & 103 & $9.1\times10^{-6}$ & 420 & 664 & 1083 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{预处理器加速效果}
+
+\begin{table}[htbp]
+\centering
+\caption{预处理策略对比}
+\label{tab:precond}
+\begin{tabular}{lrrr}
+\toprule
+预处理器 & 迭代次数 & 收敛残差 & 加速比 (vs 无) \\
+\midrule
+无预处理 & 247 & $\sim10^{-6}$ & 1.0$\times$ \\
+IC(0) & 98–103 & $\sim10^{-5}$ & 2.5$\times$ \\
+AMG (4 层) & 17 & $\mathbf{10^{-9}}$ & \textbf{14.5$\times$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{BLAS 后端性能对比}
+
+\begin{table}[htbp]
+\centering
+\caption{三种 BLAS 后端对比（无预处理 CG, 247 次迭代）}
+\label{tab:blas}
+\begin{tabular}{lrrr}
+\toprule
+后端 & 类型 & Solve(ms) & 相对性能 \\
+\midrule
+OpenBLAS 0.3.29 & CPU (AVX2) & 3105 & 1.00$\times$ \\
+MKL (conda) & CPU (AVX2) & 2536 & 1.22$\times$ \\
+cuBLAS 12.4 & GPU (GTX 1080 Ti) & 172 & \textbf{18.1$\times$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{GPU 加速比}
+
+\begin{table}[htbp]
+\centering
+\caption{GPU vs CPU 加速比}
+\label{tab:gpu}
+\begin{tabular}{lrrrr}
+\toprule
+方法 & CPU 最快 (ms) & GPU (ms) & 加速比 \\
+\midrule
+CG 无预处理 & 2536 (MKL) & 172 (cuBLAS) & \textbf{14.7$\times$} \\
+IC(0) CG & 3466 (MKL) & 664 (cuBLAS) & \textbf{5.2$\times$} \\
+AMG CG & 1626 (CPU) & 64 (CUDA) & \textbf{25.3$\times$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{AMG 层次结构}
+
+AMGCL 自动生成的 4 层层次：
+
+\begin{table}[htbp]
+\centering
+\caption{AMG 层次信息}
+\label{tab:amg}
+\begin{tabular}{rrrrr}
+\toprule
+层次 & 未知数 & 非零元 & GPU 显存 & 占比 \\
+\midrule
+0 (最细) & 970,299 & 6,733,287 & 194.4 MB & 61.9\% \\
+1 & 115,878 & 3,608,448 & 57.4 MB & 33.2\% \\
+2 & 7,550 & 516,030 & 7.0 MB & 4.7\% \\
+3 (最粗) & 393 & 24,123 & 0.8 MB & 0.2\% \\
+\midrule
+\multicolumn{3}{l}{算子复杂度} & 1.62 & \\
+\multicolumn{3}{l}{网格复杂度} & 1.13 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{结果分析}
+
+\subsection{AMG 预处理的压倒性优势}
+
+AMG 在 4 层层次下将 CG 迭代从 247 次骤降至 17 次（14.5 倍缩减），且是唯一将残差收敛至 $10^{-9}$ 量级的方法。
+这得益于 AMG 在不同尺度上高效消除误差的高低频分量：粗网格修正消除低频误差，细网格松弛（SPAI0）消除高频误差。
+算子复杂度 1.62 意味着 AMG 层次结构仅引入了 62\% 的额外存储开销，换来了数十倍的收敛提升。
+
+IC(0) 预处理虽然降低了迭代次数（247 $\to$ 98），但收敛精度始终停留在 $10^{-5}$ 水平。
+这是因为 IC(0) 仅保留单层不完全分解，对三维 Poisson 的大条件数（$\sim h^{-2} \approx 10^4$）的低频分量缺乏有效处理。
+
+\subsection{GPU 对不同操作的加速差异}
+
+\begin{itemize}
+\item \textbf{纯 SpMV 密集型（无预处理 CG）}：GPU 加速 14.7 倍。SpMV 是典型的带宽受限操作，GTX 1080 Ti 的 484 GB/s 显存带宽远超 CPU DDR4 的 $\sim$50 GB/s。
+\item \textbf{SpSV 密集型（IC(0) CG）}：GPU 加速仅 5.2 倍。三角求解 (SpSV) 具有固有的顺序依赖（逐行依赖），GPU 并行度受限。D 缩放操作需要额外的 host-device 数据传输，进一步降低了加速效率。
+\item \textbf{AMG（多组件混合）}：GPU 加速最高达 25.3 倍。AMG 的 setup 阶段在 CPU 和 GPU 上耗时相近（数据传输抵消了计算优势），但求解阶段的 V-cycle 以 SpMV 为主，GPU 优势显著。
+\end{itemize}
+
+\subsection{MKL vs OpenBLAS}
+
+在相同 CG 实现（247 次 SpMV + 内积）下，MKL 单线程 BLAS 比 OpenBLAS 快 22\%。
+OpenBLAS 编译时启用了 \texttt{USE\_OPENMP=1}，但 CG 循环中每次调用的向量长度虽然大（970k），线程开销可能部分抵消了并行收益。
+MKL 的 \texttt{libmkl\_rt} 在单线程场景下经过更好的指令调度和缓存优化。
+
+\subsection{综合推荐}
+
+\begin{enumerate}
+\item \textbf{精度优先}：AMGCL CUDA AMG CG（1160ms, $10^{-9}$ 精度），适合要求高精度求解的场景
+\item \textbf{速度优先}：cuBLAS 纯 CG（172ms, $10^{-6}$ 精度），适合对精度要求不高但需快速求解的场景
+\item \textbf{CPU 环境}：AMGCL CPU AMG CG（2656ms, $10^{-9}$），纯 CPU 环境下的最佳选择
+\item \textbf{性价比}：cuBLAS IC(0) CG（1083ms, $10^{-5}$），在精度和速度间取得平衡
+\end{enumerate}
+
+\section*{附录：复现命令}
+
+\begin{lstlisting}[language=bash]
+# 编译所有 benchmark
+cd ~/Projects/AI4Math/week12/solver
+make -f Makefile all
+
+# 依次运行
+./bench_cpu       # 测试 1+2 (OpenBLAS)
+./bench_mkl       # 测试 3+4 (MKL)
+./bench_amgcl     # 测试 5 (AMGCL CPU)
+./bench_gpu       # 测试 6+7+8 (AMGCL CUDA + cuBLAS)
+\end{lstlisting}
+
+\end{document}

@@ -1,0 +1,51 @@
+# Makefile for verifying the installed Eigen + OpenBLAS + SuiteSparse + AMGCL + libxsmm
+# Usage: make -f Makefile.cuda all
+
+CXX := g++
+CC  := gcc
+NVCC := nvcc
+
+CXXFLAGS := -std=c++17 -O2
+CFLAGS   := -O2
+NVCCFLAGS := -std=c++17 -O2 -x cu
+
+LOCAL_INC := -I/usr/local/include -I/usr/local/include/eigen3
+CUDA_INC  := -I/usr/local/cuda/include -I/usr/include
+CUDA_LIB  := -L/usr/local/cuda/lib64 -L/usr/lib/x86_64-linux-gnu
+CUDA_LIBS := -lcusparse -lcudart
+
+.PHONY: all clean
+
+all: test_openblas test_eigen test_suitesparse test_libxsmm test_amgcl test_amgcl_cuda_header test_amgcl_cuda_solve
+	@echo "=== Running all tests ==="
+	@echo
+	@echo "[1/6] OpenBLAS";   ./test_openblas          && echo "  PASS" || echo "  FAIL"
+	@echo "[2/6] Eigen";      ./test_eigen             && echo "  PASS" || echo "  FAIL"
+	@echo "[3/6] SuiteSparse";./test_suitesparse       && echo "  PASS" || echo "  FAIL"
+	@echo "[4/6] libxsmm";   ./test_libxsmm           && echo "  PASS" || echo "  FAIL"
+	@echo "[5/6] AMGCL CPU"; ./test_amgcl             && echo "  PASS" || echo "  FAIL"
+	@echo "[6/6] AMGCL CUDA";./test_amgcl_cuda_solve  && echo "  PASS" || echo "  FAIL"
+
+test_openblas: test_openblas.c
+	$(CC) $(CFLAGS) -o $@ $< -lopenblas -lm
+
+test_eigen: test_eigen.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LOCAL_INC)
+
+test_suitesparse: test_suitesparse.c
+	$(CC) $(CFLAGS) -o $@ $< -I/usr/local/include/suitesparse -lumfpack -lsuitesparseconfig -lopenblas -lm
+
+test_libxsmm: test_libxsmm.c
+	$(CC) $(CFLAGS) -o $@ $< -lxsmm -lm
+
+test_amgcl: test_amgcl.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LOCAL_INC)
+
+test_amgcl_cuda_header: test_amgcl_cuda_header.cpp
+	$(NVCC) $(NVCCFLAGS) -o $@ $< $(LOCAL_INC) $(CUDA_INC)
+
+test_amgcl_cuda_solve: test_amgcl_cuda_solve.cpp
+	$(NVCC) $(NVCCFLAGS) -o $@ $< $(LOCAL_INC) $(CUDA_INC) $(CUDA_LIB) $(CUDA_LIBS) -lopenblas
+
+clean:
+	rm -f test_openblas test_eigen test_suitesparse test_libxsmm test_amgcl test_amgcl_cuda_header test_amgcl_cuda_solve
