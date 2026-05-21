@@ -957,7 +957,300 @@ AI 多了"任选算法 + 任选库"的自由度; 软件 spsolve 后端固定 (Su
 \end{center}
 \end{frame}
 
-% ==================== frame 24: 可视化 - AI 写 matplotlib ====================
+% ==================== frame 24: 多重网格基本思想 ====================
+\begin{frame}[shrink]{多重网格基本思想}
+\framesubtitle{为什么 Jacobi/GS 对低频误差收敛慢?}
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\textbf{误差的频率分解:}
+\begin{itemize}\itemsep1pt
+  \item Jacobi/GS 一次迭代相当于局部平均
+  \item \textbf{高频误差} (振荡快): 邻居平均后迅速衰减
+  \item \textbf{低频误差} (光滑): 邻居平均几乎不变 — 收敛极慢
+  \item 低频误差正是条件数 $\kappa \approx N^2$ 放大的分量
+\end{itemize}
+
+\vspace{4pt}
+\textbf{核心洞察:}
+\begin{itemize}\itemsep1pt
+  \item 细网格上的低频 $\to$ 粗网格上变为相对高频
+  \item 在粗网格上"光滑误差"可被高效消除
+  \item 递归应用 $\Rightarrow$ 各频率分量均有对应层次高效处理
+\end{itemize}
+
+\column{0.45\textwidth}
+\textbf{二层网格循环:}
+\begin{enumerate}\itemsep0pt\footnotesize
+  \item \textbf{前光滑}: 细网格 1--3 步 GS 松弛 — 消高频
+  \item \textbf{限制}: $r_c = R r_f$ (加权限制残差到粗网格)
+  \item \textbf{粗网格求解}: $A_c e_c = r_c$ (小得多的系统)
+  \item \textbf{延拓}: $e_f = P e_c$ (插值修正回细网格)
+  \item \textbf{后光滑}: 再做 1--3 步 GS 松弛
+\end{enumerate}
+	\end{columns}
+
+\vspace{4pt}
+\begin{center}
+\begin{tikzpicture}[scale=0.65]
+  \draw[thick,->] (0,0) -- (1,-2);
+  \draw[thick,->] (1,-2) -- (2,0);
+  \draw[thick,->] (2,0) -- (3,-2);
+  \draw[thick,->] (3,-2) -- (4,0);
+  \filldraw (0,0) circle (3pt);
+  \filldraw (2,0) circle (3pt);
+  \filldraw (4,0) circle (3pt);
+  \filldraw (1,-2) circle (3pt);
+  \filldraw (3,-2) circle (3pt);
+  \node[font=\footnotesize] at (0.5,-0.4) {光滑};
+  \node[font=\footnotesize] at (1.5,-0.3) {限制};
+  \node[font=\footnotesize] at (1.0,-1.3) {求解};
+  \node[font=\footnotesize] at (2.5,-0.4) {延拓};
+  \node[font=\footnotesize] at (3.5,-0.4) {光滑};
+  \node at (0,0.3) {细};
+  \node at (2,0.3) {细};
+  \node at (4,0.3) {细};
+  \node at (1,-2.3) {粗};
+  \node at (3,-2.3) {粗};
+  \node[font=\small] at (2,-2.8) {V-cycle: 递归得 $O(n)$ 最优复杂度};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ==================== frame 25: 代数多重网格 AMG ====================
+\begin{frame}[shrink]{代数多重网格 (AMG)}
+\framesubtitle{从矩阵出发, 自动构建层次结构}
+
+\begin{columns}[T]
+\column{0.5\textwidth}
+\textbf{几何 MG 的限制:}
+\begin{itemize}\itemsep1pt
+  \item 需要显式网格几何 (坐标、间距)
+  \item 非 PDE 问题 (图拉普拉斯、社交网络) 无网格
+  \item 不规则网格上粗细映射复杂
+\end{itemize}
+
+\vspace{4pt}
+\textbf{AMG 核心思想:}
+\begin{itemize}\itemsep1pt
+  \item 仅从矩阵非零模式推断"连接强度"
+  \item 自动识别哪些未知数应聚合到粗层
+  \item 纯代数过程 — 输入 $A$, 输出多层次结构
+\end{itemize}
+
+\column{0.5\textwidth}
+\textbf{AMG 构建三步:}
+\begin{enumerate}\itemsep0pt\footnotesize
+  \item \textbf{粗化 (Coarsening)}: smoothed aggregation — 将强连接节点聚合成粗节点
+  \item \textbf{延拓算子 $P$}: 分段常数 — 细节点对粗聚合点的贡献
+  \item \textbf{粗网格算子}: Galerkin 乘积
+  \[
+  A_c = R A_f P, \quad R = P^T
+  \]
+\end{enumerate}
+
+\vspace{4pt}
+\textbf{最粗层:} 直接求解器 (本例用 skyline LU, 仅 393 维)。
+\end{columns}
+
+\vspace{4pt}
+\footnotesize
+\textbf{本例 AMG 层次 (AMGCL 自动生成):}
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{@{}r r r r@{}}
+\toprule
+层次 & 未知数 & 非零元 & 存储 \\
+\midrule
+0 (最细) & 970,299 & 6,733,287 & 194 MB \\
+1        & 115,878 & 3,608,448 & 57 MB  \\
+2        & 7,550   & 516,030   & 7 MB   \\
+3 (最粗) & 393     & 24,123    & 0.8 MB \\
+\bottomrule
+\multicolumn{4}{@{}l}{\small 算子复杂度 1.62 (仅 62\% 额外存储), 网格复杂度 1.13} \\
+\end{tabular}
+\end{center}
+\end{frame}
+
+% ==================== frame 26: 新增软件包 ====================
+\begin{frame}[shrink]{新增软件包}
+\framesubtitle{预处理 CG 基准测试使用的库 (与 frame 14 已有库互补)}
+
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}l l l l@{}}
+\toprule
+\textbf{库} & \textbf{版本} & \textbf{用途} & \textbf{特点} \\
+\midrule
+\textbf{AMGCL} & 1.4.8 & 代数多重网格 CG & 头文件库, CPU + CUDA 后端, \\
+            &       &                   & 一行切换 \texttt{backend::builtin/cuda} \\
+\textbf{Eigen} & 3.4.0 & IC(0) 不完全 Cholesky & 头文件库, NaturalOrdering, \\
+            &       &                      & 直接接收 CRS 三数组 \\
+\textbf{cuBLAS} & 12.4 & GPU BLAS & \texttt{ddot}/\texttt{daxpy}/\texttt{dnrm2}, \\
+            &       &           & 替代 CPU 端 \texttt{cblas\_*} \\
+\textbf{cuSPARSE}& 12.4 & GPU 稀疏矩阵 & \texttt{cusparseSpMV} (SpMV), \\
+            &       &               & \texttt{cusparseSpSV} (三角求解) \\
+\bottomrule
+\end{tabular}
+\end{center}
+\normalsize
+
+\vspace{4pt}
+\small
+\textbf{与 slide 主体的对接:}
+\begin{itemize}\itemsep0pt
+  \item 所有库都直接读取 \texttt{mat.dat} 的 CSR 三数组 (\texttt{val, col\_ind, row\_ptr})
+  \item 同一份 CG 源码, 链接时切换 BLAS 后端 (OpenBLAS $\leftrightarrow$ MKL $\leftrightarrow$ cuBLAS)
+  \item AMGCL 一行代码切换 CPU/GPU 后端, 自动构建 AMG 层次
+\end{itemize}
+
+\vspace{2pt}
+\begin{center}
+\small \textbf{AI 任务: 理解各库 API, 写对接代码, 配置编译链接。}
+\end{center}
+\end{frame}
+
+% ==================== frame 27: 预处理策略对比 ====================
+\begin{frame}[shrink]{预处理策略对比 — CG 的加速之路}
+\framesubtitle{同一矩阵 (mat.dat, $n=970299$), $f \equiv 1$, tol $=10^{-8}$}
+
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}l r r r r@{}}
+\toprule
+\textbf{预处理器} & \textbf{迭代次数} & \textbf{收敛残差} & \textbf{总耗时 (ms)} & \textbf{加速比} \\
+\midrule
+无预处理              & 247        & $8.1\times10^{-6}$ & 2536 (MKL)   & 1.0$\times$ \\
+IC(0) (Eigen)        & 98--103    & $\sim 10^{-5}$     & 3466 (MKL)   & 2.5$\times$ \\
+\textbf{AMG 4 层 (AMGCL)} & \textbf{17} & \textbf{$6.7\times10^{-9}$} & \textbf{1160 (GPU)} & \textbf{14.5$\times$} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\normalsize
+
+\vspace{4pt}
+\small
+\textbf{关键发现:}
+\begin{itemize}\itemsep0pt
+  \item \textbf{AMG 是唯一收敛至 $10^{-9}$ 的方法} — 多尺度消除高低频误差
+  \item IC(0) 降低迭代数但精度受限于 $10^{-5}$ — 单层分解无法消除低频分量
+  \item AMG 算子复杂度 1.62 $\Rightarrow$ 仅 62\% 额外存储换来 14.5 倍收敛加速
+\end{itemize}
+
+\vspace{2pt}
+\footnotesize
+\emph{注: 本页数据来自 solver/report.tex, RHS $f\equiv1$ (与 slide 主体的 $\sin$ RHS 不同), 硬件 i7-6800K + GTX 1080 Ti。}
+\end{frame}
+
+% ==================== frame 28: BLAS 后端与 GPU 加速 ====================
+\begin{frame}[shrink]{BLAS 后端与 GPU 加速对比}
+
+\begin{columns}[T]
+\column{0.48\textwidth}
+\textbf{BLAS 后端 (纯 CG, 247 iter):}
+
+\vspace{2pt}
+\footnotesize
+\begin{tabular}{@{}l r r@{}}
+\toprule
+后端 & Solve (ms) & 相对性能 \\
+\midrule
+OpenBLAS 0.3.29 & 3105 & 1.00$\times$ \\
+MKL (conda)     & 2536 & 1.22$\times$ \\
+\textbf{cuBLAS 12.4} & \textbf{172} & \textbf{18.1$\times$} \\
+\bottomrule
+\end{tabular}
+
+\vspace{6pt}
+\small
+\textbf{GPU 加速比 (vs CPU 最快):}
+
+\vspace{2pt}
+\footnotesize
+\begin{tabular}{@{}l r r@{}}
+\toprule
+方法 & GPU (ms) & 加速比 \\
+\midrule
+CG 无预处理  & 172  & \textbf{14.7}$\times$ \\
+IC(0) CG    & 664  & \textbf{5.2}$\times$ \\
+AMG CG      & 64   & \textbf{25.3}$\times$ \\
+\bottomrule
+\end{tabular}
+
+\column{0.52\textwidth}
+\small
+\textbf{为什么加速比差异大?}
+
+\vspace{4pt}
+\textbf{SpMV 密集型 (CG/AMG):}
+\begin{itemize}\itemsep0pt\footnotesize
+  \item 显存带宽 484 GB/s vs DDR4 $\sim$50 GB/s
+  \item SpMV 是带宽受限操作 $\Rightarrow$ GPU 优势大
+  \item AMG V-cycle 以 SpMV 为主 $\Rightarrow$ \textbf{25.3}$\times$
+\end{itemize}
+
+\vspace{6pt}
+\textbf{SpSV 密集型 (IC(0) CG):}
+\begin{itemize}\itemsep0pt\footnotesize
+  \item 三角求解有顺序依赖 (逐行串行)
+  \item GPU 并行度受限 $\Rightarrow$ 仅 \textbf{5.2}$\times$
+\end{itemize}
+
+\vspace{6pt}
+\textbf{MKL vs OpenBLAS:}
+\begin{itemize}\itemsep0pt\footnotesize
+  \item 同 CPU 同 CG 代码, MKL 快 22\%
+  \item MKL 单线程 BLAS 指令调度/缓存优化更优
+\end{itemize}
+\end{columns}
+
+\vspace{2pt}
+\footnotesize
+\emph{注: 硬件 i7-6800K (AVX2, 6C/12T) + GTX 1080 Ti (Pascal, 11GB).}
+\end{frame}
+
+% ==================== frame 29: 综合推荐方案 ====================
+\begin{frame}[shrink]{综合推荐方案}
+\framesubtitle{不同场景下的最佳求解配置}
+
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}l l l l@{}}
+\toprule
+\textbf{场景} & \textbf{推荐配置} & \textbf{耗时} & \textbf{精度} \\
+\midrule
+\textbf{精度优先} & AMGCL CUDA AMG CG  & 1160 ms & \textbf{$10^{-9}$} \\
+\textbf{速度优先} & cuBLAS 纯 CG       & 172 ms  & $10^{-6}$ \\
+\textbf{CPU 环境} & AMGCL CPU AMG CG   & 2656 ms & $10^{-9}$ \\
+\textbf{性价比}   & cuBLAS IC(0) CG    & 1083 ms & $10^{-5}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\normalsize
+
+\vspace{4pt}
+\small
+\textbf{方法选择决策:}
+\begin{itemize}\itemsep1pt
+  \item 有 GPU $\to$ 优先 cuBLAS/CUDA 后端 (加速 5--25$\times$)
+  \item 需高精度 ($<10^{-8}$) $\to$ 必须 AMG 预处理
+  \item 仅 CPU $\to$ AMGCL CPU 后端 2.7s 仍可达 $10^{-9}$
+  \item 快速原型 $\to$ cuBLAS 纯 CG 172ms 出结果
+\end{itemize}
+
+\vspace{4pt}
+\begin{center}
+\small \textbf{AI 编排多库 (AMGCL + cuBLAS + MKL + Eigen) 实现场景自适应 — 单一软件无法覆盖所有场景。}
+\end{center}
+\end{frame}
+
+% ==================== frame 30: 可视化 - AI 写 matplotlib ====================
 \begin{frame}[fragile,shrink]{可视化: AI 协助生成 matplotlib 脚本}
 \framesubtitle{解的中间切片 + 收敛曲线 + 参数扫描}
 
@@ -984,7 +1277,7 @@ plt.contourf(XX[:, :, k_mid], YY[:, :, k_mid], sol3d[:, :, k_mid], 20)
 \textbf{AI 处理的细节:} CRS 二进制 reader, ndarray reshape 顺序, matplotlib backend (Agg headless), 字体 fallback。
 \end{frame}
 
-% ==================== frame 25: 可视化 - 解的中间切片 ====================
+% ==================== frame 31: 可视化 - 解的中间切片 ====================
 \begin{frame}{可视化: 解在 $z=0.5$ 平面的中间切片}
 
 \begin{center}
@@ -1002,10 +1295,10 @@ plt.contourf(XX[:, :, k_mid], YY[:, :, k_mid], sol3d[:, :, k_mid], 20)
 \end{center}
 \end{frame}
 
-% ==================== frame 26: 总结 ====================
+% ==================== frame 32: 总结 ====================
 \begin{frame}[shrink]{总结 — 迭代法 \,$+$\, AI \,$+$\, 库}
 
-\textbf{本讲的四个核心结论:}
+\textbf{本讲的五个核心结论:}
 \begin{enumerate}\itemsep2pt
   \item \textbf{大规模稀疏问题: 直接法不可行.}
   \begin{itemize}\itemsep0pt\footnotesize
@@ -1021,8 +1314,15 @@ plt.contourf(XX[:, :, k_mid], YY[:, :, k_mid], sol3d[:, :, k_mid], 20)
 
   \item \textbf{AI 跨越软件路径仍成立.}
   \begin{itemize}\itemsep0pt\footnotesize
-    \item AI+C SOR ≈ scipy.cg 性能数量级
+    \item AI+C SOR $\approx$ scipy.cg 性能数量级
     \item AI 路径可任选算法与库
+  \end{itemize}
+
+  \item \textbf{预处理 + GPU 进一步放大迭代法潜力.}
+  \begin{itemize}\itemsep0pt\footnotesize
+    \item AMG 从矩阵自动构建 4 层结构, CG 仅 17 步收敛至 $10^{-9}$
+    \item GPU 加速 14.7$\times$ (CG) 至 25.3$\times$ (AMG CG)
+    \item AI 可编排 AMGCL + cuBLAS + MKL 实现场景自适应
   \end{itemize}
 
   \item \textbf{可视化: AI 可以结合任何图形库.}
