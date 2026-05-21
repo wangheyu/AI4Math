@@ -557,3 +557,10 @@ latexmk -xelatex -outdir=build -interaction=nonstopmode slide02.tex
 
 > 提交并推送
 
+
+---
+
+## 2026-05-21 09:30:37 — User asked
+
+> 将最新的iter_beamer.pdf 发送到10.0.0.1
+
