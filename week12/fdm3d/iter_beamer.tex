@@ -992,27 +992,27 @@ AI 多了"任选算法 + 任选库"的自由度; 软件 spsolve 后端固定 (Su
 
 \vspace{4pt}
 \begin{center}
-\begin{tikzpicture}[scale=0.65]
+\begin{tikzpicture}[scale=0.9]
   \draw[thick,->] (0,0) -- (1,-2);
   \draw[thick,->] (1,-2) -- (2,0);
   \draw[thick,->] (2,0) -- (3,-2);
   \draw[thick,->] (3,-2) -- (4,0);
-  \filldraw (0,0) circle (3pt);
-  \filldraw (2,0) circle (3pt);
-  \filldraw (4,0) circle (3pt);
-  \filldraw (1,-2) circle (3pt);
-  \filldraw (3,-2) circle (3pt);
-  \node[font=\footnotesize] at (0.5,-0.4) {光滑};
-  \node[font=\footnotesize] at (1.5,-0.3) {限制};
-  \node[font=\footnotesize] at (1.0,-1.3) {求解};
-  \node[font=\footnotesize] at (2.5,-0.4) {延拓};
-  \node[font=\footnotesize] at (3.5,-0.4) {光滑};
-  \node at (0,0.3) {细};
-  \node at (2,0.3) {细};
-  \node at (4,0.3) {细};
-  \node at (1,-2.3) {粗};
-  \node at (3,-2.3) {粗};
-  \node[font=\small] at (2,-2.8) {V-cycle: 递归得 $O(n)$ 最优复杂度};
+  \filldraw[fill=blue!30,draw=blue] (0,0) circle (4pt);
+  \filldraw[fill=blue!30,draw=blue] (2,0) circle (4pt);
+  \filldraw[fill=blue!30,draw=blue] (4,0) circle (4pt);
+  \filldraw[fill=red!30,draw=red]   (1,-2) circle (4pt);
+  \filldraw[fill=red!30,draw=red]   (3,-2) circle (4pt);
+  \node[font=\small] at (0.5,-0.4) {光滑};
+  \node[font=\small] at (1.5,-0.3) {限制};
+  \node[font=\small] at (1.0,-1.4) {求解};
+  \node[font=\small] at (2.5,-0.4) {延拓};
+  \node[font=\small] at (3.5,-0.4) {光滑};
+  \node[font=\small] at (0,0.4) {细网格};
+  \node[font=\small] at (2,0.4) {细网格};
+  \node[font=\small] at (4,0.4) {细网格};
+  \node[font=\small] at (1,-2.4) {粗网格};
+  \node[font=\small] at (3,-2.4) {粗网格};
+  \node[font=\normalsize\bfseries] at (2,-3.2) {V-cycle: 递归得 $O(n)$ 最优复杂度};
 \end{tikzpicture}
 \end{center}
 \end{frame}
