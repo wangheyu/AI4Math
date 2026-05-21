@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a university course project from the School of Mathematical Sciences at Zhejiang University — numerical simulations of celestial mechanics systems (Sun-Earth-Moon), comparison against JPL Horizons ephemeris data, and eclipse prediction.
+This is a university course project from the School of Mathematical Sciences at Zhejiang University — "AI and Mathematical Software". The course covers C programming, numerical computation, deep learning, AI-assisted coding tools, and scientific simulation (celestial mechanics).
 
 ## Key Commands
 
@@ -13,6 +13,11 @@ This is a university course project from the School of Mathematical Sciences at 
 make all         # compile final_project, week10, and week9 in order
 make clean       # clean all subdirectories
 make rebuild     # clean + all
+
+# week3 — C language, BMP, compilation
+cd week3
+# Compile and run various C examples (see week3/CLAUDE.md for details)
+xelatex slide.tex   # compile beamer lecture slides
 
 # week9 — Report and simulations
 cd week9
@@ -31,9 +36,17 @@ make pdf-jpl     # compile slide-JPL.tex only
 make pdf-skills  # compile slide-skills.tex only
 make clean       # remove build/ and generated PDF symlinks
 
-# week11 — MNIST deep learning project (work in progress)
+# week11 — MNIST deep learning project
 cd week11
 bash download_datasets.sh datasets   # download all datasets (MNIST, Fashion-MNIST, KMNIST, CIFAR-10)
+
+# week12 — Numerical computation teaching
+cd week12
+./build.sh build        # compile all subprojects
+./build.sh test         # run all test suites
+./build.sh pdf          # compile all beamer PDFs
+./build.sh clean        # clean build artifacts
+./build.sh status       # check state of all outputs
 
 # final_project/Qian — Final report on Qian Xuesen's aerospace works
 cd final_project/Qian
@@ -45,15 +58,24 @@ make clean       # remove build/ and report.pdf
 
 - Python is invoked via `conda run -n Teaching python`, so all scripts expect the `Teaching` conda environment.
 - Required packages: `numpy`, `pandas`, `matplotlib`, `astroquery`, `astropy`. Matplotlib is always set to `matplotlib.use("Agg")` (non-interactive backend).
-- For `week11/`: `torch` and `torchvision` are additionally required (not yet installed in the `Teaching` environment).
+- For `week11/`: `torch` and `torchvision` are additionally required (install with `pip install torch torchvision`).
+- For `week12/`: `numpy`, `scipy` required for Python baseline benchmarks.
 - All Python scripts are self-contained executables (run directly, not imported as modules).
 
 ## Project Structure
 
 ```
 AI4Math/                # Top-level
-├── Makefile            # orchestrates subdirectory builds
+├── Makefile            # orchestrates subdirectory builds (final_project, week10, week9)
 ├── CLAUDE.md
+├── README.md
+├── week3/              # C language & BMP bitmap generation
+│   ├── slide.tex           # Beamer lecture: C compilation, libraries, Doxygen
+│   ├── src/                # C source files (bitmap, hello, bmp)
+│   ├── include/            # Header files (bitmap.h, hello.h, add.h)
+│   ├── figures/            # Generated BMP output
+│   ├── commented/          # Doxygen-annotated copy of bitmap code
+│   └── temp/               # Doxygen build output
 ├── week9/              # Main report and simulations
 │   ├── report.tex          # LaTeX main file (XeLaTeX)
 │   ├── chapters/           # chapter .tex files included by report.tex
@@ -76,15 +98,85 @@ AI4Math/                # Top-level
 │   └── SKILLS/             # custom skill definitions for the course
 │       ├── create-review-materials/  # generate Chinese LaTeX review materials from PDFs
 │       └── organize-materials/       # organize study materials
-├── week11/             # MNIST handwritten digit recognition — work in progress
+├── week11/             # MNIST handwritten digit recognition — 5-stage project
 │   ├── plan.md             # 5-stage plan (MLP → CNN → C inference → generalization → unsupervised)
-│   ├── download_datasets.sh # fetch MNIST, Fashion-MNIST, KMNIST, CIFAR-10
-│   └── datasets/           # pre-downloaded datasets (MNIST, FashionMNIST, KMNIST, CIFAR10)
+│   ├── slide_mlp.tex       # Beamer lecture slides (27 frames)
+│   ├── data.py             # [lib] MNIST data loading
+│   ├── models.py           # [lib] MLP + CNN model definitions
+│   ├── utils.py            # [lib] utility functions
+│   ├── mnist_mlp.py        # Stage 1: MLP training (784→128→64→10, ~97% accuracy)
+│   ├── mnist_cnn.py        # Stage 2: CNN training (2×Conv+Pool→FC, ~99% accuracy)
+│   ├── export_mlp_params.py # Stage 3: export params to text format
+│   ├── mnist_mlp_infer.c   # Stage 3: pure C inference engine (reads exported params)
+│   ├── train_classifier.py # Stage 4: multi-dataset generalization (Fashion-MNIST, KMNIST, CIFAR-10)
+│   ├── pca_kmeans.py       # Stage 5: PCA + K-means unsupervised clustering
+│   ├── autoencoder.py      # Stage 5: autoencoder (AE) for representation learning
+│   ├── denoising_autoencoder.py # Stage 5: denoising autoencoder (DAE)
+│   ├── vae.py              # Stage 5: variational autoencoder (VAE)
+│   ├── visualize_latent.py # Stage 5: latent space visualization
+│   ├── sampling.py         # Interactive hand-drawn digit sampling with MLP prediction
+│   ├── gen_slide_assets.py # [aux] generate slide figures (MLP)
+│   ├── gen_cnn_assets.py   # [aux] generate slide figures (CNN)
+│   ├── gen_dataset_samples.py # [aux] generate dataset sample images
+│   ├── download_datasets.sh # [aux] download datasets
+│   ├── checkpoints/        # trained model weights (MLP, CNN, AE, DAE, VAE, etc.)
+│   ├── params/             # exported text-format MLP parameters
+│   ├── samples/            # test samples and hand-drawn digits
+│   ├── results/            # generated plots and figures
+│   ├── slide_assets/       # slide illustrations
+│   ├── datasets/           # pre-downloaded datasets (gitignored)
+│   └── build/              # LaTeX build artifacts (gitignored)
+├── week12/             # Numerical computation teaching — 4 subprojects + 4 beamer lectures
+│   ├── build.sh            # friendly build wrapper (build/test/pdf/clean/status)
+│   ├── Makefile            # top-level orchestration
+│   ├── gauss_elimination/  # Subproject 1: Direct methods — LU decomposition
+│   │   ├── gauss_beamer.tex    # Beamer lecture (20 frames): Gaussian elimination & LU
+│   │   ├── gauss.c/h           # Baseline: kij right-looking, column pivot, single-core
+│   │   ├── gauss_opt.c/h       # Optimized: blocked LU + OpenMP parallel
+│   │   ├── bench_mkl.c         # Benchmark: C vs optimized C vs Intel MKL dgetrf
+│   │   ├── bench_eigen.cpp     # Benchmark: Eigen 3.4 PartialPivLU
+│   │   ├── bench_numpy.py      # NumPy/SciPy baseline for comparison
+│   │   ├── compare.py          # Cross-validation (5-run trimmed mean)
+│   │   └── run_tests.sh        # Test suite
+│   ├── fdm3d/             # Subproject 2: Iterative methods — 3D Poisson FDM
+│   │   ├── iter_beamer.tex    # Beamer lecture (27 frames): iterative solvers
+│   │   ├── main.c             # Gauss-Seidel / SOR on 3D unit cube (7-point stencil)
+│   │   ├── jacobi.c           # Jacobi iteration variant
+│   │   ├── sor_scan.c         # SOR omega parameter sweep
+│   │   ├── bench_pardiso.c    # AI-tuned MKL PARDISO direct sparse solver
+│   │   ├── bench_iter.py      # scipy.sparse CG/GMRES/spsolve comparison
+│   │   ├── cg_bench.c         # Conjugate gradient benchmark
+│   │   ├── cg_compare.py      # CG cross-validation
+│   │   ├── write_mat.c/read_mat.c # CRS binary matrix I/O
+│   │   └── plot_solution.py   # matplotlib visualization (solution slices, convergence)
+│   ├── sparse/            # Subproject 3: Sparse matrix storage — CRS format
+│   │   ├── sparse_crs_beamer.tex # Beamer lecture (16 frames): sparse matrices & CRS
+│   │   ├── csr.h/csr.c         # Educational CRS implementation (6 core operations)
+│   │   ├── csr_demo.c          # End-to-end CRS demo
+│   │   └── csr_test.c          # Unit tests (11 checks)
+│   ├── solver/            # Advanced solver benchmarks (Eigen, AMGCL, GPU, libxsmm)
+│   │   ├── bench_cpu.cpp       # CPU CG benchmark (Eigen, custom CRS)
+│   │   ├── bench_mkl.cpp       # MKL CG benchmark
+│   │   ├── bench_amgcl.cpp     # AMGCL algebraic multigrid
+│   │   ├── bench_gpu.cu        # CUDA CG benchmark
+│   │   ├── gpu_cg.cu/h         # CUDA CG implementation
+│   │   ├── cg_solver.cpp/h     # Custom CG solver (CRS matrix)
+│   │   ├── csr_matrix.cpp/h    # CRS matrix class
+│   │   ├── eigen_ic.cpp/h      # Eigen-based incomplete Cholesky
+│   │   └── report.tex/pdf      # Solver benchmark report
+│   └── visualization/     # AI + OpenGL scientific visualization
+│       ├── fluid_beamer.tex    # Beamer lecture (18 frames): fluid simulation + OpenGL
+│       ├── fluidsim.c/h        # Stam Stable Fluids 2D solver
+│       ├── visdemo_x11.c       # X11+GLX interactive visualization
+│       ├── visdemo_headless.c  # EGL headless rendering → PPM/FFmpeg
+│       ├── compare_anim.py     # Python+matplotlib comparison baseline
+│       └── record_video.sh     # Headless → FFmpeg → MP4
 └── final_project/      # End-of-term projects
     └── Qian/               # Qian Xuesen aerospace works report
         ├── report.tex          # XeLaTeX report with biber bibliography
-        ├── 2D_gravity/         # 2D curved-space gravity simulation
-        └── *.pdf               # reference PDFs (~16 MB each, not tracked in git)
+        ├── 2D_gravity/         # 2D curved-space gravity simulation (Python + MP4 output)
+        ├── Qiang.bib           # Bibliography
+        └── *.pdf               # Reference PDFs (not tracked in git)
 ```
 
 ## Important Patterns
@@ -94,13 +186,14 @@ AI4Math/                # Top-level
 - The Makefile sets `MPLCONFIGDIR` to avoid matplotlib user-directory permission issues.
 - LaTeX compilation uses `latexmk -xelatex` with `-halt-on-error`. Under the hood, latexmk runs two passes: `xelatex -no-pdf` produces `.xdv`, then `xdvipdfmx` converts `.xdv` to `.pdf`. latexmk tracks file fingerprints in `.fdb_latexmk` to skip rebuilds when nothing changed.
 - `report.tex` uses `\include` (not `\input`) for chapters, so each chapter gets its own `.aux` in `build/chapters/`. Bibliography is `qian.bib` in the week9 root.
-- Top-level `make all` builds in dependency order: final_project first, then week10, then week9 last (because week9 runs Python scripts to generate figures and data).
-- `week11/` is a work-in-progress following `plan.md` (5-stage: MLP → CNN → C inference → generalization → unsupervised). Datasets are pre-downloaded under `datasets/`. No source code yet; no Makefile. PyTorch is not yet installed in the `Teaching` conda environment (`pip install torch torchvision`).
-- `final_project/Qian/` uses `xelatex` + `biber` directly (not latexmk) and requires `JPL_API.env` for Horizons API access.
+- Top-level `make all` builds in dependency order: final_project first, then week10, then week9 last.
+- All C code in week12 compiles with `gcc -O3 -march=native -Wall -Wextra`. Intel MKL required for `bench_mkl`/`bench_pardiso` (`-lmkl_rt`, path via `$CONDA_PREFIX/lib`). Eigen 3.4 headers expected at `/tmp/eigen-3.4.0`.
+- `week11/` uses `torch.load`/`torch.save` for model checkpoints. Models defined in `models.py` (MLPClassifier, CNNClassifier, Autoencoder, DenoisingAE, VAE). Dataset loading in `data.py` supports MNIST, Fashion-MNIST, KMNIST, CIFAR-10.
+- `week12/build.sh` is the preferred entry point over raw `make` — it provides a unified interface for build/test/pdf/clean/distclean/status across all subprojects.
 
 ## Custom Skills
 
-This project defines several custom Claude Code skills:
+This project defines custom Claude Code skills:
 
 | Skill | Location | Purpose |
 |-------|----------|---------|
@@ -118,3 +211,7 @@ Skills in `.claude/skills/` are available project-wide. Skills in `week10/SKILLS
 ```bash
 rm -f report.aux report.out report.toc report.log report.lof report.lot report.bbl report.blg
 ```
+
+**week12 MKL/Eigen not found**: MKL and Eigen are optional dependencies. Benchmarks that require them (`bench_mkl`, `bench_pardiso`, `bench_eigen`) will be skipped if the libraries are not found. The core C implementations and Python baselines work without them.
+
+**week11 PyTorch not installed**: `pip install torch torchvision` into the `Teaching` conda environment. GPU not required — all models can train on CPU (slower but functional).
