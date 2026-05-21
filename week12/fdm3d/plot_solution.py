@@ -123,8 +123,10 @@ def plot_sor_scan():
     if data.ndim == 1 or len(data) < 2:
         print("   too few rows, skip")
         return
-    omegas = data[:, 0]
-    iters  = data[:, 1]
+    # 按 omega 排序: sor_scan.c 先均匀扫描再追加精细点, 原始顺序有折返
+    order = np.argsort(data[:, 0])
+    omegas = data[order, 0]
+    iters  = data[order, 1]
 
     # 找最优 omega: 经验最优 (最少迭代)
     i_min = int(np.argmin(iters))

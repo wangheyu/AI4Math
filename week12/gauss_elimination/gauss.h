@@ -1,9 +1,9 @@
 #ifndef GAUSS_H
 #define GAUSS_H
 
-/* 高斯消去法求解 Ax = b (列主元), 覆盖 A 和 b, 解存入 x.
+/* 高斯消去法求解 Ax = b (列主元), 内部复制 A 到工作矩阵, 解存入 x.
    返回 0 成功, -1 奇异.
-   注: 为效率不复制 A, 调用后原矩阵被破坏. */
+   注: 原矩阵 A 和右端 b 均不被修改. */
 int gauss_solve(int n, double *A, double *b, double *x);
 
 /* LU 分解 (Doolittle, 无选主元), A 原位存储 L 和 U:

@@ -20,7 +20,9 @@
 #include <math.h>
 #include <time.h>
 
-/* ——— MKL Fortran 接口 (列主元 LU) ——— */
+/* ——— MKL Fortran 接口 (列主元 LU, 期望 column-major 布局) ——— */
+/* 注意: 传入矩阵必须按 column-major 存储 (Fortran 约定).
+   C 代码中的 row-major 矩阵需先转置才能正确求解. */
 extern void dgetrf_(int *m, int *n, double *a, int *lda, int *ipiv, int *info);
 extern void dgetrs_(char *trans, int *n, int *nrhs, double *a, int *lda,
                     int *ipiv, double *b, int *ldb, int *info);
@@ -102,14 +104,19 @@ int main(void)
         double t_opt = now_sec() - t0;
         free(piv_int);
 
-        /* ——— MKL (Fortran 接口) ——— */
-        memcpy(Awrk, A, sz * sizeof(double));
+        /* ——— MKL (Fortran 接口, 需要 column-major 布局) ——— */
+        /* 将 row-major 的 A 转置为 column-major 副本, 使 MKL 看到正确的矩阵 */
+        double *A_col = (double *)malloc(sz * sizeof(double));
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < n; j++)
+                A_col[j * n + i] = A[i * n + j];
         memcpy(x, b, n * sizeof(double));
         int info, nrhs = 1; char trans = 'N';
         t0 = now_sec();
-        dgetrf_(&n, &n, Awrk, &n, ipiv, &info);
-        dgetrs_(&trans, &n, &nrhs, Awrk, &n, ipiv, x, &n, &info);
+        dgetrf_(&n, &n, A_col, &n, ipiv, &info);
+        dgetrs_(&trans, &n, &nrhs, A_col, &n, ipiv, x, &n, &info);
         double t_mkl = now_sec() - t0;
+        free(A_col);
 
         double gf_mkl = flops / t_mkl / 1e6;
         double vs_opt = t_opt / t_mkl;

@@ -29,6 +29,13 @@ for arg in "$@"; do
     esac
 done
 
+# Python: 优先使用 conda Teaching 环境, 否则回退到系统 python3
+if command -v conda &>/dev/null && conda env list 2>/dev/null | grep -q Teaching; then
+    PYTHON="conda run -n Teaching python3"
+else
+    PYTHON="python3"
+fi
+
 log() { printf '\n\033[1;34m[%s]\033[0m %s\n' "$(date +%H:%M:%S)" "$*"; }
 warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*" >&2; }
 die() { printf '\033[1;31m[error]\033[0m %s\n' "$*" >&2; exit 1; }
@@ -73,15 +80,15 @@ fi
 #------------------------------------------------------------------------------
 if [ "$NO_NUMPY" -eq 0 ]; then
     log "Step 5a/5: bench_numpy.py — NumPy.solve / SciPy.lu / SciPy.lu_factor"
-    python3 -u bench_numpy.py 2>&1 | tee results_numpy.txt || \
+    $PYTHON -u bench_numpy.py 2>&1 | tee results_numpy.txt || \
         warn "bench_numpy.py 失败 (检查 scipy 是否已装)"
 
     log "Step 5b/5: compare.py — 5 次 trim-mean + 单线程隔离对比"
-    python3 -u compare.py 2>&1 | tee results_compare.txt || \
+    $PYTHON -u compare.py 2>&1 | tee results_compare.txt || \
         warn "compare.py 失败"
 
     log "Step 5c/5: 确认 NumPy 后端 (numpy.show_config)"
-    python3 -c "import numpy; numpy.show_config()" 2>&1 | tee numpy_backend.txt | head -20
+    $PYTHON -c "import numpy; numpy.show_config()" 2>&1 | tee numpy_backend.txt | head -20
 else
     log "Step 5/5: SKIP Python 基线"
 fi

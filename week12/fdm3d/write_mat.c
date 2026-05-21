@@ -53,9 +53,10 @@ static inline int row_index(int i, int j, int k, int n)
     return (i - 1) + n * ((j - 1) + n * (k - 1));
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
-    int N = 101;
+    int N = (argc > 1) ? atoi(argv[1]) : 101;
+    if (N < 3) { fprintf(stderr, "N must be >= 3\n"); return 1; }
     double h = 1.0 / (N - 1);
     double h2inv = 1.0 / (h * h);
 

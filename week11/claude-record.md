@@ -418,3 +418,286 @@ Hook 层面：`~/.claude/settings.json` 中已经配置了 `SessionStart` 和 `U
 - Git: main @ `1d74505`
 - 文件: `/home/hywang/Projects/AI4Math/week11/spline_demo.m`（已完全重写，~310 行）
 - 唯一依赖: MATLAB 的 `\` 运算符（线性方程组求解）、`vander`（仅用于多项式对比，非样条部分）
+
+---
+
+## 2026-05-11 23:47 — 全面运行 week11 所有程序、生成参数和 PDF
+
+### User instruction
+> 检查week11下所有程序都能正常运行，生成全部训练参数，生成全部pdf.
+
+### Analysis process
+1. 检查确认 conda `Teaching` 环境已安装 PyTorch 2.11.0（CPU 模式），CJK 字体可用，xelatex/latexmk 可用
+2. 按依赖顺序执行：`mnist_mlp.py` / `mnist_cnn.py` → `export_mlp_params.py` / `gen_slide_assets.py` / `gen_cnn_assets.py` → C 编译验证 → `train_classifier.py` (8 种组合) → `slide_mlp.tex` 编译
+
+### Actions taken
+
+**训练模型 (4 个核心 + 8 个多数据集实验):**
+
+| 程序 | 数据集 | 模型 | 训练 Acc | 测试 Acc | Params |
+|------|--------|------|----------|----------|--------|
+| `mnist_mlp.py` | MNIST | MLP | 99.29% | 97.57% | 109,386 |
+| `mnist_cnn.py` | MNIST | CNN | 99.33% | 98.96% | 20,490 |
+| `train_classifier.py` | MNIST | MLP | 99.29% | 97.57% | 109,386 |
+| `train_classifier.py` | MNIST | CNN | 99.33% | 98.96% | 20,490 |
+| `train_classifier.py` | Fashion-MNIST | MLP | 90.77% | 87.87% | 109,386 |
+| `train_classifier.py` | Fashion-MNIST | CNN | 92.37% | 90.25% | 20,490 |
+| `train_classifier.py` | KMNIST | MLP | 98.92% | 89.36% | 109,386 |
+| `train_classifier.py` | KMNIST | CNN | 98.64% | 92.50% | 20,490 |
+| `train_classifier.py` | CIFAR-10 | MLP | 48.55% | 46.74% | 310,090 |
+| `train_classifier.py` | CIFAR-10 | CNN | 72.59% | 66.13% | 41,098 |
+
+- KMNIST 泛化 gap 最大 (MLP: 9.56%, CNN: 6.15%) — 明显的过拟合
+- CIFAR-10 MLP 几乎等于随机猜测 (10 类基线 10%)，CNN 有一定提升但 gap 依然大
+
+**参数导出与 C 推理:**
+- `export_mlp_params.py`: 导出 6 个文本文件到 `params/`、5 张测试样本到 `samples/`
+- Numpy vs PyTorch 验证: max logit diff = 9.79e-07 ✓
+- `mnist_mlp_infer.c`: 编译成功，5/5 样本预测与 Python 一致 ✓
+
+**Slide 资源:**
+- `gen_slide_assets.py`: 生成 9+10 张图 (mnist_samples, weight_heatmap, training_curves, digit_grid, softmax_viz, crossentropy_viz, gd_landscape, gd_comparison, digit_0..9)
+- `gen_cnn_assets.py`: 生成 4 张图 (conv_demo, cnn_shapes, mlp_cnn_compare, cnn_kernels)
+
+**PDF 编译:**
+- `latexmk -xelatex -halt-on-error slide_mlp.tex` → 29 页, 1.4MB
+- 产出 `build/slide_mlp.pdf`，同时复制到 `week11/slide_mlp.pdf`
+
+### Results
+- 所有程序均正常运行，无报错
+- 所有 12 个 checkpoint 已保存到 `checkpoints/`
+- 所有参数文件已导出到 `params/`
+- 所有 slide 图片已生成到 `slide_assets/`
+- `slide_mlp.pdf` 编译成功 (29 pages)
+- C 语言推理与 Python 完全一致
+
+### Technical context
+- Git: main @ `a63278c`
+- 环境: conda Teaching (PyTorch 2.11.0 CPU, matplotlib 3.x, xelatex TeX Live 2022)
+- 关键文件: `week11/mnist_mlp.py`, `mnist_cnn.py`, `train_classifier.py`, `export_mlp_params.py`, `gen_slide_assets.py`, `gen_cnn_assets.py`, `slide_mlp.tex`, `mnist_mlp_infer.c`
+- `sampling.py` 需要 GUI (TkAgg)，未在本次无头环境中测试
+
+---
+
+## 2026-05-12 00:10 — 修复 slide_mlp.pdf 页面溢出与遮挡
+
+### User instruction
+> 13,18,28,29页有页面溢出，13页legend和图片有遮挡，调整，然后再全面检查一遍是否有溢出和遮挡
+
+### Analysis process
+1. 定位问题页面对应 LaTeX frame：
+   - 第 13 页: 权重可视化 (`shrink=20`, 图片 0.7\textwidth + colorbar + 两个 text block)
+   - 第 18 页: 卷积操作演示 (`shrink=10`, conv_demo.png + formula + 两个 block)
+   - 第 28 页: 使用指南一 (`shrink=15`, 6 个代码 block 分两列)
+   - 第 29 页: 使用指南二 (`shrink=10`, tikz 流程图 + 两列代码)
+2. 全面扫描发现还有 5 个 `shrink=10` 的低安全帧，以及 4 个 `shrink=15` 的高密度帧
+
+### Actions taken — 共调整 13 帧
+
+| 页面 | 原始 shrink | 新 shrink | 额外调整 |
+|------|------------|-----------|---------|
+| 13 (权重可视化) | 20 | 30 | 图片 0.7→0.52\textwidth, 去除多余 vspace |
+| 18 (卷积演示) | 10 | 20 | 图片 \textwidth→0.98\textwidth, 减小 vspace |
+| 28 (使用指南一) | 15 | 25 | 减小 block 间距 0.1→0.05cm |
+| 29 (使用指南二) | 10 | 20 | tikz node 间距缩小, minimum width 缩小 |
+| 14 (实验结果) | 10 | 20 | — |
+| 17 (MLP局限) | 10 | 20 | — |
+| 19 (Max Pooling) | 10 | 20 | — |
+| 23 (训练vs推理) | 10 | 15 | — |
+| 26 (C推理验证) | 10 | 15 | — |
+| 4 (MLP架构) | 15 | 20 | — |
+| 15 (utils.py) | 15 | 20 | — |
+| 16 (总结) | 15 | 20 | — |
+| 20 (CNN结构) | 15 | 20 | — |
+
+### Results
+- 重新编译成功，0 个 overfull/underfull box 警告
+- 最终 shrink 范围: 15-30，不再有 shrink=10 帧
+- 产出版本: `slide_mlp.pdf` (1.4MB, 29 pages)
+
+### Technical context
+- Git: main @ `a63278c`
+- 文件: `week11/slide_mlp.tex` (13 处修改)
+
+---
+
+## 2026-05-12 00:18 — 修复第 13 页图片 colorbar 遮挡与英文标注
+
+### User instruction
+> 第13页图片中的legend挡住了图片内容，同时图片中的标注文字是英文，请改成中文。然后反复检查几次，确保没有其他问题。
+
+### Analysis process
+1. 定位问题源：`gen_slide_assets.py:61-86` `gen_weight_heatmap()` 函数
+   - `plt.colorbar(im, ax=axes, shrink=0.6)` 与 `tight_layout()` 配合不佳，colorbar 覆盖右侧子图
+   - 所有标注为英文 (Neuron, Weight Value, First Hidden Layer...)
+   - 全局字体为 DejaVu Sans，不支持中文
+2. 额外发现梯度下降帧 (页 10, shrink=15) 内容密集，提升至 shrink=20
+
+### Actions taken
+
+**`gen_slide_assets.py` — `gen_weight_heatmap()` 重写:**
+- 添加 CJK 字体支持 (Noto Sans CJK SC)，生成后恢复 DejaVu Sans
+- 图片尺寸 12×7 → 14×7.5 英寸，为 colorbar 留出空间
+- `tight_layout()` → `constrained_layout=True`，自动处理 colorbar 间距
+- colorbar: `ax=axes` → `ax=axes.ravel().tolist()` + `pad=0.02`，精确控制间距
+- 全部标注中文化：
+  - `"Neuron {i+1}"` → `"神经元 {i+1}"`
+  - `"Weight Value"` → `"权重值"`
+  - suptitle: 英文 3 行 → 中文 3 行
+
+**`slide_mlp.tex`:**
+- 梯度下降帧: shrink=15 → 20
+
+### 反复检查 (5 轮)
+
+| 轮次 | 检查内容 | 结果 |
+|------|---------|------|
+| 1 | Clean rebuild | 编译成功，29 页 |
+| 2 | Box warnings | **0** overfull/underfull |
+| 3 | 源码扫描 | vspace 合理，shrink 分布健康 (15-30)，无 shrink=10 |
+| 4 | 二次编译 | 稳定，无 rerun 需求 |
+| 5 | 图片校验 | weight_heatmap.png: 2116×1157, RGBA, 200KB |
+
+### Results
+- colorbar 不再遮挡子图
+- 所有标注已改为中文
+- 0 个 box 警告，二次编译稳定 (All targets up-to-date)
+- 仅 4/29 帧需要实际缩放 (max 28.76%)
+- 最终 PDF: `slide_mlp.pdf` (1.4MB, 29 pages)
+
+### Technical context
+- Git: main @ `a63278c`
+- 文件: `week11/gen_slide_assets.py:61-86`, `week11/slide_mlp.tex:489`
+
+---
+
+## 2026-05-13 17:58:03 — User asked
+
+> 增加介绍什么是泛化差距，定义和直观。然后再全面仔细检查一下页面溢出问题。确保没有页面溢出。
+
+
+---
+
+## 2026-05-13 18:09:09 — User asked
+
+> 调一下29,37页，溢出了。
+
+
+---
+
+## 2026-05-13 18:14:07 — User asked
+
+> 调一下29,43页，溢出了。
+
+
+---
+
+## 2026-05-13 18:28:01 — User asked
+
+> 检查一下plan.md进度
+
+
+---
+
+## 2026-05-13 18:29:54 — User asked
+
+> 先制定一下第5阶段的提纲
+
+
+---
+
+## 2026-05-13 18:47:07 — User asked
+
+> 可以，先完成所有测试。注意保留之前的所有测试程序和结果。
+
+
+---
+
+## 2026-05-13 19:46:35 — User asked
+
+> 以这些数值算例为基础，在slide_mlp.tex中增加介绍无监督学习的部分。要求综述监督学习和无监督学习的区别。介绍第五阶段出现的方法，原理和实现。更新附录中各程序的使用方法。反复检查不要有页面溢出。
+
+
+---
+
+## 2026-05-13 20:01:43 — User asked
+
+> 将PCA,K-means部分内容都介绍的更加详细一些，增加页面。完成后仔细检查不要有页面溢出。
+
+
+---
+
+## 2026-05-13 21:35:44 — User asked
+
+> 43，44，46，47，48，51，55页页面溢出了，调整，如果页面过满则可以分成两页。调整后全面检查，确保没有页面有溢出。
+
+
+---
+
+## 2026-05-13 21:52:51 — User asked
+
+> 43，44，47，48，51，55页面溢出了，调整。调整后全面检查，确保没有页面有溢出。
+
+
+---
+
+## 2026-05-13 22:09:54 — User asked
+
+> 43，46，48，51，52，53，54，55，57，63页面溢出了，调整。调整后全面检查，确保没有页面有溢出。如果缩小不能解决就增加页数，调整布局。
+
+
+---
+
+## 2026-05-13 22:16:24 — User asked
+
+> 52，53，57，63页面溢出了，调整。调整后全面检查，确保没有页面有溢出。如果缩小不能解决就增加页数，调整布局。
+
+
+---
+
+## 2026-05-13 22:26:51 — Session ended
+
+- **Session ID**: c3053adb-60a0-491a-8b6e-fb17c65c4e3c
+- **End reason**: prompt_input_exit
+
+---
+
+## 2026-05-13 23:08:17 — User asked
+
+> 56，62面溢出了，调整。调整后全面检查，确保没有页面有溢出。如果缩小不能解决就增加页数，调整布局。
+
+
+---
+
+## 2026-05-13 23:11:25 — User asked
+
+> 56面溢出了，调整。调整后全面检查，确保没有页面有溢出。可以考虑调整溢出的block，拆分成两个
+
+
+---
+
+## 2026-05-13 23:22:55 — User asked
+
+> 将整个slide中关于无监督学习部分的整个思路给一份讲稿，写在ln.md中
+
+
+---
+
+## 2026-05-14 00:35:09 — User asked
+
+> 将程序源码和tex文件都git更新上传。
+
+
+---
+
+## 2026-05-14 08:03:54 — Session ended
+
+- **Session ID**: 1672e9e1-8114-4441-b39f-b3ad5e57640c
+- **End reason**: other
+
+---
+
+## 2026-05-14 11:09:03 — Session ended
+
+- **Session ID**: 2d6e029f-4f96-460b-8cc0-a2f8aa958b32
+- **End reason**: other

@@ -36,6 +36,13 @@ for arg in "$@"; do
     esac
 done
 
+# Python: 优先使用 conda Teaching 环境, 否则回退到系统 python3
+if command -v conda &>/dev/null && conda env list 2>/dev/null | grep -q Teaching; then
+    PYTHON="conda run -n Teaching python3"
+else
+    PYTHON="python3"
+fi
+
 log() { printf '\n\033[1;34m[%s]\033[0m %s\n' "$(date +%H:%M:%S)" "$*"; }
 warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*" >&2; }
 die() { printf '\033[1;31m[error]\033[0m %s\n' "$*" >&2; exit 1; }
@@ -71,18 +78,23 @@ log "Step 4/6: SOR omega 扫描 (N=64, 寻找经验最优)"
 ./sor_scan 64 5000 1e-6 2>&1 | tee results_sor_scan.txt
 
 #------------------------------------------------------------------------------
-# 5. 大规模 N=101 实验 (scipy + PARDISO)
+# 5. 大规模 N=101 实验 (scipy + PARDISO + CG 三路对比)
 #------------------------------------------------------------------------------
 if [ "$QUICK" -eq 0 ]; then
     log "Step 5/6: scipy.sparse 路径 (cg/gmres on N=101 mat.dat)"
-    python3 -u bench_iter.py 2>&1 | tee results_scipy.txt || \
+    $PYTHON -u bench_iter.py 2>&1 | tee results_scipy.txt || \
         warn "bench_iter.py 部分失败 (可能 OOM, 见 results_scipy.txt)"
-
     log "Step 5b/6: MKL PARDISO (本机环境 conda+MKL+OpenMP 冲突, 可能 segfault)"
     timeout 60 ./bench_pardiso > results_pardiso.txt 2>&1 || \
         warn "bench_pardiso 异常或超时 (60s), 见 results_pardiso.txt"
+
+    log "Step 5c/6: CG 三路对比 (C hand / C MKL SpBLAS / SciPy)"
+    timeout 600 ./cg_bench mat.dat 2>&1 | tee results_cg_c.txt
+    $PYTHON -u cg_compare.py mat.dat 2>&1 | tee results_cg_py.txt || \
+        warn "cg_compare.py 部分失败"
 else
     log "Step 5/6: SKIP (--quick 模式, 不跑 N=101 大规模)"
+fi
 fi
 
 #------------------------------------------------------------------------------
@@ -90,8 +102,8 @@ fi
 #------------------------------------------------------------------------------
 if [ "$NO_PLOT" -eq 0 ]; then
     log "Step 6/6: 生成 PNG (solution_slice / convergence / sor_omega)"
-    if command -v python3 >/dev/null && python3 -c "import matplotlib" 2>/dev/null; then
-        python3 -u plot_solution.py 2>&1 | grep -v "UserWarning\|Glyph\|missing font" || true
+    if $PYTHON -c "import matplotlib" 2>/dev/null; then
+        $PYTHON -u plot_solution.py 2>&1 | grep -v "UserWarning\|Glyph\|missing font" || true
     else
         warn "matplotlib 不可用, 跳过 PNG 生成"
     fi

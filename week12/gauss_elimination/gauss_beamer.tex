@@ -370,7 +370,7 @@ for (int k = 0; k < n - 1; k++) {
 
 \vspace{2pt}
 \small
-\textbf{AI 做对了：} kij 循环、列主元、restrict 指针、内存管理。\\
+\textbf{教学代码：} kij 循环、列主元、restrict 指针、内存管理。\\
 \textbf{这是为了学习而写 — 不是为了和库竞争。} $n>1000$ 时性能崩溃。
 \end{frame}
 
@@ -505,7 +505,7 @@ dgetrs_(&trans, &n, &nrhs, A, &n, ipiv, x, &n, &info);
 \textbf{AI 处理了调用商业库所有复杂细节：} Fortran 名称修饰 (\texttt{dgetrf\_})、全指针传参、编译链接配置 (\texttt{-lmkl\_rt})。
 
 \vspace{2pt}
-\textbf{这 2 行 = 你写的 \texttt{np.linalg.solve(A,b)} 在内部所做的事情， 只是这次它在你的 C 代码里。你的核心工作量并没有本质上升。}
+\textbf{等价于 \texttt{np.linalg.solve(A,b)} 在内部所做的事情， 只是这次它在你的 C 代码里工作。（Matlab 也一样。）}
 \end{frame}
 
 % ==================== frame 12a: v3 头文件与库依赖 ====================
@@ -674,7 +674,7 @@ SciPy.lu\_factor (MKL) & 0.284 \\
 
 \vspace{6pt}
 \begin{center}
-\small \textbf{软件给你便利, AI 给你选择权。}
+\small \textbf{软件是工业品，AI 使得定制成为可能。}
 \end{center}
 \end{frame}
 

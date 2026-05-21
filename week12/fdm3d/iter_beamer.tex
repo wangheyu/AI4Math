@@ -1112,7 +1112,107 @@ AI 多了"任选算法 + 任选库"的自由度; 软件 spsolve 后端固定 (Su
 \end{center}
 \end{frame}
 
-% ==================== frame 27: 预处理策略对比 ====================
+% ==================== frame 27: CG 三路 SpMV 后端对比 — 方法论 ====================
+\begin{frame}[shrink]{CG 三路对比 — 同一算法, 不同 SpMV 后端}
+\framesubtitle{统一 CG 算法, 只换 SpMV: 手写 C / MKL SpBLAS / SciPy, 公平对比后端效率}
+
+\textbf{实验设计: 控制变量法}
+
+\vspace{2pt}
+\footnotesize
+\textbf{CG 算法骨架:} 三路完全相同的数学 — 唯一不同的只有 $Ap = A \cdot p$ 这一步:
+\[
+\begin{aligned}
+\alpha &= (r^T r) / (p^T Ap) \\
+x &\;+\!\!= \alpha p  \\
+r &\;-\!\!= \alpha Ap  \\
+\beta &= (r^T r)_{\text{new}} / (r^T r)_{\text{old}} \\
+p &= r + \beta p
+\end{aligned}
+\]
+
+\vspace{2pt}
+\begin{center}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}l l l l@{}}
+\toprule
+\textbf{路径} & \textbf{SpMV 实现} & \textbf{向量运算} & \textbf{语言} \\
+\midrule
+C hand CSR & \texttt{for i.. for k.. sum += val[k]*x[col[k]]} & C 循环 & C \\
+C + MKL     & \texttt{mkl\_sparse\_d\_mv()} (IE SpBLAS) & \texttt{cblas\_ddot/daxpy} & C \\
+SciPy       & \texttt{A @ x} (\texttt{csr\_matrix.dot}) & NumPy 内置 & Python \\
+\bottomrule
+\end{tabular}
+\end{center}
+\normalsize
+
+\vspace{4pt}
+\small
+\textbf{控制条件:} 同一份 \texttt{mat.dat} (N=101, 970299$^2$), \\
+同一份 \texttt{rhs.dat} (C \texttt{srand(42)} 生成, SciPy 直接读取), \\
+同一容差 tol=$10^{-8}$, 均无预处理。 \\
+\textbf{公平性:} 三路执行完全相同的浮点运算序列, 残差历史逐位一致 (可验证)。
+
+\vspace{2pt}
+\begin{center}
+\footnotesize \textbf{本次对比回答: MKL 稀疏后端比手写快多少? C 手写 vs Python 调用开销多大?}
+\end{center}
+\end{frame}
+
+% ==================== frame 28: CG 三路结果 ====================
+\begin{frame}[shrink]{CG 三路对比 — 实测结果 (N=101)}
+\framesubtitle{970299$^2$, nnz=6.73M, 16 核 x86\_64, 双精度, tol=$10^{-8}$}
+
+\begin{columns}[T]
+\column{0.55\textwidth}
+\footnotesize
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}l r r r@{}}
+\toprule
+\textbf{后端} & \textbf{iter} & \textbf{耗时(s)} & \textbf{加速比} \\
+\midrule
+C hand CSR (gcc -O3) & 352 & 3.93 & 1.00$\times$ \\
+\textbf{C + MKL SpBLAS} & \textbf{352} & \textbf{1.98} & \textbf{1.98}$\times$ \\
+C + MKL (+ optimize 0.06s) & 352 & 2.04 & 1.93$\times$ \\
+SciPy CG (scipy.sparse) & 352 & 5.99 & 0.65$\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\normalsize
+
+\vspace{4pt}
+\small
+\textbf{精度:} 三路最终 $\|r\|/\|b\| = 9.91\times 10^{-9}$, 完全一致。
+
+\column{0.45\textwidth}
+\textbf{关键发现:}
+
+\vspace{2pt}
+\begin{enumerate}\itemsep3pt
+  \item \textbf{MKL IE SpBLAS 对手写加速 2$\times$}\\
+  {\footnotesize SIMD 向量化 + 内存预取, 同一份 CRS 三数组}
+
+  \item \textbf{SciPy CG 反而最慢}\\
+  {\footnotesize 尽管底层也链 MKL 2023.1, 但 Python 调用开销 + callback 使耗时 $\approx$ MKL 的 3$\times$}
+
+  \item \textbf{MKL optimize 开销可忽略}\\
+  {\footnotesize 0.06s 一次性, 一次 CG 即摊销}
+\end{enumerate}
+
+\vspace{2pt}
+\small
+\textbf{解释:} SciPy 的 \texttt{csr\_matrix.dot} 在内部将运算 dispatch 到 MKL, 但 Python 对象模型使得每次 SpMV 都有类型检查、数组包装等 overhead。对 970K 维、352 次 SpMV, 累积开销显著。
+\end{columns}
+
+\vspace{4pt}
+\begin{center}
+\small \textbf{AI+C+MKL: 保持代码灵活性 + 工业级稀疏性能。}
+\end{center}
+\end{frame}
+
+% ==================== frame 29: 预处理策略对比 ====================
 \begin{frame}[shrink]{预处理策略对比 — CG 的加速之路}
 \framesubtitle{同一矩阵 (mat.dat, $n=970299$), $f \equiv 1$, tol $=10^{-8}$}
 
@@ -1146,7 +1246,7 @@ IC(0) (Eigen)        & 98--103    & $\sim 10^{-5}$     & 3466 (MKL)   & 2.5$\tim
 \emph{注: 本页数据来自 solver/report.tex, RHS $f\equiv1$ (与 slide 主体的 $\sin$ RHS 不同), 硬件 i7-6800K + GTX 1080 Ti。}
 \end{frame}
 
-% ==================== frame 28: BLAS 后端与 GPU 加速 ====================
+% ==================== frame 30: BLAS 后端与 GPU 加速 ====================
 \begin{frame}[shrink]{BLAS 后端与 GPU 加速对比}
 
 \begin{columns}[T]
@@ -1213,7 +1313,7 @@ AMG CG      & 64   & \textbf{25.3}$\times$ \\
 \emph{注: 硬件 i7-6800K (AVX2, 6C/12T) + GTX 1080 Ti (Pascal, 11GB).}
 \end{frame}
 
-% ==================== frame 29: 综合推荐方案 ====================
+% ==================== frame 31: 综合推荐方案 ====================
 \begin{frame}[shrink]{综合推荐方案}
 \framesubtitle{不同场景下的最佳求解配置}
 
@@ -1250,7 +1350,7 @@ AMG CG      & 64   & \textbf{25.3}$\times$ \\
 \end{center}
 \end{frame}
 
-% ==================== frame 30: 可视化 - AI 写 matplotlib ====================
+% ==================== frame 32: 可视化 - AI 写 matplotlib ====================
 \begin{frame}[fragile,shrink]{可视化: AI 协助生成 matplotlib 脚本}
 \framesubtitle{解的中间切片 + 收敛曲线 + 参数扫描}
 
@@ -1277,7 +1377,7 @@ plt.contourf(XX[:, :, k_mid], YY[:, :, k_mid], sol3d[:, :, k_mid], 20)
 \textbf{AI 处理的细节:} CRS 二进制 reader, ndarray reshape 顺序, matplotlib backend (Agg headless), 字体 fallback。
 \end{frame}
 
-% ==================== frame 31: 可视化 - 解的中间切片 ====================
+% ==================== frame 33: 可视化 - 解的中间切片 ====================
 \begin{frame}{可视化: 解在 $z=0.5$ 平面的中间切片}
 
 \begin{center}
@@ -1295,10 +1395,10 @@ plt.contourf(XX[:, :, k_mid], YY[:, :, k_mid], sol3d[:, :, k_mid], 20)
 \end{center}
 \end{frame}
 
-% ==================== frame 32: 总结 ====================
+% ==================== frame 34: 总结 ====================
 \begin{frame}[shrink]{总结 — 迭代法 \,$+$\, AI \,$+$\, 库}
 
-\textbf{本讲的五个核心结论:}
+\textbf{本讲的六个核心结论:}
 \begin{enumerate}\itemsep2pt
   \item \textbf{大规模稀疏问题: 直接法不可行.}
   \begin{itemize}\itemsep0pt\footnotesize
@@ -1316,6 +1416,13 @@ plt.contourf(XX[:, :, k_mid], YY[:, :, k_mid], sol3d[:, :, k_mid], 20)
   \begin{itemize}\itemsep0pt\footnotesize
     \item AI+C SOR $\approx$ scipy.cg 性能数量级
     \item AI 路径可任选算法与库
+  \end{itemize}
+
+  \item \textbf{CG 三路 SpMV 对比: MKL 稀疏后端优势明显.}
+  \begin{itemize}\itemsep0pt\footnotesize
+    \item MKL IE SpBLAS 对手写 CSR SpMV 加速 2$\times$
+    \item SciPy CG 反而最慢 (Python 调用开销 $\approx$ MKL 的 3$\times$)
+    \item AI+C+MKL: 代码灵活性 + 工业级稀疏性能
   \end{itemize}
 
   \item \textbf{预处理 + GPU 进一步放大迭代法潜力.}

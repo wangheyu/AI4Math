@@ -8,7 +8,7 @@ TARGETS = test test_opt bench_mkl bench_eigen
 EIGEN_DIR = /tmp/eigen-3.4.0
 MKL_HOME = $(CONDA_PREFIX)
 
-.PHONY: all clean distclean
+.PHONY: all clean distclean pdf
 
 all: $(TARGETS)
 
@@ -30,10 +30,20 @@ bench_mkl: bench_mkl.c gauss.o gauss_opt.o
 bench_eigen: bench_eigen.cpp
 	g++ -O3 -march=native -fopenmp -I$(EIGEN_DIR) -o $@ $< -lm
 
+## pdf: 编译 beamer 讲义
+pdf: gauss_beamer.pdf
+
+gauss_beamer.pdf: gauss_beamer.tex
+	xelatex -interaction=nonstopmode $<
+	xelatex -interaction=nonstopmode $<
+
 ## clean: 只删除可执行 / 编译产物, 保留所有实验结果与日志
 clean:
-	rm -f $(TARGETS) bench_eigen *.o
+	rm -f $(TARGETS) *.o
 
 ## distclean: 同时清除实验结果 (慎用)
 distclean: clean
 	rm -f results_*.txt numpy_backend.txt missfont.log texput.log
+	rm -f gauss_beamer.pdf gauss_beamer.aux gauss_beamer.log \
+	      gauss_beamer.nav gauss_beamer.out gauss_beamer.snm \
+	      gauss_beamer.toc gauss_beamer.vrb

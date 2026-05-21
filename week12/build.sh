@@ -11,7 +11,7 @@
 #   ./build.sh distclean 清除一切, 包括实验结果与 PDF
 #   ./build.sh status    列出各子目录关键产物状态
 #
-# 子项目:
+# 子项目 (4个):
 #   gauss_elimination/   直接法 (高斯消去 / LU / AI+MKL)
 #   fdm3d/               迭代法 (3D Poisson / GS-SOR / AI+PARDISO / scipy)
 #   sparse/              稀疏矩阵存储 (CRS 教学实现)
@@ -20,7 +20,7 @@
 set -u
 cd "$(dirname "$0")"
 
-SUBDIRS="gauss_elimination fdm3d sparse"
+SUBDIRS="gauss_elimination fdm3d sparse visualization"
 
 log()  { printf '\n\033[1;34m[%s]\033[0m %s\n' "$(date +%H:%M:%S)" "$*"; }
 warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*" >&2; }

@@ -1,4 +1,4 @@
-## 顶层 Makefile — 统一编译/清理/测试 三个子项目
+## 顶层 Makefile — 统一编译/清理/测试 四个子项目
 ##
 ## 目标:
 ##   make all         — 编译所有子目录的 C/C++ 程序 + 讲义 PDF
@@ -10,7 +10,7 @@
 ##   make status      — 列出各子目录关键产物状态
 ##   make help        — 本帮助
 
-SUBDIRS = gauss_elimination fdm3d sparse
+SUBDIRS = gauss_elimination fdm3d sparse visualization
 
 .PHONY: all build test pdf clean distclean status help \
         $(SUBDIRS) test-each pdf-each clean-each distclean-each

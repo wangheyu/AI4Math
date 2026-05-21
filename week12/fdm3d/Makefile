@@ -2,10 +2,11 @@ CC = gcc
 CFLAGS = -O3 -march=native -Wall -Wextra
 LDFLAGS = -lm
 MKL_HOME = $(CONDA_PREFIX)
+MKL_INCLUDE = $(CONDA_PREFIX)/envs/Teaching/include
 
-TARGETS = fdm3d write_mat read_mat jacobi sor_scan bench_pardiso
+TARGETS = fdm3d write_mat read_mat jacobi sor_scan bench_pardiso cg_bench
 
-.PHONY: all clean distclean
+.PHONY: all clean distclean pdf
 
 all: $(TARGETS)
 
@@ -29,6 +30,18 @@ bench_pardiso: bench_pardiso.c
 	    -L$(MKL_HOME)/lib -Wl,-rpath,$(MKL_HOME)/lib \
 	    -lmkl_rt -lm -ldl
 
+cg_bench: cg_bench.c
+	$(CC) $(CFLAGS) -I$(MKL_INCLUDE) -o $@ $< \
+	    -L$(MKL_HOME)/lib -Wl,-rpath,$(MKL_HOME)/lib \
+	    -lmkl_rt -lm -ldl
+
+## pdf: 编译 beamer 讲义
+pdf: iter_beamer.pdf
+
+iter_beamer.pdf: iter_beamer.tex
+	xelatex -interaction=nonstopmode $<
+	xelatex -interaction=nonstopmode $<
+
 ## clean: 只删除可执行 / 编译产物, 保留所有实验数据与图
 clean:
 	rm -f $(TARGETS) *.o
@@ -36,4 +49,8 @@ clean:
 ## distclean: 同时清除矩阵数据 / 实验日志 / 收敛历史 / PNG (慎用)
 distclean: clean
 	rm -f mat.dat conv_*.txt sor_scan.txt results_*.txt \
+	      rhs.dat \
 	      solution_slice.png convergence.png sor_omega.png
+	rm -f iter_beamer.pdf iter_beamer.aux iter_beamer.log \
+	      iter_beamer.nav iter_beamer.out iter_beamer.snm \
+	      iter_beamer.toc iter_beamer.vrb
