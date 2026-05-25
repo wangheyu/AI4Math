@@ -564,3 +564,19 @@ latexmk -xelatex -outdir=build -interaction=nonstopmode slide02.tex
 
 > 将最新的iter_beamer.pdf 发送到10.0.0.1
 
+
+---
+
+## 2026-05-21 21:05:35 — User asked
+
+> BLAS中这两个函数是什么功能：
+dgetrf_(&n, &n, A_col, &n, ipiv, &info);
+        dgetrs_(&trans, &n, &nrhs, A_col, &n, ipiv, x, &n, &info);
+
+
+---
+
+## 2026-05-21 21:06:11 — Session ended
+
+- **Session ID**: 536669de-a86e-4c5c-8aed-5fecc33019b6
+- **End reason**: prompt_input_exit
