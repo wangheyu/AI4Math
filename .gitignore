@@ -26,6 +26,11 @@ week9/report.pdf
 # Generated PDF slides
 week10/*.pdf
 
+# Generated notebooks and media outputs
+.ipynb_checkpoints/
+*.pdf
+*.mp4
+
 # Python cache
 __pycache__/
 *.pyc
