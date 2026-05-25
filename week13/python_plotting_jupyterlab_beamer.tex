@@ -1,0 +1,1101 @@
+\documentclass[aspectratio=169,11pt]{ctexbeamer}
+
+\usetheme{Warsaw}
+\setbeamertemplate{navigation symbols}{}
+
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\setbeamercolor{block body}{bg=codebg,fg=black}
+
+\title{Python 绘图工具与命令概览}
+\subtitle{JupyterLab、NumPy、Matplotlib、Plotly 与 ipywidgets}
+\author{多元微积分可视化示例配套讲义}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{本讲定位}
+  \begin{itemize}
+    \item 介绍 notebook 中出现的绘图工具和命令的一般使用方法。
+    \item 重点不是某一个 notebook 的操作流程，而是可迁移到其他课程、实验和数据分析任务的绘图模式。
+    \item 主要覆盖：JupyterLab、NumPy 网格、Matplotlib 二维图、Plotly 交互图、ipywidgets 参数交互。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{典型 Python 绘图流程}
+  \begin{enumerate}
+    \item 准备数据：数组、表格、网格或函数采样点。
+    \item 创建图形对象：Matplotlib 的 \texttt{fig, ax}，或 Plotly 的 \texttt{fig}。
+    \item 添加图层：曲线、散点、等高线、向量场、曲面。
+    \item 调整样式：标题、坐标轴、颜色、比例、图例、色条。
+    \item 显示或导出：在 Jupyter 中显示，或保存为图片/PDF/HTML。
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{JupyterLab：交互式绘图环境}
+  JupyterLab 适合教学和探索式计算，因为文字、公式、代码和图形可以放在同一个文档中。
+
+  \begin{block}{常用启动方式}
+\begin{Verbatim}[fontsize=\small]
+jupyter lab
+jupyter lab some_notebook.ipynb
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item Code cell 执行 Python，Markdown cell 写解释和公式。
+    \item Kernel 保存变量和函数；重启 kernel 后需要重新执行定义代码。
+    \item 图形输出直接显示在 cell 下方，适合边改参数边观察结果。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{依赖导入：约定俗成的别名}
+  大多数科学计算代码会使用固定别名，便于阅读和交流。
+
+  \begin{block}{常见导入}
+\begin{Verbatim}[fontsize=\small]
+import numpy as np
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from ipywidgets import FloatSlider, interact
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{np}：数组、网格、线性代数和数学函数。
+    \item \texttt{plt}：Matplotlib 的状态式入口，常配合面向对象的 \texttt{ax} 使用。
+    \item \texttt{go}：Plotly 的图层对象，例如 \texttt{go.Surface}、\texttt{go.Contour}。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{NumPy：一维坐标轴}
+  绘图前通常先生成坐标点。连续区间需要被离散成有限个采样点。
+
+  \begin{block}{等距采样}
+\begin{Verbatim}[fontsize=\small]
+x = np.linspace(-3, 3, 121)
+y = np.linspace(-3, 3, 121)
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{np.linspace(a, b, n)} 在闭区间 \([a,b]\) 上生成 \(n\) 个等距点。
+    \item 点数越多，图形越平滑，但计算量和图形体积也越大。
+    \item 一维坐标轴可用于曲线图，也可继续扩展成二维网格。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{NumPy：二维网格}
+  二元函数 \(z=f(x,y)\) 的绘图一般需要二维网格。
+
+  \begin{block}{网格生成与函数采样}
+\begin{Verbatim}[fontsize=\small]
+X, Y = np.meshgrid(x, y)
+Z = f(X, Y)
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{X} 和 \texttt{Y} 是同形状二维数组，表示每个网格点的坐标。
+    \item \texttt{f(X,Y)} 要支持 NumPy 数组输入，称为向量化计算。
+    \item \texttt{Z} 与 \texttt{X,Y} 同形状，可直接用于等高线和曲面图。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Matplotlib：Figure 与 Axes}
+  Matplotlib 推荐使用面向对象接口：\texttt{fig} 表示整张图，\texttt{ax} 表示一个坐标区域。
+
+  \begin{block}{基础模板}
+\begin{Verbatim}[fontsize=\small]
+fig, ax = plt.subplots(figsize=(7, 5))
+ax.plot(x, y)
+ax.set_title("标题")
+ax.set_xlabel("x")
+ax.set_ylabel("y")
+ax.grid(alpha=0.2)
+plt.show()
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Matplotlib：等高线 \texttt{contour}}
+  等高线用于展示二元函数 \(f(x,y)=c\) 的水平集。
+
+  \begin{block}{等高线命令}
+\begin{Verbatim}[fontsize=\small]
+contour = ax.contour(X, Y, Z, levels=16, cmap="viridis")
+ax.clabel(contour, inline=True, fontsize=8)
+ax.set_aspect("equal", adjustable="box")
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{levels} 控制等高线数量或指定具体函数值。
+    \item \texttt{cmap} 控制颜色映射。
+    \item \texttt{ax.clabel} 给等高线添加数值标签。
+    \item \texttt{set\_aspect("equal")} 保持横纵坐标单位长度一致。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Matplotlib：填色等高线 \texttt{contourf}}
+  \texttt{contour} 画线，\texttt{contourf} 给等高线区域填色。
+
+  \begin{block}{区域填色与色条}
+\begin{Verbatim}[fontsize=\small]
+filled = ax.contourf(X, Y, Z, levels=24, cmap="viridis")
+fig.colorbar(filled, ax=ax, shrink=0.85)
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{contourf} 更适合展示函数值整体分布。
+    \item \texttt{fig.colorbar} 说明颜色与数值的对应关系。
+    \item 线状等高线和填色等高线也可以叠加使用。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Matplotlib：向量场 \texttt{quiver}}
+  \texttt{quiver} 用箭头展示二维向量场，例如梯度场。
+
+  \begin{block}{向量场命令}
+\begin{Verbatim}[fontsize=\small]
+quiver = ax.quiver(QX, QY, U, V, C,
+                   cmap="magma", pivot="mid", scale=28)
+fig.colorbar(quiver, ax=ax)
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{QX,QY} 是箭头起点坐标。
+    \item \texttt{U,V} 是箭头的水平和竖直分量。
+    \item \texttt{C} 可选，用颜色表达另一个数值，例如向量长度。
+    \item \texttt{pivot="mid"} 表示箭头以中点锚定。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{梯度箭头：方向与长度分开}
+  梯度很大时，直接画原始向量会导致箭头过长。常见做法是方向归一化，长度用颜色表示。
+
+  \begin{block}{归一化方向}
+\begin{Verbatim}[fontsize=\small]
+speed = np.hypot(GX, GY)
+U = np.divide(GX, speed, out=np.zeros_like(GX),
+              where=speed > 1e-12)
+V = np.divide(GY, speed, out=np.zeros_like(GY),
+              where=speed > 1e-12)
+ax.quiver(QX, QY, U, V, speed, cmap="magma")
+\end{Verbatim}
+  \end{block}
+
+  \texttt{where=speed > 1e-12} 用来避免在零向量处除以零。
+\end{frame}
+
+\begin{frame}[fragile]{Matplotlib：标注与图例}
+  标注命令让图形更适合讲解和发布。
+
+  \begin{block}{常见标注命令}
+\begin{Verbatim}[fontsize=\small]
+ax.scatter(px, py, s=45, c="black", label="选定点")
+ax.annotate("(1.5, 1.0)", (1.5, 1.0),
+            xytext=(6, 6), textcoords="offset points")
+ax.legend(loc="upper right")
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{scatter} 标出离散点。
+    \item \texttt{annotate} 添加文本说明。
+    \item 设置 \texttt{label} 后，再调用 \texttt{legend} 才会显示图例。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Matplotlib：中文字体}
+  Matplotlib 默认字体不一定包含中文字形，所以中文标题、图例、色条可能显示为方框。
+
+  \begin{block}{常用配置}
+\begin{Verbatim}[fontsize=\small]
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.sans-serif"] = ["Noto Sans CJK SC",
+                                   "Microsoft YaHei",
+                                   "SimHei",
+                                   "DejaVu Sans"]
+plt.rcParams["axes.unicode_minus"] = False
+\end{Verbatim}
+  \end{block}
+
+  Linux/WSL 可安装 \texttt{fonts-noto-cjk}，必要时删除 \texttt{\textasciitilde/.cache/matplotlib} 后重启 kernel。
+\end{frame}
+
+\begin{frame}[fragile]{Plotly：Figure 与 Trace}
+  Plotly 的核心结构是 \texttt{Figure + Trace}：一张图可以包含多个图层。
+
+  \begin{block}{基本模式}
+\begin{Verbatim}[fontsize=\small]
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=x, y=y, mode="lines"))
+fig.update_layout(title="交互式图形")
+fig.show()
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{Trace} 是具体图层，例如曲线、散点、曲面、等高线。
+    \item \texttt{update\_layout} 调整整张图的标题、尺寸、边距等。
+    \item 在 JupyterLab 中，Plotly 图通常可以直接缩放、拖动和悬停查看数值。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Plotly：三维曲面 \texttt{go.Surface}}
+  三维曲面适合展示二元函数 \(z=f(x,y)\) 的整体形状。
+
+  \begin{block}{曲面图层}
+\begin{Verbatim}[fontsize=\small]
+surface = go.Surface(
+    x=X,
+    y=Y,
+    z=Z,
+    colorscale="Viridis",
+    contours={"z": {"show": True, "usecolormap": True}},
+)
+fig.add_trace(surface)
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{x,y,z} 可以都是二维数组。
+    \item \texttt{colorscale} 用颜色表达高度或函数值。
+    \item \texttt{contours} 可在曲面上叠加等高线痕迹。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Plotly：等高线 \texttt{go.Contour}}
+  Plotly 也可以绘制可交互的二维等高线图。
+
+  \begin{block}{等高线图层}
+\begin{Verbatim}[fontsize=\small]
+contour = go.Contour(
+    x=x,
+    y=y,
+    z=Z,
+    colorscale="Viridis",
+    contours={"showlabels": True,
+              "labelfont": {"size": 10}},
+)
+fig.add_trace(contour)
+\end{Verbatim}
+  \end{block}
+
+  \texttt{x,y} 通常是一维坐标轴，\texttt{z} 是二维函数值矩阵。
+\end{frame}
+
+\begin{frame}[fragile]{Plotly：子图 \texttt{make\_subplots}}
+  多图并排时，可以用 \texttt{make\_subplots} 组织布局。
+
+  \begin{block}{混合三维曲面和二维等高线}
+\begin{Verbatim}[fontsize=\small]
+fig = make_subplots(
+    rows=1,
+    cols=2,
+    specs=[[{"type": "surface"}, {"type": "contour"}]],
+)
+fig.add_trace(go.Surface(x=X, y=Y, z=Z), row=1, col=1)
+fig.add_trace(go.Contour(x=x, y=y, z=Z), row=1, col=2)
+\end{Verbatim}
+  \end{block}
+
+  \texttt{specs} 必须声明每个子图类型，否则三维图层可能无法放入对应位置。
+\end{frame}
+
+\begin{frame}[fragile]{Plotly：布局与场景}
+  Plotly 的样式通常通过 \texttt{update\_layout}、\texttt{update\_xaxes}、\texttt{update\_scenes} 等方法设置。
+
+  \begin{block}{常用设置}
+\begin{Verbatim}[fontsize=\small]
+fig.update_layout(width=1000, height=560, title="标题")
+fig.update_scenes(
+    xaxis_title="x",
+    yaxis_title="y",
+    zaxis_title="z",
+    aspectmode="cube",
+)
+fig.update_xaxes(title_text="x", row=1, col=2)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{ipywidgets：把参数变成滑块}
+  \texttt{interact} 会把控件的值传给函数，并在值变化时重新运行函数。
+
+  \begin{block}{滑块模板}
+\begin{Verbatim}[fontsize=\small]
+def draw(a=1.0, h=0.0, d=1.0):
+    A = np.array([[a, h], [h, d]])
+    # 计算并绘图
+
+interact(
+    draw,
+    a=FloatSlider(value=1.0, min=-2, max=2, step=0.25),
+    h=FloatSlider(value=0.0, min=-2, max=2, step=0.25),
+    d=FloatSlider(value=1.0, min=-2, max=2, step=0.25),
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\section{Notebook 示例代码}
+
+\begin{frame}[fragile]{示例代码：曲面与等高线（一）}
+  下面是 notebook 中用于生成曲面和等高线的三个二元函数示例。
+
+  \begin{block}{碗形曲面与鞍面}
+\begin{Verbatim}[fontsize=\tiny]
+def bowl(x, y):
+    return x**2 + y**2
+
+plot_surface_and_contours(
+    bowl,
+    xlim=(-3, 3),
+    ylim=(-3, 3),
+    title="例 1：f(x, y) = x² + y²",
+)
+
+def saddle(x, y):
+    return x**2 - y**2
+
+plot_surface_and_contours(
+    saddle,
+    xlim=(-3, 3),
+    ylim=(-3, 3),
+    title="例 2：f(x, y) = x² - y²",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{示例代码：曲面与等高线（二）}
+  周期函数示例使用更大的观察区域，常用 \([-2\pi,2\pi]^2\)。
+
+  \begin{block}{周期函数曲面}
+\begin{Verbatim}[fontsize=\tiny]
+def wave(x, y):
+    return np.sin(x) * np.cos(y)
+
+plot_surface_and_contours(
+    wave,
+    xlim=(-2 * np.pi, 2 * np.pi),
+    ylim=(-2 * np.pi, 2 * np.pi),
+    title="例 3：f(x, y) = sin(x)cos(y)",
+)
+\end{Verbatim}
+  \end{block}
+
+  这个例子体现了 \texttt{np.sin}、\texttt{np.cos} 对数组输入的向量化支持。
+\end{frame}
+
+\begin{frame}[fragile]{示例代码：梯度与等高线（一）}
+  梯度函数和原函数分开定义，再一起传给绘图函数。
+
+  \begin{block}{\(f(x,y)=x^2+y^2\) 的梯度}
+\begin{Verbatim}[fontsize=\tiny]
+def grad_bowl(x, y):
+    return 2 * x, 2 * y
+
+plot_contour_with_gradient(
+    bowl,
+    grad_bowl,
+    xlim=(-3, 3),
+    ylim=(-3, 3),
+    points=[(1.5, 1.0), (-2.0, 1.0)],
+    title="f(x, y) = x² + y² 的等高线与梯度方向",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{示例代码：梯度与等高线（二）}
+  在指定点画出梯度方向和等高线切向，可以直接观察二者正交。
+
+  \begin{block}{单点方向比较}
+\begin{Verbatim}[fontsize=\tiny]
+plot_gradient_and_tangent(
+    bowl,
+    grad_bowl,
+    point=(1.5, 1.0),
+    xlim=(-3, 3),
+    ylim=(-3, 3),
+    title="在一点比较梯度方向和等高线切向",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{示例代码：梯度与等高线（三）}
+  鞍面示例中，梯度在 \(x\) 方向和 \(y\) 方向的符号不同。
+
+  \begin{block}{\(f(x,y)=x^2-y^2\) 的梯度}
+\begin{Verbatim}[fontsize=\tiny]
+def grad_saddle(x, y):
+    return 2 * x, -2 * y
+
+plot_contour_with_gradient(
+    saddle,
+    grad_saddle,
+    xlim=(-3, 3),
+    ylim=(-3, 3),
+    points=[(1.5, 1.0), (1.5, -1.0)],
+    title="f(x, y) = x² - y² 的等高线与梯度方向",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{示例代码：二次型曲面分类（一）}
+  二次型示例用矩阵 \(A\) 表示二次项，并交给统一绘图函数处理。
+
+  \begin{block}{正定、负定、不定、半正定}
+\begin{Verbatim}[fontsize=\tiny]
+A_positive = np.array([[1, 0], [0, 1]])
+plot_quadratic_surface(
+    A_positive,
+    title="正定矩阵：f(x, y) = x² + y²",
+)
+
+A_negative = np.array([[-1, 0], [0, -1]])
+plot_quadratic_surface(
+    A_negative,
+    title="负定矩阵：f(x, y) = -x² - y²",
+)
+
+A_indefinite = np.array([[1, 0], [0, -1]])
+plot_quadratic_surface(
+    A_indefinite,
+    title="不定矩阵：f(x, y) = x² - y²",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{示例代码：二次型曲面分类（二）}
+  半正定和含线性项的例子展示了退化与平移。
+
+  \begin{block}{半正定与线性项}
+\begin{Verbatim}[fontsize=\tiny]
+A_semipositive = np.array([[1, 0], [0, 0]])
+plot_quadratic_surface(
+    A_semipositive,
+    title="半正定矩阵：f(x, y) = x²",
+)
+
+plot_quadratic_surface(
+    A_positive,
+    b=(-2, 4),
+    c=0,
+    xlim=(-3, 5),
+    ylim=(-6, 2),
+    title="含线性项：f(x, y) = x² + y² - 2x + 4y",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{示例代码：交互式二次曲面（一）}
+  交互函数负责根据滑块参数构造矩阵、分类并绘图。
+
+  \begin{block}{交互函数}
+\begin{Verbatim}[fontsize=\tiny]
+def explore_quadratic(a=1.0, h=0.0, d=1.0):
+    A = np.array([[a, h], [h, d]], dtype=float)
+    info = classify_quadratic(A)
+    eigen_text = np.array2string(
+        info["eigenvalues"],
+        precision=3,
+    )
+    print(f"A = [[{a:.2f}, {h:.2f}], [{h:.2f}, {d:.2f}]]")
+    print(f"特征值：{eigen_text}")
+    print(f"分类：{info['classification']}")
+    f = quadratic_function(A)
+    plot_surface_and_contours(
+        f,
+        xlim=(-3, 3),
+        ylim=(-3, 3),
+        n=81,
+        title="交互式二次曲面",
+    )
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{示例代码：交互式二次曲面（二）}
+  \texttt{interact} 把三个矩阵参数变成滑块。
+
+  \begin{block}{滑块绑定}
+\begin{Verbatim}[fontsize=\tiny]
+interact(
+    explore_quadratic,
+    a=FloatSlider(
+        value=1.0, min=-2.0, max=2.0,
+        step=0.25, description="a",
+    ),
+    h=FloatSlider(
+        value=0.0, min=-2.0, max=2.0,
+        step=0.25, description="h",
+    ),
+    d=FloatSlider(
+        value=1.0, min=-2.0, max=2.0,
+        step=0.25, description="d",
+    ),
+);
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{示例代码：练习模板}
+  练习代码的设计思路是只让学习者改函数或矩阵，其他绘图细节保持封装。
+
+  \begin{block}{自定义函数与矩阵}
+\begin{Verbatim}[fontsize=\tiny]
+def f_student(x, y):
+    return (
+        np.exp(-0.25 * (x**2 + y**2))
+        * np.cos(2 * x)
+        + 0.15 * y
+    )
+
+plot_surface_and_contours(
+    f_student,
+    xlim=(-4, 4),
+    ylim=(-4, 4),
+    title="练习 1：自定义函数",
+)
+
+A_student = np.array([[1.0, 0.75], [0.75, -0.5]])
+plot_quadratic_surface(
+    A_student,
+    title="练习 2：自定义二次型矩阵",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}{何时用 Matplotlib，何时用 Plotly}
+  \begin{tabularx}{\linewidth}{@{}lXX@{}}
+    \toprule
+    场景 & Matplotlib & Plotly \\
+    \midrule
+    课堂静态讲解 & 稳定，易标注，易导出 & 可用，但交互优势不明显 \\
+    二维等高线/向量场 & 很适合 & 适合悬停和交互查看 \\
+    三维曲面 & 可画，但交互弱 & 更适合旋转和缩放 \\
+    论文/讲义图片 & 更可控 & 需额外导出配置 \\
+    浏览器交互 & 一般 & 原生优势 \\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{常见错误与排查}
+  \begin{tabularx}{\linewidth}{@{}lX@{}}
+    \toprule
+    现象 & 排查方向 \\
+    \midrule
+    \texttt{ModuleNotFoundError} & 依赖未安装，检查 Python 环境和 \texttt{pip install} 位置。 \\
+    图中中文是方框 & 配置中文字体，安装 \texttt{fonts-noto-cjk} 或系统中文字体。 \\
+    \texttt{Z.shape} 不对 & 函数没有正确支持 NumPy 数组输入，检查是否用了非向量化写法。 \\
+    箭头太密或太乱 & 降低 \texttt{density}，归一化方向，或调 \texttt{scale}。 \\
+    Plotly 子图报类型错误 & 检查 \texttt{specs} 中的子图类型是否匹配 trace。 \\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{实践建议}
+  \begin{itemize}
+    \item 先写清楚数据结构：一维数组、二维网格、还是矩阵。
+    \item 优先使用 Matplotlib 的 \texttt{fig, ax = plt.subplots()} 模式。
+    \item 二维解释图重视坐标比例、标签、图例和色条。
+    \item 三维图优先用 Plotly，并设置合适的 \texttt{aspectmode} 和相机视角。
+    \item 交互控件只控制少量关键参数，避免一次暴露太多选择。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{总结}
+  \begin{itemize}
+    \item NumPy 负责把数学对象变成可计算、可绘制的数组。
+    \item Matplotlib 负责可控的二维静态绘图。
+    \item Plotly 负责浏览器中的交互式二维/三维绘图。
+    \item ipywidgets 负责把参数探索变成交互控件。
+    \item JupyterLab 把文字、公式、代码和图形整合成适合教学和探索的工作流。
+  \end{itemize}
+\end{frame}
+
+\section{参数曲线与隐式几何绘图工具}
+
+\begin{frame}{本专题新增的绘图对象}
+  \begin{itemize}
+    \item 参数曲线 \(r(t)=(x(t),y(t))\)：\texttt{np.linspace}、\texttt{ax.plot}、\texttt{np.gradient}、\texttt{ax.quiver}。
+    \item 隐式曲线 \(F(x,y)=c\)：\texttt{np.meshgrid}、\texttt{ax.contour}、\texttt{ax.clabel}。
+    \item 参数曲面 \(r(u,v)\)：\texttt{np.meshgrid} 配合 \texttt{indexing="ij"}，再用 \texttt{go.Surface}。
+    \item 隐式曲面 \(F(x,y,z)=c\)：三维网格、\texttt{marching\_cubes}、\texttt{go.Mesh3d}。
+    \item 参数实验：\texttt{FloatSlider}、\texttt{interact}。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{环境扩展：隐式曲面需要 scikit-image}
+  二维等高线可直接由 Matplotlib 完成；三维隐式曲面通常先提取三角网格，再交给 Plotly 绘制。
+
+  \begin{block}{notebook 中的核心导入}
+\begin{Verbatim}[fontsize=\tiny]
+import numpy as np
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from ipywidgets import FloatSlider, interact
+from skimage.measure import marching_cubes
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{skimage.measure.marching\_cubes} 把 \(F(x,y,z)=c\) 的采样体数据转成三角面片。
+    \item \texttt{plotly.graph\_objects.Mesh3d} 接收顶点和三角形索引，显示可旋转的曲面。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{二维参数曲线：先采样参数}
+  参数曲线的基本思想是：先取一列参数 \(t\)，再计算对应的 \(x(t),y(t)\)。
+
+  \begin{block}{单位圆例子}
+\begin{Verbatim}[fontsize=\tiny]
+t = np.linspace(0, 2 * np.pi, 600)
+x_circle = np.cos(t)
+y_circle = np.sin(t)
+
+plot_parametric_curve(
+    x_circle,
+    y_circle,
+    t,
+    tangent_at=[np.pi / 6, 2 * np.pi / 3],
+    title="参数曲线例 1：单位圆 r(t)=(cos t, sin t)",
+)
+\end{Verbatim}
+  \end{block}
+
+  \texttt{x\_circle}、\texttt{y\_circle}、\texttt{t} 是同长度一维数组。
+\end{frame}
+
+\begin{frame}[fragile]{Matplotlib 画参数曲线}
+  一条参数曲线本质上仍是平面折线图，关键命令是 \texttt{ax.plot(x,y)}。
+
+  \begin{block}{绘制曲线、起点和终点}
+\begin{Verbatim}[fontsize=\tiny]
+fig, ax = plt.subplots(figsize=(7.2, 6.2))
+ax.plot(x, y, color="royalblue", linewidth=2.4, label="参数曲线")
+ax.scatter([x[0]], [y[0]], color="green", s=45, label="起点", zorder=4)
+ax.scatter([x[-1]], [y[-1]], color="black", s=45, label="终点", zorder=4)
+ax.set_aspect("equal", adjustable="box")
+ax.grid(alpha=0.25)
+ax.legend(loc="best")
+plt.show()
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{参数曲线的切向量}
+  没有解析导数时，可用 \texttt{np.gradient} 对采样点做数值微分。
+
+  \begin{block}{从采样点计算并绘制切向量}
+\begin{Verbatim}[fontsize=\tiny]
+dx_dt = np.gradient(x, t)
+dy_dt = np.gradient(y, t)
+
+idx = int(np.argmin(np.abs(t - t0)))
+tangent = normalize_vector([dx_dt[idx], dy_dt[idx]]) * arrow_scale
+ax.quiver(
+    [x[idx]], [y[idx]],
+    [tangent[0]], [tangent[1]],
+    angles="xy", scale_units="xy", scale=1,
+    color="crimson", width=0.008,
+)
+\end{Verbatim}
+  \end{block}
+
+  \texttt{scale\_units="xy"} 表示箭头长度按坐标轴单位解释。
+\end{frame}
+
+\begin{frame}[fragile]{参数曲线的更多例子}
+  改变 \(x(t),y(t)\) 的公式，就可以复用同一个绘图函数。
+
+  \begin{block}{螺线与旋轮线}
+\begin{Verbatim}[fontsize=\tiny]
+t_spiral = np.linspace(0, 5 * np.pi, 900)
+r = 0.08 * t_spiral
+x_spiral = r * np.cos(t_spiral)
+y_spiral = r * np.sin(t_spiral)
+
+t_cycloid = np.linspace(0, 4 * np.pi, 900)
+x_cycloid = t_cycloid - np.sin(t_cycloid)
+y_cycloid = 1 - np.cos(t_cycloid)
+\end{Verbatim}
+  \end{block}
+
+  同样的数据结构可以画闭曲线、开曲线、自交曲线和周期轨迹。
+\end{frame}
+
+\begin{frame}[fragile]{隐式曲线：二维网格采样}
+  隐式曲线 \(F(x,y)=c\) 不能直接写成一条参数序列，通常先在平面网格上计算 \(F\)。
+
+  \begin{block}{二维网格工具}
+\begin{Verbatim}[fontsize=\tiny]
+def make_2d_grid(xlim=(-3, 3), ylim=(-3, 3), n=401):
+    x = np.linspace(xlim[0], xlim[1], n)
+    y = np.linspace(ylim[0], ylim[1], n)
+    X, Y = np.meshgrid(x, y)
+    return x, y, X, Y
+
+_, _, X, Y = make_2d_grid(xlim, ylim, n)
+Z = np.asarray(F(X, Y), dtype=float)
+\end{Verbatim}
+  \end{block}
+
+  \texttt{F} 需要支持数组输入，例如 \texttt{x**2 + y**2 - 1}。
+\end{frame}
+
+\begin{frame}[fragile]{Matplotlib 画隐式曲线}
+  \texttt{ax.contour} 可以从网格函数值中提取水平集。
+
+  \begin{block}{背景等高线与目标水平集}
+\begin{Verbatim}[fontsize=\tiny]
+background_levels = np.linspace(np.nanmin(Z), np.nanmax(Z), 18)
+ax.contour(X, Y, Z, levels=background_levels,
+           cmap="Greys", alpha=0.45, linewidths=0.7)
+
+contour = ax.contour(
+    X, Y, Z,
+    levels=[level],
+    colors="crimson",
+    linewidths=2.5,
+)
+ax.clabel(contour, fmt={level: f"F={level:g}"}, inline=True, fontsize=9)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{隐式曲线的法向与切向}
+  对 \(F(x,y)=c\)，梯度 \(\nabla F=(F_x,F_y)\) 垂直于水平集；二维切向可取 \((-F_y,F_x)\)。
+
+  \begin{block}{法向与切向箭头}
+\begin{Verbatim}[fontsize=\tiny]
+gx, gy = grad_F(px, py) if grad_F else numerical_gradient_2d(F, px, py)
+normal = normalize_vector([gx, gy]) * arrow_scale
+tangent = normalize_vector([-gy, gx]) * arrow_scale
+
+ax.quiver([px], [py], [normal[0]], [normal[1]],
+          angles="xy", scale_units="xy", scale=1,
+          color="crimson", width=0.008, label="法向 grad F")
+ax.quiver([px], [py], [tangent[0]], [tangent[1]],
+          angles="xy", scale_units="xy", scale=1,
+          color="royalblue", width=0.008, label="切向")
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{隐式曲线例子}
+  notebook 中把隐式函数、梯度和采样范围分开写，便于替换。
+
+  \begin{block}{圆与双曲线}
+\begin{Verbatim}[fontsize=\tiny]
+def F_circle(x, y):
+    return x**2 + y**2 - 1
+
+def grad_F_circle(x, y):
+    return 2 * x, 2 * y
+
+def F_hyperbola(x, y):
+    return x**2 - y**2 - 1
+
+def grad_F_hyperbola(x, y):
+    return 2 * x, -2 * y
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{三维参数曲面：两个参数轴}
+  参数曲面需要两个参数 \(u,v\)。\texttt{indexing="ij"} 让数组轴顺序对应 \(u,v\)。
+
+  \begin{block}{球面的参数采样}
+\begin{Verbatim}[fontsize=\tiny]
+u = np.linspace(0.05, np.pi - 0.05, 90)
+v = np.linspace(0, 2 * np.pi, 120)
+U, V = np.meshgrid(u, v, indexing="ij")
+
+X_sphere = np.sin(U) * np.cos(V)
+Y_sphere = np.sin(U) * np.sin(V)
+Z_sphere = np.cos(U)
+\end{Verbatim}
+  \end{block}
+
+  \texttt{X\_sphere,Y\_sphere,Z\_sphere} 是同形状二维数组。
+\end{frame}
+
+\begin{frame}[fragile]{Plotly 画参数曲面}
+  Plotly 的 \texttt{go.Surface} 直接接收 \(X,Y,Z\) 三个二维数组。
+
+  \begin{block}{参数曲面图层}
+\begin{Verbatim}[fontsize=\tiny]
+fig = go.Figure()
+fig.add_trace(
+    go.Surface(
+        x=X,
+        y=Y,
+        z=Z,
+        colorscale=colorscale,
+        opacity=0.92,
+        colorbar={"title": "参数"},
+        name="参数曲面",
+    )
+)
+fig.update_scenes(xaxis_title="x", yaxis_title="y",
+                  zaxis_title="z", aspectmode="data")
+fig.show()
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{参数曲面的切平面信息}
+  对 \(r(u,v)\)，两个偏导 \(r_u,r_v\) 是切向量，叉乘 \(r_u\times r_v\) 是法向量。
+
+  \begin{block}{从采样曲面计算切向和法向}
+\begin{Verbatim}[fontsize=\tiny]
+dX_du, dX_dv = np.gradient(X, u, v, edge_order=2)
+dY_du, dY_dv = np.gradient(Y, u, v, edge_order=2)
+dZ_du, dZ_dv = np.gradient(Z, u, v, edge_order=2)
+
+ru = np.array([dX_du[i, j], dY_du[i, j], dZ_du[i, j]])
+rv = np.array([dX_dv[i, j], dY_dv[i, j], dZ_dv[i, j]])
+normal = np.cross(ru, rv)
+\end{Verbatim}
+  \end{block}
+
+  \texttt{np.cross} 是三维向量叉乘，常用于曲面法向量。
+\end{frame}
+
+\begin{frame}[fragile]{Plotly 画三维向量}
+  notebook 用 \texttt{go.Scatter3d} 的线段和端点标记来表示三维箭头。
+
+  \begin{block}{向已有 Figure 添加一条三维向量}
+\begin{Verbatim}[fontsize=\tiny]
+origin = np.asarray(origin, dtype=float)
+vector = np.asarray(vector, dtype=float) * scale
+end = origin + vector
+
+fig.add_trace(
+    go.Scatter3d(
+        x=[origin[0], end[0]],
+        y=[origin[1], end[1]],
+        z=[origin[2], end[2]],
+        mode="lines+markers",
+        line={"color": color, "width": 7},
+        marker={"size": 4, "color": color},
+        name=name,
+    )
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{参数曲面例子}
+  环面和螺旋面仍然遵循同一结构：生成 \(u,v\)，计算 \(X,Y,Z\)，调用绘图函数。
+
+  \begin{block}{环面参数方程}
+\begin{Verbatim}[fontsize=\tiny]
+u = np.linspace(0, 2 * np.pi, 120)
+v = np.linspace(0, 2 * np.pi, 80)
+U, V = np.meshgrid(u, v, indexing="ij")
+
+R, a = 2.0, 0.55
+X_torus = (R + a * np.cos(V)) * np.cos(U)
+Y_torus = (R + a * np.cos(V)) * np.sin(U)
+Z_torus = a * np.sin(V)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{隐式曲面：三维网格采样}
+  隐式曲面 \(F(x,y,z)=c\) 需要在三维盒子中采样函数值。
+
+  \begin{block}{三维网格工具}
+\begin{Verbatim}[fontsize=\tiny]
+def make_3d_grid(xlim=(-2, 2), ylim=(-2, 2), zlim=(-2, 2), n=64):
+    x = np.linspace(xlim[0], xlim[1], n)
+    y = np.linspace(ylim[0], ylim[1], n)
+    z = np.linspace(zlim[0], zlim[1], n)
+    X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
+    return x, y, z, X, Y, Z
+
+x, y, z, X, Y, Z = make_3d_grid(xlim, ylim, zlim, n)
+values = np.asarray(F(X, Y, Z), dtype=float)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{marching cubes：从体数据到三角网格}
+  \texttt{marching\_cubes} 返回顶点坐标和三角形顶点索引。
+
+  \begin{block}{提取等值面}
+\begin{Verbatim}[fontsize=\tiny]
+dx = (xlim[1] - xlim[0]) / (n - 1)
+dy = (ylim[1] - ylim[0]) / (n - 1)
+dz = (zlim[1] - zlim[0]) / (n - 1)
+
+vertices, faces, _, _ = marching_cubes(
+    values,
+    level=level,
+    spacing=(dx, dy, dz),
+)
+vertices += np.array([xlim[0], ylim[0], zlim[0]])
+\end{Verbatim}
+  \end{block}
+
+  \texttt{spacing} 和平移修正用于把数组索引坐标转换回真实 \(x,y,z\) 坐标。
+\end{frame}
+
+\begin{frame}[fragile]{Plotly Mesh3d：显示隐式曲面}
+  \texttt{go.Mesh3d} 使用 \texttt{x,y,z} 存顶点，用 \texttt{i,j,k} 存三角形三个顶点的索引。
+
+  \begin{block}{三角网格图层}
+\begin{Verbatim}[fontsize=\tiny]
+fig = go.Figure(
+    data=[
+        go.Mesh3d(
+            x=vertices[:, 0], y=vertices[:, 1], z=vertices[:, 2],
+            i=faces[:, 0], j=faces[:, 1], k=faces[:, 2],
+            color="steelblue",
+            opacity=0.62,
+            flatshading=False,
+            lighting={"ambient": 0.55, "diffuse": 0.75, "specular": 0.25},
+            name="隐式曲面",
+        )
+    ]
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{隐式曲面的法向量}
+  对 \(F(x,y,z)=c\)，\(\nabla F=(F_x,F_y,F_z)\) 是曲面的法向量。
+
+  \begin{block}{球面例子}
+\begin{Verbatim}[fontsize=\tiny]
+def F_sphere(x, y, z):
+    return x**2 + y**2 + z**2 - 1
+
+def grad_F_sphere(x, y, z):
+    return 2 * x, 2 * y, 2 * z
+
+p = 1 / np.sqrt(3)
+plot_implicit_surface(
+    F_sphere,
+    xlim=(-1.4, 1.4), ylim=(-1.4, 1.4), zlim=(-1.4, 1.4),
+    n=64,
+    grad_F=grad_F_sphere,
+    normal_point=(p, p, p),
+    title="隐式曲面例 1：球面 x²+y²+z²-1=0，grad F 是法向量",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{隐式曲面例子：环面}
+  隐式环面适合展示 \texttt{marching\_cubes + Mesh3d} 的价值，因为它不能写成 \(z=f(x,y)\) 的单值函数。
+
+  \begin{block}{环面隐式方程}
+\begin{Verbatim}[fontsize=\tiny]
+def F_torus(x, y, z, R=1.55, r=0.45):
+    return (
+        (x**2 + y**2 + z**2 + R**2 - r**2) ** 2
+        - 4 * R**2 * (x**2 + y**2)
+    )
+
+plot_implicit_surface(
+    lambda x, y, z: F_torus(x, y, z, R=1.55, r=0.45),
+    xlim=(-2.2, 2.2), ylim=(-2.2, 2.2), zlim=(-0.9, 0.9),
+    n=72,
+    title="隐式曲面例 4：环面",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{交互控件：水平集参数}
+  \texttt{interact} 适合把一个常数或少量形状参数变成滑块。
+
+  \begin{block}{圆的水平集}
+\begin{Verbatim}[fontsize=\tiny]
+def explore_circle_level(c=1.0):
+    plot_implicit_curve(
+        lambda x, y: x**2 + y**2,
+        xlim=(-2.2, 2.2),
+        ylim=(-2.2, 2.2),
+        level=c,
+        n=301,
+        title=f"交互实验 1：水平集 x²+y²={c:.2f}",
+    )
+
+interact(
+    explore_circle_level,
+    c=FloatSlider(value=1.0, min=0.1, max=4.0, step=0.1, description="c"),
+);
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{交互控件：隐式曲面参数}
+  三维交互计算量更大，通常要降低采样密度，例如把 \texttt{n} 设为 48。
+
+  \begin{block}{环面的两个形状参数}
+\begin{Verbatim}[fontsize=\tiny]
+def explore_implicit_torus(R=1.55, r=0.45):
+    plot_implicit_surface(
+        lambda x, y, z: F_torus(x, y, z, R=R, r=r),
+        xlim=(-2.4, 2.4), ylim=(-2.4, 2.4), zlim=(-1.2, 1.2),
+        n=48,
+        title=f"交互实验 2：隐式环面 R={R:.2f}, r={r:.2f}",
+    )
+
+interact(
+    explore_implicit_torus,
+    R=FloatSlider(value=1.55, min=1.0, max=2.0, step=0.05, description="R"),
+    r=FloatSlider(value=0.45, min=0.2, max=0.75, step=0.05, description="r"),
+);
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}{采样密度与性能}
+  \begin{tabularx}{\linewidth}{@{}lX@{}}
+    \toprule
+    参数 & 影响 \\
+    \midrule
+    参数曲线点数 & 点数越大曲线越平滑，通常几百到一千点足够。 \\
+    隐式曲线 \texttt{n} & 二维网格大小约为 \(n^2\)，\texttt{n=301} 或 \texttt{401} 常用于课堂演示。 \\
+    参数曲面网格 & 网格大小约为 \(n_u n_v\)，过密会让浏览器交互变慢。 \\
+    隐式曲面 \texttt{n} & 三维网格大小约为 \(n^3\)，\texttt{64} 已经是二十多万个采样点。 \\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{本专题的实践建议}
+  \begin{itemize}
+    \item 参数对象优先从参数轴开始设计：一维用 \texttt{t}，二维用 \texttt{u,v}。
+    \item 隐式对象优先确定观察窗口和等值 \texttt{level}，再调整采样密度。
+    \item 二维讲解优先用 Matplotlib，因为标注、等比例坐标和静态导出更直接。
+    \item 三维曲面优先用 Plotly，因为旋转和缩放能帮助判断空间结构。
+    \item 三维隐式曲面先确认 \texttt{level} 落在采样值范围内，否则不会有可提取的曲面。
+  \end{itemize}
+\end{frame}
+
+\end{document}
