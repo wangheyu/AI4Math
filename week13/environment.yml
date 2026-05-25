@@ -1,0 +1,30 @@
+name: ai4math-vis
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - jupyterlab
+  - notebook
+  - ipykernel
+  - ipywidgets
+  - numpy
+  - scipy
+  - sympy
+  - pandas
+  - matplotlib
+  - seaborn
+  - plotly
+  - scikit-image
+  - pillow
+  - imageio
+  - imageio-ffmpeg
+  - opencv
+  - vtk
+  - pyvista
+  - trame
+  - trame-vtk
+  - trame-vuetify
+  - meshio
+  - networkx
+  - tqdm
