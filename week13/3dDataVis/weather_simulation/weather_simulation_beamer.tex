@@ -1,0 +1,525 @@
+\documentclass[aspectratio=169,11pt]{ctexbeamer}
+
+\usetheme{Warsaw}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{headline}{}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{deepblue}{RGB}{37,99,235}
+\definecolor{darkgreen}{RGB}{22,101,52}
+\definecolor{warmorange}{RGB}{217,119,6}
+\setbeamercolor{block body}{bg=codebg,fg=black}
+\setbeamercolor{block title}{bg=deepblue,fg=white}
+
+\title{气象模拟数据的三维可视化}
+\subtitle{\texttt{weather\_simulation}: OpenDX 云水标量场与风速矢量场}
+\author{crazyfish}
+\date{\today}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\vx}{\mathbf x}
+\newcommand{\vv}{\mathbf v}
+\newcommand{\dd}{\mathrm d}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{项目目标}
+  \texttt{weather\_simulation} 项目将一个气象模拟快照中的两类三维场放在同一物理网格中展示。
+
+  \begin{itemize}
+    \item 云水场：\texttt{cloudwater.dx}，标量场 $q(\vx)$。
+    \item 风场：\texttt{wind.dx}，矢量场 $\vv(\vx)=(u,v,w)$。
+    \item 应用：\texttt{weather\_demo.py}，Dash + Plotly 交互式 Web 可视化。
+    \item 图形层：云水等值面、风矢量箭头、三维流速线/流管。
+  \end{itemize}
+
+  \begin{block}{核心数学对象}
+    在离散网格 $G=\{\vx_{ijk}\}$ 上同时给出
+    \[
+      q_{ijk}\approx q(\vx_{ijk}),\qquad
+      \vv_{ijk}\approx \vv(\vx_{ijk}) .
+    \]
+    可视化的目标是把标量场的几何结构和矢量场的输运结构同时呈现出来。
+  \end{block}
+\end{frame}
+
+\section{数据背景}
+
+\begin{frame}{物理背景：云水与风场}
+  \small
+  气象模拟通常将大气状态离散在三维网格上。当前样例包含一个瞬时快照：
+
+  \begin{itemize}
+    \item $q(\vx)$：云水含量或云水相关标量。文件未给出物理单位，因此本项目按相对强度解释。
+    \item $\vv(\vx)$：风速矢量，方向表示局地流动方向，范数 $\|\vv\|$ 表示局地风速强弱。
+    \item 坐标单位由 DX 文件给出为米；图中直接使用文件坐标，不额外投影。
+  \end{itemize}
+
+  \begin{block}{瞬时场解释}
+    当前数据不是时间序列，而是一个冻结时刻的空间场。
+    因而流速线描述的是瞬时矢量场的积分曲线；若流场随时间变化，它不等同于真实空气质点轨迹。
+  \end{block}
+\end{frame}
+
+\begin{frame}{离散场模型}
+  \small
+  网格规模为 $25\times 14\times 8=2800$ 个采样点。
+
+  \begin{columns}
+    \begin{column}{0.52\linewidth}
+      对每个网格点 $\vx_{ijk}$：
+      \[
+        q_{ijk}\in \R,\qquad
+        \vv_{ijk}=(u_{ijk},v_{ijk},w_{ijk})\in \R^3 .
+      \]
+      标量场用于构造等值面：
+      \[
+        S_\tau=\{\vx:q(\vx)=\tau\}.
+      \]
+      矢量场用于构造箭头和流线：
+      \[
+        \frac{\dd \vx}{\dd t}=\vv(\vx).
+      \]
+    \end{column}
+    \begin{column}{0.42\linewidth}
+      \begin{block}{采样间距}
+        \begin{tabular}{cc}
+          \toprule
+          方向 & 网格间距 \\
+          \midrule
+          $x$ & $4166.667\,\mathrm m$ \\
+          $y$ & $2214.286\,\mathrm m$ \\
+          $z$ & $4153.846\,\mathrm m$ \\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.4em}
+  空间范围约为 $x\in[0,100]\,\mathrm{km}$，
+  $y\in[0,15.5]\,\mathrm{km}$，
+  $z\in[0,54]\,\mathrm{km}$。
+\end{frame}
+
+\section{OpenDX 数据格式}
+
+\begin{frame}[fragile]{原始数据格式：OpenDX 二进制网格}
+  \small
+  两个数据文件都采用 OpenDX field 结构：数据数组、网格连接、网格位置三部分。
+
+  \begin{Verbatim}[fontsize=\scriptsize,frame=single]
+object 1 class array type float rank 0 items 2800 msb ieee data 0
+object 2 class gridconnections counts 25 14 8
+object 3 class gridpositions counts 25 14 8
+origin 0 0 0
+delta 4166.667 0 0
+delta 0 0 4153.846
+delta 0 2214.286 0
+object "cloudwater" class field
+  \end{Verbatim}
+
+  \begin{itemize}
+    \item \texttt{msb ieee}：大端序 IEEE 32 位浮点数。
+    \item \texttt{rank 0}：标量数组，即 \texttt{cloudwater.dx}。
+    \item \texttt{rank 1 shape 3}：三分量矢量数组，即 \texttt{wind.dx}。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{坐标映射与轴顺序}
+  \small
+  OpenDX 中第 $(i,j,k)$ 个网格点的位置不是靠变量名猜测，而是由三条 \texttt{delta} 向量决定：
+  \[
+    \vx_{ijk}
+    =\vx_0+i\Delta_1+j\Delta_2+k\Delta_3 ,
+  \]
+  其中
+  \[
+    \Delta_1=(4166.667,0,0),\quad
+    \Delta_2=(0,0,4153.846),\quad
+    \Delta_3=(0,2214.286,0).
+  \]
+
+  \begin{block}{本项目中的关键处理}
+    第二个网格指标对应物理 $z$ 方向，第三个网格指标对应物理 $y$ 方向。
+    因此代码先构造完整的 $x,y,z$ 坐标网格，再传给 Plotly；
+    流速线计算前还要把数据轴转成常规 $x,y,z$ 顺序。
+  \end{block}
+\end{frame}
+
+\begin{frame}{解析流程}
+  \small
+  程序中的 DX 解析器执行以下步骤：
+
+  \begin{enumerate}
+    \item 读取 ASCII 头部，定位 \texttt{end} 后的二进制数据起点。
+    \item 解析 \texttt{counts}, \texttt{origin}, 三条 \texttt{delta}。
+    \item 按大端 float32 读取 $25\times14\times8$ 个标量或 $3$ 倍数量的矢量分量。
+    \item 使用 Fortran-order 将线性数据恢复到网格索引：
+      \[
+        q_{\mathrm{flat}}\longmapsto q_{ijk}.
+      \]
+    \item 风场按点优先存储为 $(u,v,w)$，再恢复为
+      \[
+        V\in\R^{25\times14\times8\times3}.
+      \]
+  \end{enumerate}
+
+  \begin{block}{为什么不能随意 reshape}
+    如果忽略 DX 的轴顺序，等值面和风箭头仍可能“看起来有图”，但几何位置会错置；
+    流速线尤其敏感，因为积分曲线依赖邻近点的空间拓扑。
+  \end{block}
+\end{frame}
+
+\section{交互参数}
+
+\begin{frame}{交互参数的物理/几何意义}
+  \scriptsize
+  \begin{tabularx}{\linewidth}{l l X}
+    \toprule
+    参数 & 当前范围/默认值 & 含义 \\
+    \midrule
+    \texttt{Threshold} & $0.001$--$2.0$，默认 $0.1$ &
+    云水等值面阈值 $\tau$，显示 $q(\vx)\approx\tau$ 的几何边界。\\
+    \texttt{Opacity} & $0.1$--$1.0$，默认 $0.5$ &
+    云水等值面透明度；越低越容易同时观察内部风场。\\
+    \texttt{Sample stride} & $1,2,4,6$，默认 $1$ &
+    风箭头抽样步长；越大箭头越少，视觉负担越轻。\\
+    \texttt{Arrow scale} & $0.1$--$1.0$，默认 $0.3$ &
+    箭头几何大小，代码中控制 \texttt{Cone.sizeref}= $15\alpha$。\\
+    \texttt{Show streamlines} & 默认关闭 &
+    是否显示三维流速线/流管。\\
+    \texttt{Streamline density} & $1$--$4$，默认 $4$ &
+    流线种子密度；当前最高档限制为 $100$ 条种子。\\
+    \texttt{Streamline width} & $0.1$--$2.0$，默认 $0.9$ &
+    流管粗细，即 \texttt{Streamtube.sizeref}。\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{阈值范围为何这样设置}
+  \small
+  云水数据高度稀疏，绝大多数点接近零。
+
+  \begin{columns}
+    \begin{column}{0.48\linewidth}
+      \begin{tabular}{ccc}
+        \toprule
+        阈值 $\tau$ & 点数 & 占比 \\
+        \midrule
+        $0.001$ & $808$ & $28.86\%$\\
+        $0.05$ & $339$ & $12.11\%$\\
+        $0.1$ & $194$ & $6.93\%$\\
+        $0.2$ & $102$ & $3.64\%$\\
+        $0.5$ & $36$ & $1.29\%$\\
+        $1.0$ & $24$ & $0.86\%$\\
+        $2.0$ & $10$ & $0.36\%$\\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.47\linewidth}
+      分位数：
+      \[
+      \begin{aligned}
+        Q_{90} &\approx 0.0698,\\
+        Q_{95} &\approx 0.1469,\\
+        Q_{99} &\approx 0.7300,\\
+        \max q &\approx 4.1712.
+      \end{aligned}
+      \]
+      因此 $2.0$ 以上只影响极少数格点，交互上变化很弱。
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\section{可视化技术}
+
+\begin{frame}{标量场：云水等值面}
+  \small
+  云水层用 Plotly \texttt{Isosurface} 绘制。数学对象是水平集
+  \[
+    S_\tau = \{\vx\in\Omega:q(\vx)=\tau\}.
+  \]
+
+  \begin{itemize}
+    \item 网格内的 $q(\vx)$ 由离散值插值得到。
+    \item 渲染时寻找每个网格单元内与 $\tau$ 相交的面片。
+    \item 本项目用窄区间 $[\tau,\tau+0.1]$ 生成单层可见等值面。
+    \item 透明度用于避免云水层完全遮挡风箭头和流线。
+  \end{itemize}
+
+  \begin{block}{如何解读}
+    低阈值显示云水的扩散外缘；高阈值显示云水核心。
+    这不是硬物体边界，而是人为选择的标量水平集。
+  \end{block}
+\end{frame}
+
+\begin{frame}{矢量场：风速箭头}
+  \small
+  风场箭头用 Plotly \texttt{Cone} 绘制。
+  每个箭头位于采样点 $\vx_{ijk}$，方向由 $\vv_{ijk}$ 给出。
+
+  \begin{block}{箭头尺度处理}
+    Plotly 在 \texttt{sizemode="scaled"} 下会按整组向量范数归一化。
+    因此不能简单地把所有 $u,v,w$ 同时乘以同一个系数；
+    那会在归一化中被抵消。
+
+    当前实现保持真实风速分量不变，只调几何尺寸：
+    \[
+      \texttt{sizeref}=15\times \texttt{Arrow scale}.
+    \]
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{Sample stride}=1 时显示所有网格点箭头。
+    \item 增大 stride 会减少箭头数量，适合观察整体风向。
+  \end{itemize}
+\end{frame}
+
+\section{流速线}
+
+\begin{frame}{流速线的数学定义}
+  \small
+  对一个瞬时矢量场 $\vv:\Omega\subset\R^3\to\R^3$，流速线是满足常微分方程
+  \[
+    \frac{\dd\gamma(t)}{\dd t}=\vv(\gamma(t)),\qquad
+    \gamma(0)=\vx_0
+  \]
+  的积分曲线。
+
+  \begin{itemize}
+    \item $\vx_0$ 称为种子点。
+    \item 曲线切向量处处与局地风速方向一致。
+    \item 颜色通常映射到速度大小
+      \[
+        s(\vx)=\|\vv(\vx)\|_2=\sqrt{u^2+v^2+w^2}.
+      \]
+  \end{itemize}
+
+  \begin{block}{与粒子轨迹的区别}
+    对稳态流 $\vv(\vx)$，流速线可视为粒子轨迹。
+    对非稳态流 $\vv(\vx,t)$，粒子轨迹满足 $\dot\gamma=\vv(\gamma,t)$，一般不等于某一时刻的流速线。
+  \end{block}
+\end{frame}
+
+\begin{frame}{流速线绘制算法：连续问题到离散问题}
+  \small
+  数据只在网格点上给出，因此需要构造插值矢量场 $\vv_h$。
+  对结构网格单元中的一点 $\vx$，可用三线性插值：
+  \[
+    \vv_h(\xi,\eta,\zeta)=
+    \sum_{a,b,c\in\{0,1\}}
+    (1-\xi)^{1-a}\xi^a
+    (1-\eta)^{1-b}\eta^b
+    (1-\zeta)^{1-c}\zeta^c
+    \vv_{i+a,j+b,k+c}.
+  \]
+
+  数值流速线求解可抽象为
+  \[
+    \dot \gamma(t)=\vv_h(\gamma(t)).
+  \]
+  常见积分器包括 Euler、二阶 Runge--Kutta、四阶 Runge--Kutta 或自适应步长方法。
+
+  \begin{block}{本项目中的职责划分}
+    Python 端负责提供规则网格、矢量分量和种子点；
+    Plotly \texttt{Streamtube} 在前端完成积分曲线和管状几何生成。
+  \end{block}
+\end{frame}
+
+\begin{frame}{流速线绘制算法：种子点策略}
+  \small
+  流速线图像强烈依赖种子点集合
+  \[
+    \mathcal S=\{\vx_0^{(m)}\}_{m=1}^M .
+  \]
+
+  当前项目采用多截面内点播种：
+  \begin{enumerate}
+    \item 先把 DX 的 $x,z,y$ 索引顺序转为常规 $x,y,z$ 顺序。
+    \item 在多个 $x$ 截面上选择内部网格点，避免贴边种子立刻流出计算域。
+    \item 根据 \texttt{Streamline density} 控制候选种子密度。
+    \item 对最高密度档限制为 $M=100$ 条流线，平衡可读性和渲染性能。
+  \end{enumerate}
+
+  \begin{block}{为什么高 $x$ 端也要布种子}
+    如果只在入口面布种子，某些流线会很快离开域或被截断，高 $x$ 区域可能没有可见曲线。
+    多截面播种能更均匀地展示全域局地流向。
+  \end{block}
+\end{frame}
+
+\begin{frame}{流管几何与粗细控制}
+  \small
+  Plotly 的 \texttt{Streamtube} 不是只画一条无厚度曲线，而是围绕中心线 $\gamma(t)$ 构造管状曲面。
+
+  \begin{itemize}
+    \item 中心线：积分曲线 $\gamma(t)$。
+    \item 管半径：由 \texttt{sizeref} 控制，本项目暴露为 \texttt{Streamline width}。
+    \item 颜色：映射速度范数 $\|\vv\|$。
+    \item 段数上限：\texttt{maxdisplayed} 限制前端渲染复杂度。
+  \end{itemize}
+
+  \begin{block}{视觉权衡}
+    管太细则难以看清，太粗则会遮挡云水等值面和箭头。
+    当前默认值为 $0.9$，滑杆范围为 $0.1$--$2.0$。
+  \end{block}
+\end{frame}
+
+\begin{frame}{算法流程图}
+  \centering
+  \resizebox{0.96\linewidth}{!}{%
+  \begin{tikzpicture}[
+    node distance=1.4cm and 1.8cm,
+    box/.style={draw,rounded corners,align=center,minimum width=3.2cm,minimum height=0.9cm,fill=codebg},
+    arrow/.style={-{Latex[length=2mm]},thick}
+  ]
+    \node[box] (dx) {OpenDX\\标量/矢量数据};
+    \node[box,right=3.1cm of dx] (parse) {解析 header\\恢复坐标网格};
+    \node[box,right=3.1cm of parse] (field) {构造 $q_{ijk}$\\与 $\vv_{ijk}$};
+    \node[box,below=1.9cm of parse] (seed) {选择流线\\种子点};
+    \node[box,below=1.9cm of field] (vis) {等值面\\箭头\\流管};
+    \node[box,right=3.1cm of vis] (dash) {Dash/Plotly\\交互展示};
+
+    \draw[arrow] (dx) -- (parse);
+    \draw[arrow] (parse) -- (field);
+    \draw[arrow] (field) -- (vis);
+    \draw[arrow] (parse) -- (seed);
+    \draw[arrow] (seed) -- (vis);
+    \draw[arrow] (vis) -- (dash);
+  \end{tikzpicture}
+  }%
+
+  \vspace{0.8em}
+  \small
+  关键不只是“画图”，而是保持数据索引、物理坐标、插值拓扑和视觉几何之间的一致性。
+\end{frame}
+
+\section{结果分析}
+
+\begin{frame}{云水场结果分析}
+  \small
+  云水场的统计特征：
+  \[
+    \min q\approx -9.7\times 10^{-8},\quad
+    \overline q\approx 0.0369,\quad
+    \max q\approx 4.1712 .
+  \]
+  极小负值可视为浮点误差或数值噪声，实际解释中近似为零。
+
+  \begin{itemize}
+    \item $75\%$ 的格点低于 $0.00313$，说明云水主要集中在少数区域。
+    \item $q\ge 0.1$ 的格点约 $6.93\%$，能显示主要云水团块。
+    \item $q\ge 2.0$ 的格点仅 $0.36\%$，只剩极端核心，视觉变化很小。
+  \end{itemize}
+
+  \begin{block}{阈值解读}
+    阈值不是物理相变边界，而是观察尺度。
+    低阈值回答“云水影响范围在哪里”，高阈值回答“最强云水核心在哪里”。
+  \end{block}
+\end{frame}
+
+\begin{frame}{风速场结果分析}
+  \small
+  风速范数统计：
+  \[
+    \|\vv\|_{\min}\approx0.94,\quad
+    Q_{50}\approx23.63,\quad
+    Q_{95}\approx34.19,\quad
+    \|\vv\|_{\max}\approx53.89 .
+  \]
+
+  三个分量的均值约为
+  \[
+    \overline u\approx 14.02,\qquad
+    \overline v\approx 0.17,\qquad
+    \overline w\approx 10.47 .
+  \]
+
+  \begin{itemize}
+    \item 主导平均流向偏向 $+x$ 与 $+z$ 方向。
+    \item $v$ 分量均值接近零，但局地仍可有明显正负扰动。
+    \item 箭头适合看局地方向，流线适合看整体连通和输运路径。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{云水与风速的联合观察}
+  \small
+  将云水阈值区域与风速叠加，可以观察强云水区附近的局地流动。
+
+  \begin{tabular}{cccc}
+    \toprule
+    云水阈值 & 点数 & 区域平均风速 & 云水区域中心 $(\mathrm{km})$\\
+    \midrule
+    $q\ge0.1$ & $194$ & $19.93$ & $(51.9,\;7.9,\;23.5)$\\
+    $q\ge0.5$ & $36$ & $23.43$ & $(52.2,\;5.1,\;21.6)$\\
+    $q\ge1.0$ & $24$ & $25.40$ & $(48.4,\;4.9,\;26.5)$\\
+    $q\ge2.0$ & $10$ & $29.38$ & $(47.9,\;4.7,\;28.7)$\\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.8em}
+  \begin{block}{观测结论}
+    在该快照中，越高的云水核心阈值对应的区域平均风速越大。
+    这说明强云水核心位于较强局地风场中；它是对该快照的可视化诊断，不应直接推广为普遍因果关系。
+  \end{block}
+\end{frame}
+
+\begin{frame}{如何理解最终视觉结果}
+  \small
+  \begin{itemize}
+    \item 蓝色云水等值面给出 $q(\vx)$ 的空间分布轮廓。
+    \item 红色箭头给出采样点处的局地风向和相对风速。
+    \item 流管给出矢量场的积分结构，颜色反映 $\|\vv\|$。
+    \item 旋转视角时，应同时观察云水核心是否位于流线汇聚、弯折或强风速区域附近。
+  \end{itemize}
+
+  \begin{block}{推荐观察顺序}
+    先关闭流线，只看云水等值面和全采样箭头；
+    再打开流线，调节 \texttt{Streamline width} 和透明度；
+    最后改变云水阈值，比较低阈值外缘与高阈值核心附近的输运结构。
+  \end{block}
+\end{frame}
+
+\begin{frame}{局限与注意事项}
+  \small
+  \begin{enumerate}
+    \item 网格很粗：$x,z$ 方向约 $4.1\,\mathrm{km}$，$y$ 方向约 $2.2\,\mathrm{km}$。
+    \item 文件没有提供变量单位和时间信息，因此只能做相对量和瞬时结构分析。
+    \item 等值面依赖阈值，流线依赖种子点；两者都不是唯一的可视化结果。
+    \item Streamtube 需要插值与数值积分，轴顺序、边界停止条件和渲染段数会影响图像。
+    \item 当前项目优先服务交互教学，不替代专业气象诊断软件中的守恒量、涡度、散度等后处理分析。
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{总结}
+  \begin{itemize}
+    \item \texttt{weather\_simulation} 展示了标量场与矢量场的联合三维可视化。
+    \item OpenDX 的核心是网格位置、连接关系和二进制数据数组；轴顺序必须严格按 \texttt{delta} 解释。
+    \item 云水等值面回答“强云水区域在哪里”。
+    \item 箭头回答“局地风向和风速如何”。
+    \item 流速线回答“瞬时风场的输运结构如何连通”。
+  \end{itemize}
+
+  \begin{block}{一句话}
+    该项目把离散气象场
+    \[
+      (q_{ijk},\vv_{ijk})
+    \]
+    转化为可交互的几何对象，使云水结构与风场输运关系能够被直接观察和讨论。
+  \end{block}
+\end{frame}
+
+\end{document}

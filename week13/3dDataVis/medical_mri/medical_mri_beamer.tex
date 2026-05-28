@@ -1,0 +1,472 @@
+\documentclass[aspectratio=169,11pt]{ctexbeamer}
+
+\usetheme{Warsaw}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{headline}{}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{deepblue}{RGB}{37,99,235}
+\definecolor{darkgreen}{RGB}{22,101,52}
+\definecolor{warmorange}{RGB}{217,119,6}
+\setbeamercolor{block body}{bg=codebg,fg=black}
+\setbeamercolor{block title}{bg=deepblue,fg=white}
+
+\title{医学影像数据的三维可视化}
+\subtitle{\texttt{medical\_mri}: OpenDX 头部 MRI 样本}
+\author{crazyfish}
+\date{\today}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\vx}{\mathbf x}
+\newcommand{\dd}{\mathrm d}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{项目目标}
+  \texttt{medical\_mri} 项目将一份头部磁共振扫描的三维体数据放在交互式 Web 应用中展示。
+
+  \begin{itemize}
+    \item 数据：\texttt{MRI.data}，$128\times 128\times 16$ 个 \texttt{uint16} 信号强度值。
+    \item 描述文件：\texttt{mri.general}，OpenDX 通用栅格描述符。
+    \item 应用：\texttt{mri\_demo.py}，Dash + Plotly 双面板可视化。
+    \item 图形层：三维体渲染 + 二维 axial 切片热图。
+  \end{itemize}
+
+  \begin{block}{核心数学对象}
+    在离散网格 $G=\{\vx_{ijk}\}$ 上给出标量信号场
+    \[
+      s_{ijk}\approx s(\vx_{ijk}),\qquad
+      s_{ijk}\in\{0,1,\dots,2^{16}-1\}.
+    \]
+    可视化的目标是通过窗化变换把 MRI 信号映射成观察者可分辨的颜色，并支持沿层观察解剖结构。
+  \end{block}
+\end{frame}
+
+\section{数据背景}
+
+\begin{frame}{物理背景：MRI 信号}
+  \small
+  磁共振成像测量的不是直接的密度，而是氢核激发后释放电磁信号的幅度。
+  自旋回波序列的简化信号模型为
+  \[
+    S\;\propto\;\rho\,\bigl(1-e^{-T_R/T_1}\bigr)\,e^{-T_E/T_2}.
+  \]
+
+  \begin{itemize}
+    \item $\rho$：质子密度；
+    \item $T_1$：纵向弛豫时间；
+    \item $T_2$：横向弛豫时间；
+    \item $T_R, T_E$：脉冲序列参数；翻转角与线圈灵敏度未在此式中显式列出。
+  \end{itemize}
+
+  \begin{block}{无绝对刻度}
+    MRI 信号的数值依赖序列、扫描仪、增益、归一化。
+    它不是 CT 的 Hounsfield 单位，跨设备不可直接比较。
+    所以才必须有窗位/窗宽这类显示空间的映射。
+  \end{block}
+\end{frame}
+
+\begin{frame}{数据集来源}
+  \small
+  数据出自 IBM 早期发布的开源科学可视化系统 \textbf{OpenDX (Open Visualization Data Explorer)} 的官方示例库 \texttt{samples/data/}。
+
+  \begin{itemize}
+    \item 文件原名 \texttt{mri.general} + \texttt{MRI.data}。
+    \item 同一示例库中还包括 \texttt{watermolecule.dx}（水分子电子密度）、\texttt{cloudwater.dx}（云水）、\texttt{wind.dx}（风场）、Colorado 数字高程等。
+    \item 该 MRI 样本为头部轴位扫描的一段薄板：$16$ 层 $\times$ $128\times128$ 像素。
+    \item 没有附带 DICOM 头，无法机器化判断序列加权类型。
+  \end{itemize}
+
+  \begin{block}{加权类型推测}
+    从切片中颅骨内板与脂肪偏亮、脑脊液与脑室偏暗的视觉特征看，最像 $T_1$ 加权或质子密度加权扫描。
+  \end{block}
+\end{frame}
+
+\section{数据格式}
+
+\begin{frame}[fragile]{OpenDX general 描述文件}
+  \small
+  \texttt{mri.general} 是描述符（ASCII），\texttt{MRI.data} 是原始二进制。两者配对使用。
+
+  \begin{Verbatim}[fontsize=\scriptsize,frame=single]
+file      = MRI.data
+grid      = 128x128x16
+format    = msb binary
+type      = unsigned short
+positions = 0, 1.773153, 0, 1.773153, 0, 2.066667
+  \end{Verbatim}
+
+  \begin{itemize}
+    \item \texttt{msb binary}：大端 (most-significant-byte first) 二进制；
+    \item \texttt{unsigned short}：每个值 $16$ 位无符号整数；
+    \item \texttt{positions}：三对 $(\text{origin}, \text{spacing})$，分别给出 $x,y,z$ 轴。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{坐标映射与物理尺度}
+  \small
+  网格 $(i,j,k)$ 的物理坐标由 \texttt{positions} 决定：
+  \[
+    \vx_{ijk}=
+    \bigl(i\,\Delta_x,\; j\,\Delta_y,\; k\,\Delta_z\bigr),
+  \]
+  其中三个间距分别为
+  \[
+    \Delta_x=1.773\,\mathrm{mm},\quad
+    \Delta_y=1.773\,\mathrm{mm},\quad
+    \Delta_z=2.067\,\mathrm{mm}.
+  \]
+
+  \begin{columns}
+    \begin{column}{0.50\linewidth}
+      \begin{tabular}{ccc}
+        \toprule
+        轴 & 网格数 & 物理跨度 \\
+        \midrule
+        $x$ & $128$ & $0$--$225.2\,\mathrm{mm}$ \\
+        $y$ & $128$ & $0$--$225.2\,\mathrm{mm}$ \\
+        $z$ & $16$  & $0$--$31.0\,\mathrm{mm}$ \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.46\linewidth}
+      \begin{block}{薄板而非立方}
+        $z$ 方向只有 $16$ 层共 $3.1$ 厘米，面内是 $22.5\times 22.5$ 厘米。
+        切片方向 ($z$) 间距大于面内分辨率，这是 MRI 临床扫描的常见特征。
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{解析流程}
+  \small
+  Python 端的解析非常短，只用 \texttt{numpy.fromfile} 一行：
+
+  \begin{enumerate}
+    \item 读 \texttt{mri.general}，提取 \texttt{grid}、\texttt{type}、\texttt{positions}。
+    \item 按大端 \texttt{uint16} 读 \texttt{MRI.data}：\texttt{np.fromfile(path, dtype="$>$u2")}。
+    \item 按 C 序 reshape 到 $128\times 128\times 16$，使最后一个网格指标变化最快：
+      \[
+        s_{\mathrm{flat}}\;\longmapsto\;s_{ijk}.
+      \]
+    \item 由 origin 与 spacing 生成三个一维坐标向量 $x[i],\,y[j],\,z[k]$。
+  \end{enumerate}
+
+  \begin{block}{字节序验证}
+    取首 $8$ 字节 \texttt{0x38b5\,0503\,03df\,05ae}，按大端读为
+    $(14517,1283,991,1454)$，落在正常脑组织信号区间；
+    若按小端读首值会变成 $46392$，与样本统计分布不符。
+  \end{block}
+\end{frame}
+
+\section{可视化方法}
+
+\begin{frame}{窗位 / 窗宽：核心显示变换}
+  \small
+  医学影像显示的关键不是数据本身，而是从 \emph{原始信号空间} 到 \emph{显示颜色空间} 的线性映射。
+
+  令窗位 $c$、窗宽 $w$，定义窗的端点
+  \[
+    \ell = c - w/2,\qquad
+    h = c + w/2.
+  \]
+  显示强度
+  \[
+    I_{\text{disp}}(s) \;=\;
+    \begin{cases}
+      0 & s\le \ell,\\
+      \dfrac{s-\ell}{w} & \ell<s<h,\\
+      1 & s\ge h.
+    \end{cases}
+  \]
+
+  \begin{block}{物理意义}
+    $c$ 决定关注哪一段强度，$w$ 决定对比度。
+    窄窗 = 高对比 + 范围窄；宽窗 = 灰阶平缓 + 范围广。
+  \end{block}
+\end{frame}
+
+\begin{frame}{统一在 raw 单位下的实现}
+  \small
+  在 \texttt{mri\_demo.py} 中，数据本身保持原始 \texttt{uint16} 范围 $[668,57684]$。
+  窗化在 Plotly 渲染层完成：
+  \[
+    \texttt{cmin}=\ell,\quad
+    \texttt{cmax}=h,\quad
+    \texttt{cauto}=\text{False}.
+  \]
+  Plotly 在 color mapping 阶段把 $s\le \ell$ 截到色阶起点，$s\ge h$ 截到色阶末端。
+
+  \begin{itemize}
+    \item Colorbar 的刻度直接显示 raw 信号值；
+    \item Hover 中的 \texttt{I} 同样为 raw 整数；
+    \item 滑杆显示的 Center / Width 也是 raw 单位。
+  \end{itemize}
+
+  \begin{block}{三者在同一刻度}
+    Center、Width、显示 intensity 都是 raw \texttt{uint16} 值。
+    这一约定与医学影像工作站惯例一致，避免引入归一化中间层。
+  \end{block}
+\end{frame}
+
+\begin{frame}{三维体渲染}
+  \small
+  使用 Plotly \texttt{Volume} 绘制三维体。所需输入是四个等长一维数组：
+  \[
+    \bigl(x_p,\,y_p,\,z_p,\,v_p\bigr),\quad p=1,\dots,N_xN_yN_z .
+  \]
+  代码用 \texttt{np.meshgrid(x,y,z,indexing="ij")} 展开网格坐标，再
+  \texttt{ravel()} 成一维。
+
+  \begin{itemize}
+    \item \texttt{isomin} 设为 $\ell+0.05\,w$，去掉窗下沿的背景；
+    \item \texttt{isomax} 设为 $h$；
+    \item \texttt{surface.count}=1，渲染单层薄壳；
+    \item \texttt{caps} 全关，避免六个外表面被涂死；
+    \item \texttt{colorscale="Viridis"}，感知均匀。
+  \end{itemize}
+
+  \begin{block}{易错点}
+    若直接把一维轴向量 $(x,y,z)$ 长度分别为 $(N_x,N_y,N_z)$ 加上三维 value 数组传给 \texttt{Volume}，
+    Plotly validator 不报错但前端渲染空场景 —— 必须扁平化到等长一维。
+  \end{block}
+\end{frame}
+
+\begin{frame}{二维横断面切片}
+  \small
+  $z$ 方向只有 $16$ 层，沿 $z$ 的切片是原生分辨率，最适合阅读。
+
+  对当前 $z$ 索引 $k$，axial 切片是
+  \[
+    A_k(i,j)\;=\;s_{ijk}\in\R^{128\times128}.
+  \]
+
+  用 Plotly \texttt{Heatmap} 绘制：
+  \begin{itemize}
+    \item $x$ 轴 = $x[i]$，$y$ 轴 = $y[j]$，传入 $A_k^{\top}$（heatmap 的 \texttt{z} 是 \mbox{(row,col) = (y,x)}）；
+    \item 与三维体共享同一组 $\ell,\,h$ 即 \texttt{zmin/zmax}，色阶完全一致；
+    \item \texttt{scaleanchor="x"} 锁面内 $1{:}1$ 物理比例。
+  \end{itemize}
+
+  \begin{block}{为何不画矢状/额状面}
+    沿 $z$ 切片有 $128\times 128$ 原生像素。
+    沿 $x,y$ 切片纵向只有 $16$ 行，物理上仅 $3.1\,\mathrm{cm}$ 厚，会出现明显像素感，可读性弱于轴位。
+  \end{block}
+\end{frame}
+
+\begin{frame}{交互参数}
+  \scriptsize
+  \begin{tabularx}{\linewidth}{l l X}
+    \toprule
+    参数 & 范围 / 默认值 & 含义 \\
+    \midrule
+    \texttt{Center 窗位} & $500$--$60000$，默认 $10000$ &
+    窗中心强度，决定关注哪一段信号。 \\
+    \texttt{Width 窗宽}  & $1000$--$60000$，默认 $18000$ &
+    窗宽度，决定对比度。 \\
+    \texttt{Opacity}     & $0.01$--$1.0$，默认 $0.3$ &
+    体渲染透明度。 \\
+    \texttt{Slice X / Y / Z} & 整数索引 &
+    三维体渲染中的切片面位置；其中 $Z$ 同时控制二维 axial 显示哪一层。\\
+    \texttt{Show volume} & 默认开 &
+    控制体渲染是否可见，关闭后仅剩切片面。\\
+    \texttt{Show slices} & 默认开 &
+    控制三维体内的灰色切片面是否可见。\\
+    \texttt{Camera X / Y / Z} & $-6$--$6$ &
+    Plotly 归一化坐标的相机位置；与鼠标拖动双向同步。\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{算法流程图}
+  \centering
+  \resizebox{0.96\linewidth}{!}{%
+  \begin{tikzpicture}[
+    node distance=1.4cm and 1.6cm,
+    box/.style={draw,rounded corners,align=center,minimum width=3.0cm,minimum height=0.9cm,fill=codebg},
+    arrow/.style={-{Latex[length=2mm]},thick}
+  ]
+    \node[box] (desc) {\texttt{mri.general}\\描述文件};
+    \node[box,right=2.8cm of desc] (raw) {\texttt{MRI.data}\\\texttt{uint16 MSB}};
+    \node[box,right=2.8cm of raw] (np) {\texttt{np.fromfile}\\\texttt{reshape}};
+    \node[box,below=1.8cm of raw] (window) {窗位窗宽\\$\ell,h$};
+    \node[box,below=1.8cm of np] (plotly) {\texttt{Volume}\\\texttt{Heatmap}};
+    \node[box,right=2.8cm of plotly] (dash) {Dash 双面板\\交互展示};
+
+    \draw[arrow] (desc) -- (raw);
+    \draw[arrow] (raw) -- (np);
+    \draw[arrow] (np) -- (plotly);
+    \draw[arrow] (window) -- (plotly);
+    \draw[arrow] (plotly) -- (dash);
+  \end{tikzpicture}
+  }%
+
+  \vspace{0.6em}
+  \small
+  数据加载只需一次；窗位/窗宽通过 \texttt{cmin,cmax} 在前端 color mapping 阶段动态生效，无需重新加载原始数据。
+\end{frame}
+
+\section{结果分析}
+
+\begin{frame}{信号强度统计}
+  \small
+  $128\times 128\times 16 = 262{,}144$ 个 voxel 的 raw 信号统计：
+
+  \[
+    s_{\min}=668,\quad
+    \overline s\approx 9471,\quad
+    \mathrm{median}=8184,\quad
+    s_{\max}=57684 .
+  \]
+
+  \begin{columns}
+    \begin{column}{0.48\linewidth}
+      \begin{tabular}{cc}
+        \toprule
+        分位数 & 信号值 \\
+        \midrule
+        $Q_{1}$ & $1161$\\
+        $Q_{25}$ & $3575$\\
+        $Q_{50}$ & $8184$\\
+        $Q_{75}$ & $14097$\\
+        $Q_{95}$ & $21687$\\
+        $Q_{99}$ & $30195$\\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{分布特征}
+        信号呈现典型的右偏分布：
+        中位数远低于 $\max/2$，
+        高强度尾部由颅骨内板、脂肪、血管等小体积高信号组织贡献。
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{阈值与默认窗的选择}
+  \small
+  默认窗位 $c=10000$、窗宽 $w=18000$，对应窗端点 $\ell=1000$、$h=19000$。
+
+  \begin{columns}
+    \begin{column}{0.46\linewidth}
+      \begin{tabular}{ccc}
+        \toprule
+        阈值 $\tau$ & voxel 数 & 占比 \\
+        \midrule
+        $\ell=1000$  & $260{,}412$ & $99.34\%$\\
+        $5000$       & $151{,}955$ & $57.97\%$\\
+        $c=10000$    & $112{,}854$ & $43.05\%$\\
+        $15000$      & $56{,}365$ & $21.50\%$\\
+        $h=19000$    & $\approx 24{,}500$ & $\approx 9.3\%$\\
+        $30000$      & $2{,}732$ & $1.04\%$\\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.50\linewidth}
+      \begin{block}{含义}
+        默认窗框住了 $90\%$ 以上的中低强度像素，
+        从背景到大部分软组织都落在窗内并被分配到完整色阶。
+        $h$ 之上的高信号尾部被截到色阶末端，
+        视觉上呈现为一致的高亮色。
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{逐层信号变化}
+  \small
+  16 个 axial 层各自的统计：
+
+  \begin{tabular}{ccrr}
+    \toprule
+    层索引 $k$ & 物理 $z$ (mm) & 层均值 & $Q_{95}$ \\
+    \midrule
+    $0$  & $0.0$  & $7597$  & $16726$ \\
+    $4$  & $8.3$  & $9487$  & $21208$ \\
+    $8$  & $16.5$ & $9763$  & $22935$ \\
+    $10$ & $20.7$ & $10058$ & $23553$ \\
+    $14$ & $28.9$ & $10362$ & $23491$ \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.6em}
+  \begin{block}{观察}
+    从颅底向颅顶（$k$ 增大）层均值缓慢上升、$Q_{95}$ 同步上升。
+    这一趋势与上层切片穿过更多脑组织、皮下脂肪、颅骨内板等高信号结构一致。
+    层 $0$ 偏低则与该层位于颅底、含较多骨与气房有关。
+  \end{block}
+\end{frame}
+
+\begin{frame}{解剖学解读}
+  \small
+  在默认窗 $(c,w)=(10000,18000)$ 下，axial 切片可识别的结构：
+
+  \begin{itemize}
+    \item 颅骨内板与皮下脂肪：高信号，色阶接近黄色。
+    \item 脑实质（白质 / 灰质）：中等信号，色阶蓝绿到黄绿之间。
+    \item 脑脊液与脑室：低信号，色阶接近深紫。
+    \item 眼眶与颅底气房：信号最低，被窗下沿截到色阶起点。
+  \end{itemize}
+
+  \begin{block}{窗调节的临床直觉}
+    增大窗位 $c$ 可让中高信号区拉开对比，更容易观察灰白质边界；
+    减小窗宽 $w$ 会放大局地差异，但可能让低信号或高信号被"压平"到色阶两端。
+  \end{block}
+\end{frame}
+
+\begin{frame}{如何理解最终视觉结果}
+  \small
+  \begin{itemize}
+    \item 左侧三维体渲染给出整个头部薄板的轮廓与高信号结构空间分布；
+    \item 右侧二维 axial 热图给出当前 $z$ 层的原生分辨率解剖图像；
+    \item 共享 colorbar 让两个视图在同一 raw 刻度下对照；
+    \item 拖动 \texttt{Slice Z} 滑杆，三维体内的切面与二维热图同步更新。
+  \end{itemize}
+
+  \begin{block}{推荐观察顺序}
+    先用默认窗位窗宽看整体分布；
+    再缩小窗宽（如 $w=6000$）放大某段对比；
+    最后逐层拖动 \texttt{Slice Z} 浏览全部 $16$ 层 axial 影像。
+  \end{block}
+\end{frame}
+
+\begin{frame}{局限与注意事项}
+  \small
+  \begin{enumerate}
+    \item 仅 $16$ 个 axial 层、$z$ 间距 $2.07\,\mathrm{mm}$，沿 $z$ 的矢状/额状切片必然像素感强，故本应用只保留 axial 视图。
+    \item 无 DICOM 头，无法机器化判断 $T_1$ / $T_2$ / 质子密度加权类型，仅按视觉特征推测。
+    \item raw 信号无绝对刻度，跨设备/序列不可直接比较，所有 Window/Level 阈值仅对当前文件有效。
+    \item \texttt{Volume} 在 $262{,}144$ 个体素时浏览器渲染压力中等；继续放大数据需要降采样或分块策略。
+    \item 本项目优先服务交互教学，不替代专业 PACS 工作站的多平面重建、容积量化、灌注分析等功能。
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{总结}
+  \begin{itemize}
+    \item \texttt{medical\_mri} 展示了三维医学影像数据的 Web 交互可视化。
+    \item OpenDX \texttt{general} 格式以 ASCII 描述文件 + 二进制数据数组组成，解析只需 \texttt{numpy.fromfile} 一行。
+    \item 核心显示变换是窗位/窗宽线性映射，由 Plotly 的 \texttt{cmin,cmax} 在前端动态完成。
+    \item 三维体渲染回答"整体高信号结构在哪里"；二维 axial 切片回答"当前层的解剖细节是什么"。
+    \item 通过保持 Center、Width、显示 intensity 三者同在 raw 刻度，参数与视觉读数完全一致。
+  \end{itemize}
+
+  \begin{block}{一句话}
+    把 $(s_{ijk})$ 通过窗化映射变成可调的几何与颜色，让头部 MRI 的解剖结构能够在浏览器中被直接探索。
+  \end{block}
+\end{frame}
+
+\end{document}

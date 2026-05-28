@@ -1,0 +1,470 @@
+\documentclass[aspectratio=169,11pt]{ctexbeamer}
+
+\usetheme{Warsaw}
+\setbeamertemplate{navigation symbols}{}
+
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{graphicx}
+\usetikzlibrary{arrows.meta,positioning}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{deepblue}{RGB}{37,99,235}
+\definecolor{darkgreen}{RGB}{22,101,52}
+\definecolor{warmorange}{RGB}{217,119,6}
+\setbeamercolor{block body}{bg=codebg,fg=black}
+\setbeamercolor{block title}{bg=deepblue,fg=white}
+
+\title{Colorado 地形数据集与地形渲染}
+\subtitle{OpenDX 样本数据格式、背景与三维地形可视化}
+\author{crazyfish}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{本讲目标}
+  了解 Colorado 地形数据集的来源、格式和三维渲染中的关键考量。
+
+  \begin{itemize}
+    \item 数据集内容：高程数据 + 航拍影像。
+    \item 背景：OpenDX 科学可视化平台的历史。
+    \item 格式：二进制数据布局与元数据解析。
+    \item 渲染：地形可视化中的高度缩放、光照与性能。
+  \end{itemize}
+\end{frame}
+
+\section{数据集概述}
+
+\begin{frame}{数据集内容}
+  Colorado 地形是 OpenDX 教学样本之一，包含同一地理区域的两个数据层。
+
+  \begin{table}
+    \centering
+    \begin{tabularx}{0.9\linewidth}{lllX}
+      \toprule
+      文件 & 大小 & 格式 & 内容 \\
+      \midrule
+      \texttt{colo\_elev.general} & 109 B & 文本 & 元数据头文件 \\
+      \texttt{colorado\_elev.vit} & 157 KB & 二进制 & $400\times400$ 高程 (uint8) \\
+      \texttt{colorado.tiff} & 470 KB & TIFF & $400\times400$ RGB 航拍照片 \\
+      \bottomrule
+    \end{tabularx}
+  \end{table}
+
+  \begin{itemize}
+    \item 两个数据共享同一个 $400\times400$ 网格。
+    \item 高程值范围 $[5, 255]$，均值约 84，标准差约 47。
+    \item 航拍照片已经包含自然光照信息。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{数据背景：OpenDX}
+  这个数据集最初来自 IBM 的 Open Visualization Data Explorer (OpenDX)。
+
+  \begin{itemize}
+    \item \textbf{起源}：IBM 在 1990 年代开发了 Visualization Data Explorer (DX)，1999 年开源为 OpenDX。
+    \item \textbf{定位}：面向科学计算的可视化编程平台，通过连接模块（节点）构建可视化管线。
+    \item \textbf{样本数据}：OpenDX 随附多个教学样例，Colorado 地形是其中的地形可视化示例。
+    \item \textbf{时间}：该样本来自 1997 年，使用 DX Beta 3.1.4 创建。
+  \end{itemize}
+
+  \begin{block}{当前用途}
+    在我们的课程中，Colorado 数据被转换为 PyVista/VTK 格式或直接由 Python 读取，
+    用于地形渲染教学，无需安装 OpenDX。
+  \end{block}
+\end{frame}
+
+\begin{frame}{OpenDX 可视化管线（原始示例）}
+  原始的 \texttt{Topo.net} 文件描述了如何组合数据与可视化操作。
+
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.55cm,
+      box/.style={draw, rounded corners=2pt, align=center, minimum width=1.3cm, minimum height=0.6cm, font=\footnotesize},
+      arr/.style={-{Stealth[length=1.8mm]}, thick}
+    ]
+      \node[box] (img) {ReadImage\\\scriptsize colorado.tiff};
+      \node[box, right=of img] (import1) {Import};
+      \node[box, right=of import1] (orient) {Reorient\\对齐网格};
+      \node[box, right=of orient] (replace) {Replace\\替换颜色};
+      \node[box, right=of replace] (rubber) {RubberSheet\\高度偏移};
+      \node[box, right=of rubber] (display) {Display\\地形+影像};
+
+      \node[box, below=of import1] (elev) {Import\\高程数据};
+      \draw[arr] (elev) -- (orient);
+
+      \draw[arr] (img) -- (import1);
+      \draw[arr] (import1) -- (orient);
+      \draw[arr] (orient) -- (replace);
+      \draw[arr] (replace) -- (rubber);
+      \draw[arr] (rubber) -- (display);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{itemize}
+    \item \texttt{Reorient}：对齐影像与高程的网格方向。
+    \item \texttt{Replace}：将高程值注入影像数据的颜色通道。
+    \item \texttt{RubberSheet}：用高程值将二维表面抬升为三维地形。
+  \end{itemize}
+\end{frame}
+
+\section{数据格式}
+
+\begin{frame}[fragile]{\texttt{.general} 头文件}
+  这是整个数据集的入口文件，描述高程文件的存储参数。
+
+  \begin{columns}
+    \begin{column}{0.42\linewidth}
+      \begin{block}{\texttt{colo\_elev.general}}
+\begin{Verbatim}[fontsize=\tiny]
+file = colorado_elev.vit
+grid = 400 x 400
+header = bytes 268
+format = msb binary
+type = byte
+majority = row
+\end{Verbatim}
+      \end{block}
+    \end{column}
+    \begin{column}{0.55\linewidth}
+      \begin{table}
+        \centering
+        \begin{tabularx}{\linewidth}{lX}
+          \toprule
+          字段 & 含义 \\
+          \midrule
+          \texttt{file} & 实际数据文件 \\
+          \texttt{grid} & 网格尺寸 $N_x\times N_y$ \\
+          \texttt{header} & 跳过的头部字节 \\
+          \texttt{format} & 字节序（msb=大端） \\
+          \texttt{type} & 数据类型（byte=uint8） \\
+          \texttt{majority} & 存储顺序（row=C-order） \\
+          \bottomrule
+        \end{tabularx}
+      \end{table}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{\texttt{.vit} 高程文件}
+  \texttt{colorado\_elev.vit} 是一个简单的二进制文件。
+
+  \begin{block}{文件布局}
+    \begin{center}
+    \begin{tikzpicture}[
+      box/.style={draw, align=center, minimum height=0.85cm},
+    ]
+      \node[font=\ttfamily\small] (fname) {colorado\_elev.vit};
+      \node[box, fill=gray!20, minimum width=1.3cm, below=0.35cm of fname] (header) {\footnotesize268 B\\\footnotesize VITec 头};
+      \node[box, fill=blue!15, minimum width=6.5cm, right=0cm of header] (data) {\footnotesize160,000 B 高程数据\\\footnotesize(400$\times$400 uint8, row-major)};
+      \draw[thick] (fname.south) -- (header.north);
+      \draw[thick] (fname.south) -- (data.north);
+    \end{tikzpicture}
+    \end{center}
+  \end{block}
+
+  \begin{itemize}
+    \item 文件总长 160,268 字节，前 268 字节为 VITec 格式头部。
+    \item 高程值以无符号 8 位整数存储，每个像素 1 字节。
+    \item \texttt{majority = row} 行优先（C-order）；高程范围 $[5, 255]$。
+  \end{itemize}
+
+  \begin{block}{Python 读取}
+\begin{Verbatim}[fontsize=\tiny]
+raw = np.fromfile("colorado_elev.vit", dtype=np.uint8)
+elevation = raw[268:268+160000].reshape((400, 400), order="C")
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{\texttt{.tiff} 航拍影像}
+  470 KB 的 TIFF 格式彩色航拍照片。
+
+  \begin{itemize}
+    \item 分辨率 $400\times400$，RGB 三通道，每通道 8 位。
+    \item 与高程数据共享同一地理网格 —— 像素 $(i,j)$ 的影像对应同一位置的高程值。
+    \item 影像本身已经包含自然光照（太阳阴影），这是原始 OpenDX 示例关闭人工光照的原因。
+  \end{itemize}
+
+  \begin{block}{读取方式}
+\begin{Verbatim}[fontsize=\scriptsize]
+from PIL import Image
+image = np.asarray(Image.open("colorado.tiff").convert("RGB"))
+# image.shape == (400, 400, 3)
+# 灰度转换: L = 0.299*R + 0.587*G + 0.114*B
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}{数据格式小结}
+  \begin{center}
+    \begin{tikzpicture}[
+      box/.style={draw, rounded corners=2pt, align=center, minimum width=2.8cm, minimum height=1cm},
+      arr/.style={-{Stealth[length=2mm]}, thick},
+    ]
+      \node[box, fill=blue!10] (general) {\texttt{colo\_elev.general}\\元数据 (文本)};
+      \node[box, fill=green!10, right=1.5cm of general] (vit) {\texttt{colorado\_elev.vit}\\高程数据 (二进制)};
+      \node[box, fill=orange!10, right=1.5cm of vit] (tiff) {\texttt{colorado.tiff}\\航拍影像 (TIFF)};
+
+      \draw[arr] (general) -- (vit) node[midway, above] {\footnotesize file = \dots};
+      \draw[arr, dashed] (vit) -- (tiff) node[midway, above] {\footnotesize 共享网格};
+
+      \node[below=0.6cm of vit, align=center, font=\footnotesize] {
+        三个文件组合 →\\$400\times400$ 的二维地形高程场\\+ 同分辨率 RGB 影像纹理
+      };
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{block}{关键解析参数}
+    \texttt{grid = 400 x 400}, \texttt{header = bytes 268},
+    \texttt{format = msb binary} (大端), \texttt{majority = row} (行优先)
+  \end{block}
+\end{frame}
+
+\section{地形渲染考量}
+
+\begin{frame}{地形渲染的核心问题}
+  将二维高程数据 + 影像转化为可交互三维场景时，需要关注几个关键决策。
+
+  \begin{enumerate}
+    \item \textbf{高度缩放}：高程单位与水平单位的比例。
+    \item \textbf{分辨率控制}：全分辨率 $400\times400$ (160K 顶点) vs 降采样。
+    \item \textbf{颜色映射}：使用影像纹理还是高程伪彩色。
+    \item \textbf{光照策略}：人工光照与影像自带光照的关系。
+    \item \textbf{相机设置}：视角、纵横比与初始观察位置。
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{高度缩放 (Z-Scale)}
+  高程值是 uint8 范围 $[5,255]$，水平网格是 $400\times400$ 像素索引。
+  直接绘制时地形几乎平坦。
+
+  \begin{block}{缩放公式}
+    $z(i,j) = \text{elevation}[i,j] \times s_z$\quad ($s_z$ 是高度缩放因子)
+  \end{block}
+
+  \begin{itemize}
+    \item $s_z = 1.0$：高度 $[5, 255]$，地形几乎不可见起伏。
+    \item $s_z = 2.0$ (默认)：起伏适中，适合概览。
+    \item $s_z = 4.0\sim6.0$：起伏明显，山脊和山谷清晰可见。
+    \item 过高 ($s_z > 6.0$)：形变严重，失去地理参考意义。
+  \end{itemize}
+
+  \begin{block}{纵横比调整}
+    Plotly 中用 \texttt{aspectratio} 补偿高度缩放：
+    $\text{z\_aspect} = \text{clamp}(0.18 \times s_z,\; 0.18,\; 1.2)$
+  \end{block}
+\end{frame}
+
+\begin{frame}{分辨率与性能}
+  全分辨率 $400\times400 = 160{,}000$ 个顶点，通过 Plotly WebGL 渲染。
+
+  \begin{table}
+    \centering
+    \begin{tabularx}{0.8\linewidth}{cXXX}
+      \toprule
+      Stride & 顶点数 & JSON 大小 & 交互体验 \\
+      \midrule
+      1 & 160,000 & 大 & 可能卡顿 \\
+      2 (默认) & 40,000 & 中 & 基本流畅 \\
+      4 & 10,000 & 小 & 流畅 \\
+      5 & 6,400 & 很小 & 流畅 \\
+      8 & 2,500 & 极小 & 非常流畅 \\
+      \bottomrule
+    \end{tabularx}
+  \end{table}
+
+  \begin{itemize}
+    \item 步长 (stride) 越大，显示越快，但地形细节越少。
+    \item 默认 stride = 4，100$\times$100 顶点，兼顾细节与性能。
+    \item 尖锐山脊和细小山谷在 stride $\ge 5$ 时可能丢失。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{颜色模式：影像 vs 高程色图}
+  两种表面着色策略各有适用场景。
+
+  \begin{columns}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{影像灰度 (image\_gray)}
+        \begin{itemize}
+          \item 使用航拍照片的亮度值。
+          \item 视觉直观：看到的是\"真实地表\"。
+          \item 适合展示地理信息。
+          \item 缺点：高程信息被影像\"掩盖\"。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{高程色图 (elevation)}
+        \begin{itemize}
+          \item 使用高程值映射到 Earth 色图。
+          \item 高程差异一目了然。
+          \item 适合科学分析。
+          \item 缺点：失去地理纹理信息。
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{center}
+    \textbf{教学建议}：两种模式都提供，通过下拉框实时切换。
+  \end{center}
+\end{frame}
+
+\begin{frame}{光照策略}
+  地形渲染中的光照需要特殊考��，因为影像本身已经包含阴影。
+
+  \begin{block}{两种光照哲学}
+    \begin{description}
+      \item[影像灰度模式] 航拍照片自带太阳光照信息。如果叠加过强的人工光照，
+        会造成\"双重阴影\"。建议使用较低的环境光 (\texttt{ambient = 0.35})
+        和较低的镜面反射 (\texttt{specular = 0.25})，让影像的原始信息主导。
+      \item[高程色图模式] 没有原始光照信息，完全依赖人工光照。可以适当增大
+        \texttt{diffuse} (0.8) 和 \texttt{specular} (0.5) 来突出地形起伏。
+    \end{description}
+  \end{block}
+
+  \begin{itemize}
+    \item 光源通常从上方偏侧照射，模拟自然日光方向。
+    \item 高粗糙度 (\texttt{roughness > 0.6}) 适合自然地表的漫反射效果。
+    \item 低粗糙度会产生不自然的\"塑料感\"。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{相机初始位置}
+  地形数据需要合适的初始相机角度来展示全貌。
+
+  \begin{itemize}
+    \item 默认相机 \texttt{eye = (1.45, -1.55, 0.85)} (Plotly 归一化坐标)。
+    \item 从右前上方俯视，地形起伏最明显。
+    \item \texttt{aspectmode = "manual"} 配合 \texttt{aspectratio} 保持正确的空间比例。
+  \end{itemize}
+
+  \begin{block}{交互方式}
+    \begin{itemize}
+      \item 鼠标拖拽旋转视角，滚轮缩放。
+      \item 相机滑杆精确控制观察方向。
+      \item 拖拽图形时，相机滑杆双向同步更新。
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{渲染管线（Python 侧）}
+
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.55cm,
+      box/.style={draw, rounded corners=2pt, align=center, minimum width=1.85cm, minimum height=0.7cm, font=\footnotesize},
+      arr/.style={-{Stealth[length=1.8mm]}, thick}
+    ]
+      \node[box, fill=blue!10] (load) {加载数据\\elevation + image};
+      \node[box, fill=green!10, right=of load] (sample) {降采样\\stride 步长};
+      \node[box, fill=orange!10, right=of sample] (zscale) {高度缩放\\$z = elev \times s_z$};
+      \node[box, fill=purple!10, right=of zscale] (color) {颜色通道\\灰度 / 高程色图};
+      \node[box, fill=red!10, right=of color] (surface) {go.Surface\\WebGL 渲染};
+      \draw[arr] (load) -- (sample);
+      \draw[arr] (sample) -- (zscale);
+      \draw[arr] (zscale) -- (color);
+      \draw[arr] (color) -- (surface);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{block}{关键代码结构}
+\begin{Verbatim}[fontsize=\tiny]
+x, y = meshgrid(arange(0,400,stride), arange(0,400,stride), indexing="ij")
+z = elevation[::stride, ::stride] * z_scale
+go.Surface(x=x, y=y, z=z, surfacecolor=..., colorscale=...,
+           lighting={ambient:..., diffuse:..., ...},
+           lightposition={x:..., y:..., z:...})
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}{交互控件设计}
+
+  \begin{columns}
+    \begin{column}{0.5\linewidth}
+      \begin{block}{数据控件}
+        \begin{itemize}
+          \item Height scale (0.5--6.0)
+          \item Sampling stride (1, 2, 4, 5, 8)
+          \item Color mode (image / elevation)
+          \item Axes toggle
+        \end{itemize}
+      \end{block}
+      \begin{block}{光照控件}
+        \begin{itemize}
+          \item Light X, Y, Z
+          \item Ambient, Diffuse
+          \item Specular, Roughness
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\linewidth}
+      \begin{block}{相机控件}
+        \begin{itemize}
+          \item Camera X, Y, Z sliders
+          \item 鼠标拖拽双向同步
+        \end{itemize}
+      \end{block}
+      \begin{block}{信息面板}
+        \begin{itemize}
+          \item 源网格 / 显示网格
+          \item 顶点数量
+          \item 当前光照和相机参数
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{center}
+    所有控件使用 \texttt{updatemode="drag"} 实现拖动时实时更新。
+  \end{center}
+\end{frame}
+
+\begin{frame}{地形渲染常见问题}
+
+  \begin{table}
+    \centering
+    \begin{tabularx}{\linewidth}{lX}
+      \toprule
+      问题 & 解决 \\
+      \midrule
+      高程与影像方向不一致 & 检查 \texttt{majority = row}，确保 reshape 使用 C-order \\
+      大端字节序错误 & OpenDX 的 MSB 格式在 x86 上需要正确处理；
+                         本数据为 uint8 单字节，不受字节序影响 \\
+      地形过于平坦 & 增大 \texttt{z\_scale} 或调整 aspectratio \\
+      交互卡顿 & 增大 stride 降采样 \\
+      影像与高程不对齐 & 确保影像已 resize 至高程网格尺寸 \\
+      光照过强掩盖影像纹理 & 降低 ambient 和 specular，让影像主导视觉 \\
+      \bottomrule
+    \end{tabularx}
+  \end{table}
+\end{frame}
+
+\begin{frame}{小结}
+  Colorado 地形数据集是一个小而完整的教学案例。
+
+  \begin{itemize}
+    \item \textbf{数据}：三个文件（general 元数据 + vit 高程 + tiff 影像），在同一 $400\times400$ 网格上。
+    \item \textbf{格式}：二进制 VITec 格式，268 字节头部 + 160,000 字节 uint8 行优先数据。
+    \item \textbf{历史}：来自 IBM OpenDX (1997)，是科学可视化平台的经典教学样本。
+    \item \textbf{渲染要点}：高度缩放、降采样、颜色模式选择、光照与影像的协调、相机设置。
+    \item \textbf{实现}：\texttt{colorad/colorad\_terrain\_demo.py} 提供完整的 Dash + Plotly 交互演示。
+  \end{itemize}
+
+  \begin{block}{相关文件}
+    \texttt{colorad/} 目录 — 数据文件 + 演示程序 + 本讲义
+  \end{block}
+\end{frame}
+
+\end{document}

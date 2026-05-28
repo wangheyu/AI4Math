@@ -1,0 +1,466 @@
+\documentclass[aspectratio=169,11pt]{ctexbeamer}
+
+\usetheme{Warsaw}
+\setbeamertemplate{navigation symbols}{}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{deepblue}{RGB}{37,99,235}
+\definecolor{darkgreen}{RGB}{22,101,52}
+\definecolor{warmorange}{RGB}{217,119,6}
+\setbeamercolor{block body}{bg=codebg,fg=black}
+\setbeamercolor{block title}{bg=deepblue,fg=white}
+
+\title{水分子电子密度三维可视化}
+\subtitle{OpenDX 体数据、等值面与 Dash/Plotly 交互展示}
+\author{crazyfish}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{项目目标}
+  \texttt{water\_molecule} 项目将水分子电子密度体数据转化为可交互的三维等值面。
+
+  \begin{itemize}
+    \item 数据：\texttt{watermolecule.dx}，OpenDX ASCII 体数据。
+    \item 程序：\texttt{electron\_density\_demo.py}，Dash + Plotly Web 应用。
+    \item 图形：电子密度等值面、网格边框、坐标轴和可调光照。
+    \item 目标：理解三维标量场如何通过等值面变成几何对象。
+  \end{itemize}
+
+  \begin{block}{核心问题}
+    给定离散标量场 $\rho_{ijk}\approx \rho(x_i,y_j,z_k)$，如何选择、解释并渲染集合
+    \[
+      \{(x,y,z): \rho(x,y,z)=c\}\, ?
+    \]
+  \end{block}
+\end{frame}
+
+\section{物理背景}
+
+\begin{frame}{水分子的电子密度}
+  水分子 H$_2$O 含有一个氧原子和两个氢原子，共 10 个电子。
+
+  \begin{itemize}
+    \item 氧原子电负性较强，电子云在氧附近更集中。
+    \item O--H 键区域存在成键电子密度。
+    \item 电子密度分布决定了分子极性、静电势和分子间相互作用的重要特征。
+  \end{itemize}
+
+  \begin{block}{量子力学中的一体电子密度}
+    若 $N$ 电子波函数为 $\Psi(\mathbf r_1,\ldots,\mathbf r_N)$，则
+    \[
+      \rho(\mathbf r)
+      =
+      N\int_{\mathbb R^{3(N-1)}}
+      |\Psi(\mathbf r,\mathbf r_2,\ldots,\mathbf r_N)|^2
+      \,d\mathbf r_2\cdots d\mathbf r_N .
+    \]
+    它满足归一化关系
+    \[
+      \int_{\mathbb R^3}\rho(\mathbf r)\,d\mathbf r = N .
+    \]
+  \end{block}
+\end{frame}
+
+\begin{frame}{这是不是 10 个电子的概率密度？}
+  \small
+  图中显示的是三维空间中的\textbf{一体电子密度}，不是完整的 10 电子联合概率密度。
+
+  \begin{block}{两个概率对象}
+    完整波函数给出的是 $30$ 维联合概率密度：
+    \[
+      |\Psi(\mathbf r_1,\ldots,\mathbf r_{10})|^2 .
+    \]
+    可视化中的三维标量场是边缘化后的一体密度：
+    \[
+      \rho(\mathbf r)
+      =
+      10\int |\Psi(\mathbf r,\mathbf r_2,\ldots,\mathbf r_{10})|^2
+      \,d\mathbf r_2\cdots d\mathbf r_{10}.
+    \]
+  \end{block}
+
+  \begin{itemize}
+    \item $\rho(\mathbf r)\,dV$ 是小体积 $dV$ 中的\textbf{期望电子数}。
+    \item 若归一化完整，则 $\int\rho(\mathbf r)\,d\mathbf r=10$。
+    \item $\rho(\mathbf r)/10$ 才是“随机抽取一个电子出现在 $\mathbf r$ 附近”的概率密度。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{四个集中区域如何理解}
+  \small
+  在合适的低到中等阈值下，水分子氧原子周围常会显出四个价电子密度方向。
+
+  \begin{columns}
+    \begin{column}{0.48\linewidth}
+      \begin{itemize}
+        \item 两个方向对应 O--H 成键电子域。
+        \item 两个方向对应氧原子的孤对电子域。
+        \item 这与近似 $sp^3$ / VSEPR 的四电子域图像一致。
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{解释边界}
+        它们不是“4 个电子”，也不是 10 个电子逐个分开的轨道；
+        它们是总电子密度 $\rho(\mathbf r)$ 在所选密度带下显露出的空间结构。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.5em}
+  因此，四个集中区域是电子密度的客观空间特征经过阈值选择后的几何表现；
+  改变阈值会改变哪些结构最突出。
+\end{frame}
+
+\begin{frame}{从连续场到离散体数据}
+  \small
+  真实的电子密度是连续函数，但计算和可视化都在网格上进行。
+
+  \begin{columns}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{连续对象}
+        \[
+          \rho:\Omega\subset\mathbb R^3\to\mathbb R_{\ge 0}
+        \]
+        \[
+          \Omega=[x_{\min},x_{\max}]
+          \times[y_{\min},y_{\max}]
+          \times[z_{\min},z_{\max}]
+        \]
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{离散采样}
+        \[
+        \begin{aligned}
+          x_i&=x_0+i\Delta x,\\
+          y_j&=y_0+j\Delta y,\\
+          z_k&=z_0+k\Delta z
+        \end{aligned}
+        \]
+        \[
+          \rho_{ijk}=\rho(x_i,y_j,z_k)
+        \]
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.6em}
+  本项目中的网格为 $40\times 60\times 20$，共 $48000$ 个采样点，三个方向间距均为 $0.1$。
+\end{frame}
+
+\begin{frame}{电子密度等值面的物理含义}
+  \footnotesize
+  给定阈值 $c$，电子密度等值面定义为
+  \[
+    S_c=\{\mathbf r\in\Omega:\rho(\mathbf r)=c\}.
+  \]
+
+  \begin{itemize}
+    \item $c$ 较大：显示高电子密度区域，通常更靠近氧原子或化学键核心。
+    \item $c$ 较小：显示更外层的电子云轮廓，分子整体形状更明显。
+    \item 等值面不是原子轨道本身，而是电子密度这个标量场的几何截面。
+  \end{itemize}
+
+  \begin{block}{体积与概率质量}
+    若考虑超水平集 $E_c=\{\mathbf r:\rho(\mathbf r)\ge c\}$，
+    则 $c$ 控制可见区域的体积；而
+    $\int_{E_c}\rho(\mathbf r)\,d\mathbf r$
+    描述该区域包含的电子密度质量。
+  \end{block}
+\end{frame}
+
+\section{OpenDX 数据格式}
+
+\begin{frame}[fragile]{\texttt{watermolecule.dx} 的结构}
+  OpenDX 用若干 \texttt{object} 描述数据数组、网格位置和连接关系。
+
+  \begin{block}{文件关键片段}
+\begin{Verbatim}[fontsize=\scriptsize]
+object 1 class array items 48000 data follows
+  ... 48000 scalar values ...
+attribute "dep" string "positions"
+
+object 2 class gridpositions counts 40 60 20
+ origin  -1.0  -3.0  -2.0
+ delta    0.1   0.0   0.0
+ delta    0.0   0.1   0.0
+ delta    0.0   0.0   0.1
+
+object 3 class gridconnections counts 40 60 20
+ attribute "element type" string "cubes"
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}{DX 字段的含义}
+  \footnotesize
+  \begin{table}
+    \centering
+    \begin{tabularx}{0.94\linewidth}{lX}
+      \toprule
+      字段 & 含义 \\
+      \midrule
+      \texttt{array items 48000} & 后续共有 $40\cdot60\cdot20=48000$ 个标量值。 \\
+      \texttt{gridpositions counts 40 60 20} & 规则网格点数 $N_x=40,N_y=60,N_z=20$。 \\
+      \texttt{origin} & 网格第一个点的空间坐标 $(-1,-3,-2)$。 \\
+      \texttt{delta} & 三个方向的网格基向量；本例是轴对齐均匀网格。 \\
+      \texttt{gridconnections} & 指明相邻网格点组成体素，每个体素拓扑类型为立方体。 \\
+      \texttt{component} & 将 data、positions、connections 组合成一个 field。 \\
+      \bottomrule
+    \end{tabularx}
+  \end{table}
+
+  \begin{block}{坐标范围}
+    $x\in[-1.0,2.9]$，$y\in[-3.0,2.9]$，$z\in[-2.0,-0.1]$。
+  \end{block}
+\end{frame}
+
+\begin{frame}{线性存储与三维索引}
+  文件中标量值是一维序列，程序需要恢复三维数组。
+
+  \begin{block}{本项目采用的索引关系}
+    令 $N_x=40,N_y=60,N_z=20$。若原始数组为 \texttt{raw}，则
+    \[
+      \rho_{ijk}
+      =
+      \texttt{raw}[\,i+jN_x+kN_xN_y\,],
+      \qquad
+      0\le i<N_x,\;0\le j<N_y,\;0\le k<N_z.
+    \]
+  \end{block}
+
+  \begin{itemize}
+    \item 这个关系表示 $x$ 方向索引最快变化。
+    \item Python 中通过 \texttt{reshape((nx, ny, nz), order="F")} 实现。
+    \item 可视化之前必须保证坐标点与密度值一一对应。
+  \end{itemize}
+\end{frame}
+
+\section{可视化处理}
+
+\begin{frame}{从 DX 到 Plotly 的处理管线}
+  \small
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.35cm,
+      box/.style={draw, rounded corners=2pt, align=center, minimum width=1.45cm, minimum height=0.62cm, font=\scriptsize},
+      arr/.style={-{Stealth[length=2mm]}, thick}
+    ]
+      \node[box] (dx) {DX 文本\\元数据+标量};
+      \node[box, right=of dx] (parse) {正则解析\\counts 等};
+      \node[box, right=of parse] (reshape) {三维恢复\\$\rho_{ijk}$};
+      \node[box, right=of reshape] (mesh) {生成网格\\$x_i,y_j,z_k$};
+      \node[box, right=of mesh] (flat) {展开顶点\\1D 数组};
+      \node[box, right=of flat] (iso) {Isosurface\\WebGL 渲染};
+
+      \draw[arr] (dx) -- (parse);
+      \draw[arr] (parse) -- (reshape);
+      \draw[arr] (reshape) -- (mesh);
+      \draw[arr] (mesh) -- (flat);
+      \draw[arr] (flat) -- (iso);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{block}{关键约束}
+    Plotly \texttt{go.Isosurface} 接收每个顶点的一维数组：
+    \[
+      (x_\ell,y_\ell,z_\ell,\rho_\ell),\qquad \ell=1,\ldots,48000.
+    \]
+    因此程序先用 \texttt{np.meshgrid(..., indexing="ij")} 生成三维坐标，再统一 \texttt{ravel()} 展平。
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{关键代码片段}
+  \begin{block}{数据恢复}
+\begin{Verbatim}[fontsize=\scriptsize]
+value_3d = raw_values.reshape((nx, ny, nz), order="F")
+
+x = np.linspace(origin[0], origin[0] + (nx - 1) * dx, nx)
+y = np.linspace(origin[1], origin[1] + (ny - 1) * dy, ny)
+z = np.linspace(origin[2], origin[2] + (nz - 1) * dz, nz)
+\end{Verbatim}
+  \end{block}
+
+  \begin{block}{传给 Plotly 的顶点数组}
+\begin{Verbatim}[fontsize=\scriptsize]
+xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
+x_flat = xx.ravel()
+y_flat = yy.ravel()
+z_flat = zz.ravel()
+value_flat = value_3d.ravel()
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+\begin{frame}{等值面参数的数学意义}
+  \small
+  程序实际显示的是一个密度壳层：
+  \[
+    c \le \rho(\mathbf r) \le c+\Delta c .
+  \]
+
+  \begin{table}
+    \centering
+    \begin{tabularx}{0.94\linewidth}{lX}
+      \toprule
+      参数 & 含义 \\
+      \midrule
+      \texttt{Threshold} $c$ & 密度下界，当前范围 $[0.001,1.1]$，默认 $0.05$。 \\
+      \texttt{Shell width} $\Delta c$ & 密度带宽，当前范围 $[0.005,0.5]$，默认 $0.05$。 \\
+      \texttt{Opacity} $\alpha$ & 透明度；控制内外层结构是否能同时观察。 \\
+      \texttt{Colorscale} & 将 $\rho$ 或壳层内标量值映射到颜色。 \\
+      \bottomrule
+    \end{tabularx}
+  \end{table}
+
+  \begin{block}{注意}
+    现在 \texttt{Shell width} 增大时，程序会在密度带中显示更多等值面；
+    它表示标量值区间宽度，不是空间距离。
+  \end{block}
+\end{frame}
+
+\begin{frame}{为什么阈值上限不设到 3 或更高}
+  \small
+  这个数据的最大值约为 $9.64$，但高值只出现在极少数网格点。
+
+  \begin{table}
+    \centering
+    \begin{tabular}{lrr}
+      \toprule
+      阈值 $c$ & 满足 $\rho\ge c$ 的网格点 & 占比 \\
+      \midrule
+      $0.05$ & $4459$ & $9.29\%$ \\
+      $0.10$ & $2803$ & $5.84\%$ \\
+      $0.20$ & $1527$ & $3.18\%$ \\
+      $0.50$ & $472$ & $0.98\%$ \\
+      $1.00$ & $34$ & $0.07\%$ \\
+      $2.00$ & $1$ & $0.002\%$ \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+
+  \begin{block}{交互设计}
+    阈值滑杆集中在 $0.001$ 到 $1.1$，是为了让外层电子云、成键区域和孤对电子区域都有足够调节分辨率。
+  \end{block}
+\end{frame}
+
+\begin{frame}{光照与相机参数的物理意义}
+  光照参数主要是\textbf{渲染模型参数}，不是分子真实光学响应。
+
+  \begin{table}
+    \centering
+    \begin{tabularx}{0.94\linewidth}{lX}
+      \toprule
+      参数 & 可视化含义 \\
+      \midrule
+      \texttt{Light X/Y/Z} & 虚拟光源位置，决定高光和明暗方向。 \\
+      \texttt{Ambient} & 环境光强度；提高后阴影对比变弱。 \\
+      \texttt{Diffuse} & 漫反射强度；强调曲面法向与光线方向的夹角。 \\
+      \texttt{Specular} & 镜面高光强度；帮助观察曲率和局部朝向。 \\
+      \texttt{Roughness} & 表面粗糙度；越大高光越分散。 \\
+      \texttt{Camera X/Y/Z} & 观察者位置；改变投影方向，不改变数据本身。 \\
+      \bottomrule
+    \end{tabularx}
+  \end{table}
+\end{frame}
+
+\begin{frame}{用法向理解明暗变化}
+  等值面 $S_c$ 可看作隐式曲面
+  \[
+    F(\mathbf r)=\rho(\mathbf r)-c=0.
+  \]
+
+  在光滑区域，其法向方向由梯度给出：
+  \[
+    \mathbf n(\mathbf r)
+    =
+    \frac{\nabla \rho(\mathbf r)}
+         {\|\nabla \rho(\mathbf r)\|}.
+  \]
+
+  \begin{block}{漫反射直觉}
+    若单位光照方向为 $\mathbf l$，Lambert 漫反射强度可近似理解为
+    \[
+      I_{\mathrm{diffuse}}
+      \propto
+      \max(0,\mathbf n\cdot\mathbf l).
+    \]
+    因此明暗变化不仅来自密度大小，也来自等值面的局部几何朝向。
+  \end{block}
+\end{frame}
+
+\section{结果解读}
+
+\begin{frame}{如何理解可视化结果}
+  观察电子密度等值面时，可以按以下顺序分析。
+
+  \begin{itemize}
+    \item 先看整体形状：低阈值下的外层轮廓反映分子电子云范围。
+    \item 再看价电子域：中等阈值下可观察两个成键方向和两个孤对方向。
+    \item 再看高密度区域：继续提高阈值后，结构会收缩到原子核附近。
+    \item 旋转视角：判断表面是否存在被遮挡的凹凸或分离区域。
+    \item 调整透明度：在外层壳面中观察内部更高密度结构。
+    \item 改变光源：用明暗和高光增强曲率、法向和空间层次。
+  \end{itemize}
+
+  \begin{block}{解释原则}
+    颜色和明暗是可视化编码；几何位置、连通性和阈值变化趋势才是主要数据证据。
+  \end{block}
+\end{frame}
+
+\begin{frame}{常见误读}
+  \begin{itemize}
+    \item \textbf{把等值面当成原子边界}：原子没有经典硬边界，等值面只是选定阈值下的边界。
+    \item \textbf{把四个集中区当成四个电子}：它们更应理解为价电子密度域。
+    \item \textbf{把颜色当成元素类型}：本项目颜色映射的是密度值或可视化标量，不是氧/氢的分类标签。
+    \item \textbf{把光照当成物理实验}：光源参数只服务于几何观察，不表示真实光谱或散射。
+    \item \textbf{忽略阈值依赖}：同一个分子在不同 $c$ 下会呈现不同几何外观。
+    \item \textbf{忽略采样分辨率}：$40\times60\times20$ 网格限制了细节解析度。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{课堂演示建议}
+  推荐按照下面的顺序演示。
+
+  \begin{enumerate}
+    \item 从默认密度带 $[0.05,0.10]$ 开始，观察水分子的价电子域。
+    \item 调节 \texttt{Threshold}，观察外层轮廓、成键/孤对方向到核心区域的变化。
+    \item 固定阈值，调节 \texttt{Shell width}，观察更宽密度带中的多层等值面。
+    \item 调节 \texttt{Opacity}，观察外层表面对内部结构的遮挡。
+    \item 切换 \texttt{Colorscale}，讨论颜色映射对判断的影响。
+    \item 移动光源和相机，说明几何形状与渲染效果的区别。
+  \end{enumerate}
+
+  \begin{block}{启动命令}
+    \texttt{conda activate ai4math-vis}\\
+    \texttt{python water\_molecule/electron\_density\_demo.py}
+  \end{block}
+\end{frame}
+
+\begin{frame}{小结}
+  \begin{itemize}
+    \item 水分子电子密度是三维非负标量场，反映电子在空间中的分布。
+    \item 它是一体电子密度：$\rho dV$ 是期望电子数，$\rho/10$ 可作随机电子概率密度。
+    \item 四个集中区域通常对应两个 O--H 成键电子域和两个氧孤对电子域。
+    \item OpenDX 文件将标量数组、网格坐标和连接关系分开描述。
+    \item 等值面 $S_c=\{\rho=c\}$ 把体数据转化为可观察的曲面几何。
+    \item 阈值和壳宽具有标量场意义；光照和相机主要是可视化参数。
+    \item 解释视觉结果时应关注阈值变化、连通性、空间位置和曲率，而不是单纯依赖颜色。
+  \end{itemize}
+\end{frame}
+
+\end{document}

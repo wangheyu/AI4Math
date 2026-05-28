@@ -1,0 +1,405 @@
+\documentclass[aspectratio=169,11pt]{ctexbeamer}
+
+\usetheme{Warsaw}
+\setbeamertemplate{navigation symbols}{}
+
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{deepblue}{RGB}{37,99,235}
+\definecolor{darkgreen}{RGB}{22,101,52}
+\definecolor{warmorange}{RGB}{217,119,6}
+\setbeamercolor{block body}{bg=codebg,fg=black}
+\setbeamercolor{block title}{bg=deepblue,fg=white}
+
+\title{三维绘图与可视化基本概念}
+\subtitle{围绕 Plotly/Dash 单位立方体与单位球示例}
+\author{crazyfish}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{本讲目标}
+  通过一个最小三维场景理解三维绘图的核心组成。
+
+  \begin{itemize}
+    \item 物体：单位立方体与单位球。
+    \item 空间：坐标轴、尺度、中心与方向。
+    \item 观察：相机位置、视角与投影。
+    \item 渲染：颜色、光源、漫反射、镜面反射与粗糙度。
+    \item 交互：滑杆、鼠标旋转、实时更新。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{运行课堂示例}
+  本讲围绕当前目录中的 Dash + Plotly 示例展开。
+
+  \begin{block}{启动命令}
+\begin{Verbatim}[fontsize=\small]
+conda activate ai4math-vis
+python basic_3d/plotly_unit_cube_demo.py
+\end{Verbatim}
+  \end{block}
+
+  \begin{block}{浏览器地址}
+\begin{Verbatim}[fontsize=\small]
+http://127.0.0.1:8051
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item \texttt{Object} 可切换单位立方体与单位球。
+    \item \texttt{Lighting} 控制光源位置与材质响应。
+    \item 鼠标拖动三维图会同步更新相机位置滑杆。
+  \end{itemize}
+\end{frame}
+
+\section{三维数据}
+
+\begin{frame}{三维绘图首先是空间数据}
+  三维图不是“二维图变立体”，而是数据中真的包含空间结构。
+
+  \begin{table}
+    \centering
+    \begin{tabularx}{0.9\linewidth}{lllX}
+      \toprule
+      对象 & 数据 & Plotly 图元 & 典型用途 \\
+      \midrule
+      点 & \((x,y,z)\) & \texttt{Scatter3d} & 采样点、粒子、传感器 \\
+      线 & 点序列 & \texttt{Scatter3d} & 轨迹、边框、流线 \\
+      面 & 网格或三角片 & \texttt{Surface/Mesh3d} & 几何边界、地形、等值面 \\
+      体 & 三维数组 & \texttt{Volume/Isosurface} & 医学、流体、标量场 \\
+      \bottomrule
+    \end{tabularx}
+  \end{table}
+\end{frame}
+
+\begin{frame}{坐标系：三维可视化的参照物}
+  三维对象需要放在明确的坐标系中。
+
+  \begin{itemize}
+    \item 坐标轴给出方向：\(x\)、\(y\)、\(z\)。
+    \item 刻度给出尺度：一个单位到底有多大。
+    \item 中心位置决定光源、相机和旋转的参照。
+    \item 当前示例中：
+      \begin{itemize}
+        \item 单位立方体：\([0,1]\times[0,1]\times[0,1]\)。
+        \item 单位球：球心 \((0,0,0)\)，半径 \(1\)。
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{单位立方体：最小的三维几何模型}
+  单位立方体适合解释三维几何的基本元素。
+
+  \begin{columns}
+    \begin{column}{0.48\linewidth}
+      \begin{itemize}
+        \item 8 个顶点。
+        \item 12 条边。
+        \item 6 个面。
+        \item 每个面有固定法向。
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\linewidth}
+      \begin{block}{六个面的法向}
+        \[
+        \pm\mathbf e_x,\quad
+        \pm\mathbf e_y,\quad
+        \pm\mathbf e_z
+        \]
+      \end{block}
+      面法向是判断“面是否朝向光源”的关键。
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{单位球：连续曲面的代表}
+  单位球适合解释曲面、法向连续变化和高光。
+
+  \begin{block}{单位球方程}
+    \[
+    x^2+y^2+z^2=1
+    \]
+  \end{block}
+
+  \begin{itemize}
+    \item 球面上每一点都有自己的法向。
+    \item 对单位球，点 \(\mathbf p=(x,y,z)\) 的法向就是 \(\mathbf n=\mathbf p\)。
+    \item 因为法向连续变化，漫反射和镜面反射在球面上更容易观察。
+  \end{itemize}
+\end{frame}
+
+\section{绘制管线}
+
+\begin{frame}{三维绘图管线}
+  从数学对象到屏幕图像，一般经历如下步骤。
+
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.75cm,
+      box/.style={draw, rounded corners=2pt, align=center, minimum width=1.75cm, minimum height=0.72cm},
+      arr/.style={-{Stealth[length=2.2mm]}, thick}
+    ]
+      \node[box] (data) {数据\\坐标/网格};
+      \node[box, right=of data] (geom) {几何\\点/线/面};
+      \node[box, right=of geom] (view) {相机\\视角/投影};
+      \node[box, right=of view] (shade) {光照\\颜色/材质};
+      \node[box, right=of shade] (screen) {屏幕\\交互显示};
+      \draw[arr] (data) -- (geom);
+      \draw[arr] (geom) -- (view);
+      \draw[arr] (view) -- (shade);
+      \draw[arr] (shade) -- (screen);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{itemize}
+    \item Plotly 负责把图元渲染到浏览器中的 WebGL 画布。
+    \item Dash 负责把滑杆、下拉框等控件连接到 Python 回调。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Plotly 图元：\texttt{Surface} 与 \texttt{Scatter3d}}
+  \footnotesize
+  当前示例主要使用两个三维图元。
+
+  \begin{block}{球面或细分面}
+\begin{Verbatim}[fontsize=\scriptsize]
+go.Surface(
+    x=x_values,
+    y=y_values,
+    z=z_values,
+    surfacecolor=intensities,
+)
+\end{Verbatim}
+  \end{block}
+
+  \begin{block}{光源点与虚线}
+\begin{Verbatim}[fontsize=\scriptsize]
+go.Scatter3d(
+    x=[light_x, target_x],
+    y=[light_y, target_y],
+    z=[light_z, target_z],
+    mode="markers+lines+text",
+)
+\end{Verbatim}
+  \end{block}
+\end{frame}
+
+%% \begin{frame}{为什么不用 Plotly 内部 \texttt{lightposition}}
+%%   本例采用显式光照计算，而不是完全依赖 Plotly 内部光照。
+
+%%   \begin{itemize}
+%%     \item Plotly 的三维光照会经过内部矩阵变换。
+%%     \item 可见的“光源点”和内部 shader 光源方向不一定直观一致。
+%%     \item 教学时更需要“光源在哪边，哪边更亮”的稳定对应关系。
+%%     \item 因此本例直接计算每个面或每个采样点的亮度，再把亮度映射为颜色。
+%%   \end{itemize}
+%% \end{frame}
+
+\section{相机}
+
+\begin{frame}{相机：决定我们从哪里看}
+  三维场景最终仍显示在二维屏幕上，相机定义观察方式。
+
+  \begin{itemize}
+    \item \texttt{camera.eye}：相机所在位置。
+    \item \texttt{camera.center}：观察中心偏移。
+    \item \texttt{camera.up}：画面中“上方”的方向。
+    \item 鼠标旋转三维图，本质上是在改变相机视角。
+  \end{itemize}
+
+  \begin{block}{当前示例}
+    鼠标调整相机后，\texttt{Camera X/Y/Z} 滑杆会同步更新。
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{相机参数示意}
+  Plotly 中的三维相机通常写在 \texttt{layout.scene.camera} 中。
+
+  \begin{block}{示例结构}
+\begin{Verbatim}[fontsize=\small]
+scene={
+    "camera": {
+        "eye": {"x": camera_x, "y": camera_y, "z": camera_z},
+        "center": {"x": 0, "y": 0, "z": 0},
+    }
+}
+\end{Verbatim}
+  \end{block}
+
+  \begin{itemize}
+    \item 相机离物体越远，物体看起来越小。
+    \item 相机绕物体移动，看到的亮面和高光也会变化。
+  \end{itemize}
+\end{frame}
+
+\section{光照与材质}
+
+\begin{frame}{光照模型的基本思想}
+  当前示例使用简化的局部光照模型。
+
+  \begin{block}{核心公式}
+    \[
+    I =
+    A
+    + D\max(\mathbf n\cdot \mathbf l,0)
+    + S\,H
+    + F\,E
+    \]
+  \end{block}
+
+  \begin{itemize}
+    \item \(\mathbf n\)：表面法向。
+    \item \(\mathbf l\)：从表面指向光源的单位方向。
+    \item \(H\)：镜面高光项。
+    \item \(E\)：边缘视角反光项。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Ambient：环境光}
+  \texttt{Ambient 环境光} 不是光源强度，而是基础亮度。
+
+  \begin{itemize}
+    \item 不依赖光源方向。
+    \item 所有面都会获得一部分亮度。
+    \item 值越大，阴影越浅，对比越弱。
+    \item 值越小，背光面越暗，光照方向更明显。
+  \end{itemize}
+
+  \begin{block}{教学观察}
+    把 \texttt{Ambient} 降低，再移动光源，光照方向最明显。
+  \end{block}
+\end{frame}
+
+\begin{frame}{Diffuse：漫反射}
+  \texttt{Diffuse 漫反射} 是最直观的受光效果。
+
+  \begin{block}{Lambert 漫反射}
+    \[
+    I_D = D\max(\mathbf n\cdot \mathbf l,0)
+    \]
+  \end{block}
+
+  \begin{itemize}
+    \item 面朝向光源：\(\mathbf n\cdot\mathbf l\) 大，亮。
+    \item 面背向光源：\(\mathbf n\cdot\mathbf l<0\)，不接受漫反射。
+    \item 单位立方体中，移动光源可以直接观察哪个面变亮。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Specular 与 Roughness：高光和粗糙度}
+  \texttt{Specular 镜面反射} 控制高光强度，\texttt{Roughness 粗糙度} 控制高光范围。
+
+  \begin{itemize}
+    \item \texttt{Specular} 越大，高光越亮。
+    \item \texttt{Roughness} 越小，高光越集中。
+    \item \texttt{Roughness} 越大，高光越宽、越钝。
+    \item 球面比立方体更适合观察连续高光。
+  \end{itemize}
+
+  \begin{block}{课堂操作}
+    切换到单位球，把 \texttt{Specular} 从 0 拉到 2，再调节 \texttt{Roughness}。
+  \end{block}
+\end{frame}
+
+\begin{frame}{Fresnel：斜视角反光}
+  \texttt{Fresnel 菲涅尔} 描述反射强度随观察角度变化。
+
+  \begin{itemize}
+    \item 正对表面时，边缘反光较弱。
+    \item 接近掠射角观察时，边缘反光更强。
+    \item 在球面边缘区域更容易观察。
+    \item 本例中的 Fresnel 是近似，不是完整物理渲染。
+  \end{itemize}
+\end{frame}
+
+\section{交互}
+
+\begin{frame}{为什么要交互}
+  三维概念很难只靠静态图说明。
+
+  \begin{itemize}
+    \item 旋转相机：理解三维结构。
+    \item 移动光源：理解法向和受光方向。
+    \item 调材质参数：理解渲染风格。
+    \item 切换对象：比较平面几何与曲面几何。
+  \end{itemize}
+
+  \begin{block}{本例的关键交互}
+    所有滑杆使用拖动时更新，参数变化可以连续观察。
+  \end{block}
+\end{frame}
+
+%% \begin{frame}[fragile]{Dash 回调：控件驱动图像更新}
+%%   Dash 的核心思想是：输入控件变化，回调函数重新生成图形。
+
+%%   \begin{block}{概念结构}
+%% \begin{Verbatim}[fontsize=\small]
+%% @app.callback(
+%%     Output("cube-graph", "figure"),
+%%     Input("object-shape", "value"),
+%%     Input("light-x", "value"),
+%%     Input("ambient", "value"),
+%%     ...
+%% )
+%% def update_cube(...):
+%%     controls = normalize_controls(...)
+%%     return make_figure_from_controls(controls)
+%% \end{Verbatim}
+%%   \end{block}
+%% \end{frame}
+
+\begin{frame}{演示顺序建议}
+  \begin{enumerate}
+    \item 先只看单位立方体，打开坐标轴，关闭边框。
+    \item 移动光源，观察哪一个面变亮。
+    \item 降低 \texttt{Ambient}，增强明暗对比。
+    \item 切换到单位球，观察连续明暗变化。
+    \item 调节 \texttt{Specular} 和 \texttt{Roughness}，观察高光。
+    \item 鼠标旋转相机，观察相机位置对高光的影响。
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{从这个例子推广到模拟结果可视化}
+  计算模拟结果通常只是把“几何对象”换成更复杂的数据。
+
+  \begin{itemize}
+    \item 地形：二维高度场 \(\rightarrow\) 曲面。
+    \item 流体：速度向量 \(\rightarrow\) 箭头、流线。
+    \item 标量场：温度/密度 \(\rightarrow\) 切片、等值面、体渲染。
+    \item 医学图像：三维体素 \(\rightarrow\) 切片与体渲染。
+  \end{itemize}
+
+  \begin{block}{不变的核心概念}
+    坐标、网格、相机、颜色映射、光照、交互。
+  \end{block}
+\end{frame}
+
+\begin{frame}{小结}
+  三维绘图的基本概念可以用一个很小的场景讲清楚。
+
+  \begin{itemize}
+    \item 几何决定物体形状。
+    \item 坐标轴决定空间参照。
+    \item 相机决定观察方式。
+    \item 光源和材质决定明暗与高光。
+    \item 交互让参数和视觉结果建立直接联系。
+  \end{itemize}
+
+  \begin{block}{本讲示例文件}
+    \texttt{basic\_3d/plotly\_unit\_cube\_demo.py}
+  \end{block}
+\end{frame}
+
+\end{document}

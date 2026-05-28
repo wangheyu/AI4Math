@@ -3,28 +3,37 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
+  # --- Python runtime ---
   - python=3.11
+
+  # --- Jupyter stack ---
   - jupyterlab
   - notebook
   - ipykernel
   - ipywidgets
+
+  # --- Scientific computing ---
   - numpy
   - scipy
   - sympy
   - pandas
+
+  # --- 2D plotting & raster I/O ---
   - matplotlib
-  - seaborn
+  - pillow              # PIL.Image — colorad terrain texture
+  - scikit-image        # skimage.measure.marching_cubes (notebooks)
+  - imageio             # video frame I/O (pyvista animations)
+  - imageio-ffmpeg      # ffmpeg backend for mp4 output
+
+  # --- Plotly + Dash (used by all 5 projects in 3dDataVis/) ---
   - plotly
-  - scikit-image
-  - pillow
-  - imageio
-  - imageio-ffmpeg
-  - opencv
+  - dash
+  - kaleido             # static image export for plotly.write_image
+
+  # --- 3D visualization (PyVista + VTK + Trame) ---
   - vtk
   - pyvista
+  - meshio              # mesh I/O backend used by pyvista
   - trame
   - trame-vtk
   - trame-vuetify
-  - meshio
-  - networkx
-  - tqdm
