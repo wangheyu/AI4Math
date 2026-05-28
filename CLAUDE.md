@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a university course project from the School of Mathematical Sciences at Zhejiang University — "AI and Mathematical Software". The course covers C programming, numerical computation, deep learning, AI-assisted coding tools, and scientific simulation (celestial mechanics).
+This is a university course project from the School of Mathematical Sciences at Zhejiang University — "AI and Mathematical Software". The course covers C programming, numerical computation, deep learning, AI-assisted coding tools, scientific simulation (celestial mechanics), and 3D scientific visualization (PyVista/VTK).
 
 ## Key Commands
 
@@ -48,6 +48,18 @@ cd week12
 ./build.sh clean        # clean build artifacts
 ./build.sh status       # check state of all outputs
 
+# week13 — Python 3D scientific visualization
+cd week13
+conda env create -f environment.yml   # first time: create ai4math-vis environment
+conda activate ai4math-vis
+python simulation_visualization_demo.py --output-dir outputs/simulation_demo
+jupyter lab opendx_jupyter_pyvista_cases.ipynb          # four OpenDX cases with sliders
+jupyter lab simulation_visualization_jupyter_pyvista.ipynb  # simulation data + slicing
+python opendx_colorado_dash.py                          # Dash+Plotly interactive terrain (port 8050)
+# Compile beamer slides:
+xelatex python_plotting_jupyterlab_beamer.tex
+xelatex three_dimensional_rendering_basics_beamer.tex
+
 # final_project/Qian — Final report on Qian Xuesen's aerospace works
 cd final_project/Qian
 make all         # compile report.tex with xelatex + biber
@@ -56,10 +68,11 @@ make clean       # remove build/ and report.pdf
 
 ## Python Environment
 
-- Python is invoked via `conda run -n Teaching python`, so all scripts expect the `Teaching` conda environment.
-- Required packages: `numpy`, `pandas`, `matplotlib`, `astroquery`, `astropy`. Matplotlib is always set to `matplotlib.use("Agg")` (non-interactive backend).
+- Most week directories (`week9/`, `week10/`, `week11/`, `week12/`) use the `Teaching` conda environment. Scripts are invoked via `conda run -n Teaching python`.
+- Required packages for `Teaching`: `numpy`, `pandas`, `matplotlib`, `astroquery`, `astropy`. Matplotlib is always set to `matplotlib.use("Agg")` (non-interactive backend).
 - For `week11/`: `torch` and `torchvision` are additionally required (install with `pip install torch torchvision`).
 - For `week12/`: `numpy`, `scipy` required for Python baseline benchmarks.
+- **`week13/` uses a separate conda environment**: `ai4math-vis` (see `week13/environment.yml`). It adds `vtk`, `pyvista`, `trame`, `meshio`, `plotly`, `jupyterlab`, `ipywidgets`, `imageio`, and `scikit-image`. Create it with `conda env create -f week13/environment.yml`.
 - All Python scripts are self-contained executables (run directly, not imported as modules).
 
 ## Project Structure
@@ -171,6 +184,19 @@ AI4Math/                # Top-level
 │       ├── visdemo_headless.c  # EGL headless rendering → PPM/FFmpeg
 │       ├── compare_anim.py     # Python+matplotlib comparison baseline
 │       └── record_video.sh     # Headless → FFmpeg → MP4
+├── week13/             # Python 3D scientific visualization — PyVista/VTK, OpenDX data
+│   ├── environment.yml     # separate conda env: ai4math-vis (vtk, pyvista, trame, plotly…)
+│   ├── python_plotting_jupyterlab_beamer.tex  # Beamer: Python plotting + JupyterLab
+│   ├── three_dimensional_rendering_basics_beamer.tex  # Beamer: 3D rendering basics
+│   ├── opendx_to_pyvista.py    # OpenDX data → PyVista/VTK converter
+│   ├── opendx_jupyter_pyvista_cases.ipynb  # 4 interactive cases: terrain, molecule, weather, MRI
+│   ├── opendx_colorado_dash.py    # Dash+Plotly terrain viewer (standalone web app)
+│   ├── opendx_data/               # OpenDX sample data (colorado, watermolecule, cloudwater, MRI)
+│   ├── simulation_visualization_demo.py  # 3D sim data + VTK time series + screenshots
+│   ├── simulation_visualization_jupyter_pyvista.ipynb  # interactive slicing/isosurface demo
+│   ├── pyvista_animation_examples.py  # PyVista surface animation generation
+│   ├── plotly_unit_cube_demo.py       # Plotly unit cube demo
+│   └── outputs/                      # generated VTK files, PNGs, MP4s (gitignored)
 └── final_project/      # End-of-term projects
     └── Qian/               # Qian Xuesen aerospace works report
         ├── report.tex          # XeLaTeX report with biber bibliography
@@ -215,3 +241,7 @@ rm -f report.aux report.out report.toc report.log report.lof report.lot report.b
 **week12 MKL/Eigen not found**: MKL and Eigen are optional dependencies. Benchmarks that require them (`bench_mkl`, `bench_pardiso`, `bench_eigen`) will be skipped if the libraries are not found. The core C implementations and Python baselines work without them.
 
 **week11 PyTorch not installed**: `pip install torch torchvision` into the `Teaching` conda environment. GPU not required — all models can train on CPU (slower but functional).
+
+**week13 ParaView GUI won't start**: ParaView is optional — the course uses Jupyter+PyVista as the main tool. If `paraview` fails with "could not connect to display" or Qt platform errors, generate `.vti/.pvd` files from Python and open them in desktop ParaView later. All viewing can also be done directly in Jupyter.
+
+**week13 `ai4math-vis` environment not found**: Create it with `conda env create -f week13/environment.yml`. This is a separate environment from `Teaching`.
