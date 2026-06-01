@@ -133,42 +133,40 @@
   \end{center}
 \end{frame}
 
-\begin{frame}{两个减小搜索空间的原则}
+\begin{frame}{两个减小搜索空间的原则：减少深度}
   搜索难度来自 $b^d$：宽度由分支因子 $b$ 决定，深度由到终局的剩余步数 $d$ 决定。
 
-  \vspace{0.12cm}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.48\textwidth}
-      \begin{block}{减少深度}
-        不必一直搜索到终局，而是在中途停下，用价值函数评估局面：
-        \[
-          v(s) \approx v^*(s)
-        \]
-        \footnotesize
-        \begin{itemize}
-          \item $v(s)$：对局面 $s$ 的胜负估计。
-          \item $v^*(s)$：双方完美下棋时的最优价值。
-        \end{itemize}
-        对应 AlphaGo 中的 \textbf{value network}，目标是降低需要展开的有效深度 $d$。
-      \end{block}
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \begin{block}{减少宽度}
-        不平等考虑所有合法落子，而是用策略给候选动作排序：
-        \[
-          p(a\mid s)
-        \]
-        \footnotesize
-        \begin{itemize}
-          \item $a$：候选动作，在围棋中就是一个候选落子。
-          \item $p(a\mid s)$：局面 $s$ 下选择动作 $a$ 的概率。
-        \end{itemize}
-        对应 AlphaGo 中的 \textbf{policy network}，目标是降低有效分支因子 $b$。
-      \end{block}
-    \end{column}
-  \end{columns}
+  \begin{block}{减少深度}
+    不必一直搜索到终局，而是在中途停下，用价值函数评估局面：
+    \[
+      v(s) \approx v^*(s)
+    \]
+    对应 AlphaGo 中的 \textbf{value network}，目标是降低需要展开的有效深度 $d$。
+  \end{block}
 
-  \vspace{0.25cm}
+  \vspace{0.05cm}
+  \begin{itemize}
+    \item $v(s)$：泛指一个局面价值函数，从当前行棋方视角评估局面。
+    \item 取值常用 $[-1,1]$：$+1$ 表示当前行棋方胜，$-1$ 表示当前行棋方负，$0$ 表示接近均势或不确定。
+    \item $v^*(s)$：双方都完美下棋时的理论最优价值；实际不可直接获得，只能近似。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{两个减小搜索空间的原则：减少宽度}
+  搜索难度来自 $b^d$：宽度由分支因子 $b$ 决定，深度由到终局的剩余步数 $d$ 决定。
+
+  \begin{block}{减少宽度}
+    不平等考虑所有合法落子，而是用策略给候选动作分配概率：
+    \[
+      p(a\mid s)
+    \]
+    \begin{itemize}
+      \item $a$：候选动作，在围棋中就是一个候选落子。
+      \item $p(a\mid s)$：局面 $s$ 下选择动作 $a$ 的概率，可用于抽样，也可作为搜索先验。
+    \end{itemize}
+    对应 AlphaGo 中的 \textbf{policy network}，目标是让搜索优先探索高概率候选，降低有效分支因子 $b$。
+  \end{block}
+
   \begin{center}
     \large
     AlphaGo 的核心：\textbf{policy 缩宽度，value 缩深度，MCTS 做搜索。}
@@ -411,7 +409,7 @@
 \end{frame}
 
 \begin{frame}{自我对弈与奖励信号}
-  \small
+  \footnotesize
   论文采用：
 
   \[
@@ -421,18 +419,14 @@
   \]
 
   \begin{block}{什么是历史版本}
-    $p_{\rho^-}$ 表示训练过程中保存下来的旧策略。当前网络每训练一段时间，就把一个冻结副本放入对手池；之后自我对弈时随机抽一个旧版本作为对手。
+    $p_{\rho^-}$ 是训练过程中保存下来的冻结旧策略；自我对弈时随机抽旧版本作为对手，以减少策略振荡和对单一对手过拟合。
   \end{block}
 
-  \begin{itemize}
-    \item 对手不随当前网络同步变化，能减少策略振荡。
-    \item 随机面对多个旧版本，避免只针对单一对手过拟合。
-    \item 围棋中间没有即时奖励，只有终局胜负。
-  \end{itemize}
+  \begin{alertblock}{关键：这里不运行 MCTS}
+    RL policy 训练时，每步直接从策略分布采样落子：$a_t \sim p_{\rho}(\cdot\mid s_t)$。MCTS 留到最终实战搜索阶段；这点不同于 AlphaGo Zero / AlphaZero。
+  \end{alertblock}
 
-  \footnotesize
-  下标 $t$ 表示第 $t$ 手；$z_t$ 是从第 $t$ 手当前玩家视角看的最终结果。
-  \normalsize
+  围棋中间没有即时奖励，只有终局胜负。$z_t$ 是从第 $t$ 手当前玩家视角看的最终结果：
   \[
     z_t =
     \begin{cases}
@@ -550,25 +544,52 @@
     \text{loss} = (z - v_{\theta}(s))^2
   \]
 
+  \vspace{-0.15cm}
+  \begin{center}
+    \footnotesize
+    $z$ 是终局胜负标签；$v_{\theta}(s)$ 是连续的期望价值估计，不是只能取离散值。
+  \end{center}
+
   \begin{alertblock}{避免过拟合}
     不能直接使用一盘棋中的所有连续局面，因为它们高度相关且标签相同。论文从不同自我对弈棋局中构造约 3000 万个低相关局面。
   \end{alertblock}
 \end{frame}
 
 \begin{frame}{价值网络为什么重要}
-  若没有 value network，MCTS 常用 rollout 评估局面：
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{policy network：看下一步}
+        一次前向推理输出下一步概率分布：
+        \[
+          p(a\mid s)
+        \]
+        若要看到终局，必须反复：
+        \[
+          \text{推理} \rightarrow \text{落子} \rightarrow \text{更新局面}
+        \]
+        直到棋局结束，这就是 rollout。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{value network：估终局}
+        一次前向推理直接输出局面价值：
+        \[
+          v_{\theta}(s)
+        \]
+        它估计当前行棋方最终胜负的期望：
+        \[
+          v_{\theta}(s) \approx v^{p_{\rho}}(s)
+        \]
+        不需要真的一步步模拟到终局。
+      \end{block}
+    \end{column}
+  \end{columns}
 
-  \[
-    \text{从当前局面快速模拟到终局，再看谁赢}
-  \]
-
-  但快速 rollout policy 较弱，终局结果噪声大。
-
-  \begin{block}{价值网络的作用}
-    用一次神经网络前向计算，直接估计局面胜负前景，减少搜索深度。
-  \end{block}
-
-  论文指出：单次 \valuefn 评估接近使用 RL policy rollout 的准确度，但计算量少约 $15000$ 倍。
+  \vspace{0.08cm}
+  \begin{alertblock}{论文比较}
+    单次 \valuefn 评估接近使用 RL policy rollout 的准确度，但计算量少约 $15000$ 倍；实际 MCTS rollout 用更快但更弱的 fast rollout policy。
+  \end{alertblock}
 \end{frame}
 
 \begin{frame}{价值网络的直观：自我对弈棋谱}
@@ -729,7 +750,7 @@
   \end{center}
 
   \begin{itemize}
-    \item Selection：选择 $Q(s,a)+u(s,a)$ 最大的分支。（$u(s,a)$ 说明见下一页）
+    \item Selection：选择 $Q(s,a)+u(s,a)$ 最大的分支；可以选择通向尚未激活后继局面的候选落点。
     \item Expansion：用 policy network 给新节点动作赋先验 $P$。
     \item Evaluation：用 value network 和 rollout 评估叶节点。
     \item Backup：更新路径上的访问次数和动作价值。
@@ -744,7 +765,7 @@
   \]
 
   \begin{block}{Selection 的直观}
-    从根局面开始，反复按上式选择分支，沿当前搜索树一直走到边界；这个边界局面就是本次模拟的叶节点。
+    从根局面开始，反复按上式选择分支。若选中的边 $(s,a)$ 已有后继节点，就继续向下；若它通向尚未激活的局面 $s'=f(s,a)$，就到达当前 MCTS 边界，$s'$ 是本次模拟的叶节点。
   \end{block}
 
   探索项近似满足：
