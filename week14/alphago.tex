@@ -1,0 +1,1490 @@
+\documentclass[UTF8,aspectratio=169,10pt]{ctexbeamer}
+
+\usetheme{Madrid}
+\usecolortheme{seahorse}
+\usefonttheme{professionalfonts}
+
+\usepackage{amsmath,amssymb,booktabs}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}[numbered]
+\setbeamercovered{transparent}
+
+\definecolor{DeepBlue}{RGB}{27,79,114}
+\definecolor{GoGreen}{RGB}{39,124,96}
+\definecolor{WarmOrange}{RGB}{196,104,40}
+\definecolor{SoftGray}{RGB}{245,247,249}
+
+\setbeamercolor{title}{fg=DeepBlue}
+\setbeamercolor{frametitle}{fg=DeepBlue}
+\setbeamercolor{structure}{fg=DeepBlue}
+\setbeamercolor{block title}{fg=white,bg=DeepBlue}
+\setbeamercolor{block body}{bg=SoftGray}
+
+\title[AlphaGo 论文精读]{AlphaGo 论文精读}
+\subtitle{Mastering the game of Go with deep neural networks and tree search}
+\author{Crazyfsih}
+%\institute{AlphaGo / AlphaGo Zero 学习笔记}
+\date{\today}
+
+\newcommand{\policynet}{policy network}
+\newcommand{\valuenet}{value network}
+\newcommand{\mcts}{MCTS}
+\newcommand{\slpolicy}{$p_{\sigma}(a\mid s)$}
+\newcommand{\rlpolicy}{$p_{\rho}(a\mid s)$}
+\newcommand{\valuefn}{$v_{\theta}(s)$}
+
+\AtBeginSection[]{
+  \begin{frame}{目录}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{阅读目标}
+  \begin{block}{主要内容}
+    理解原始 AlphaGo 如何把深度神经网络和树搜索结合起来，解决 19 路围棋的巨大搜索空间问题。
+  \end{block}
+
+  \begin{itemize}
+    \item 读懂 policy network、value network、MCTS 分别解决什么问题。
+    \item 理解监督学习、强化学习、自我对弈之间的关系。
+    \item 看清原始 AlphaGo 和后来的 AlphaGo Zero 的差异。
+    \item 评估复现 AlphaGo 所需的数据、工程和算力。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{目录}
+  \tableofcontents
+\end{frame}
+
+\section{问题背景与总体思路}
+
+\begin{frame}{围棋为什么难}
+  围棋长期被认为是 AI 中最难的经典棋类之一：搜索空间巨大，且很难准确评估局面和落子。
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      把棋局看成一棵搜索树：
+
+      \begin{itemize}
+        \item 节点 = 棋盘局面；根节点 $s$ = 当前局面。
+        \item 从节点伸出的边表示候选落子。
+        \item 平均每个节点有 $b$ 个候选，称为分支因子。
+        \item 从当前局面到终局的路径长度约为 $d$，称为深度。
+      \end{itemize}
+
+      \[
+        \text{粗略搜索规模} \approx b^d
+      \]
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{center}
+        \begin{tikzpicture}[
+          scale=0.88,
+          state/.style={circle, draw=DeepBlue, fill=SoftGray, minimum size=2mm, inner sep=0.2pt, font=\tiny},
+          edge/.style={-{Latex[length=1.25mm,width=1mm]}, thick, DeepBlue}
+        ]
+          \node[state] (s0) at (0,0) {$s$};
+          \node[DeepBlue, above=1.5mm of s0] {\scriptsize 当前局面};
+          \node[state] (a1) at (-1.8,-1.15) {};
+          \node[state] (a2) at (0,-1.15) {};
+          \node[state] (ab) at (1.8,-1.15) {};
+          \node[state] (b1) at (-2.45,-2.3) {};
+          \node[state] (b2) at (-1.25,-2.3) {};
+          \node[state] (c1) at (-2.75,-3.45) {};
+          \node[state] (c2) at (-2.25,-3.45) {};
+
+          \draw[edge] (s0) -- (a1);
+          \draw[edge] (s0) -- (a2);
+          \draw[edge] (s0) -- (ab);
+          \draw[edge] (a1) -- (b1);
+          \draw[edge] (a1) -- (b2);
+          \draw[edge] (b1) -- (c1);
+          \draw[edge] (b1) -- (c2);
+
+          \node at (0.9,-1.15) {$\cdots$};
+          \node[WarmOrange] at (0,-1.62) {$b$ 个候选落子};
+          \draw[{Latex[length=1.25mm,width=1mm]}-{Latex[length=1.25mm,width=1mm]}, thick, WarmOrange] (2.75,0) -- (2.75,-3.45);
+          \node[WarmOrange, right] at (2.8,-1.72) {深度 $d$};
+          \node[DeepBlue] at (0,-3.95) {搜索树示意};
+        \end{tikzpicture}
+      \end{center}
+    \end{column}
+  \end{columns}
+
+  \vspace{-0.15cm}
+  \begin{center}
+    \begin{tabular}{lcc}
+      \toprule
+      游戏 & 平均分支 $b$ & 平均深度 $d$ \\
+      \midrule
+      国际象棋 & $\approx 35$ & $\approx 80$ \\
+      围棋 & $\approx 250$ & $\approx 150$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{两个减小搜索空间的原则}
+  搜索难度来自 $b^d$：宽度由分支因子 $b$ 决定，深度由到终局的剩余步数 $d$ 决定。
+
+  \vspace{0.12cm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{减少深度}
+        不必一直搜索到终局，而是在中途停下，用价值函数评估局面：
+        \[
+          v(s) \approx v^*(s)
+        \]
+        \footnotesize
+        \begin{itemize}
+          \item $v(s)$：对局面 $s$ 的胜负估计。
+          \item $v^*(s)$：双方完美下棋时的最优价值。
+        \end{itemize}
+        对应 AlphaGo 中的 \textbf{value network}，目标是降低需要展开的有效深度 $d$。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{减少宽度}
+        不平等考虑所有合法落子，而是用策略给候选动作排序：
+        \[
+          p(a\mid s)
+        \]
+        \footnotesize
+        \begin{itemize}
+          \item $a$：候选动作，在围棋中就是一个候选落子。
+          \item $p(a\mid s)$：局面 $s$ 下选择动作 $a$ 的概率。
+        \end{itemize}
+        对应 AlphaGo 中的 \textbf{policy network}，目标是降低有效分支因子 $b$。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.25cm}
+  \begin{center}
+    \large
+    AlphaGo 的核心：\textbf{policy 缩宽度，value 缩深度，MCTS 做搜索。}
+  \end{center}
+\end{frame}
+
+\begin{frame}{AlphaGo 的总体训练管线}
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=1.15cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.9cm, minimum width=2.9cm},
+      arrow/.style={-{Latex[length=2.5mm]}, thick, DeepBlue},
+      feedback/.style={-{Latex[length=2.2mm]}, thick, dashed, WarmOrange}
+    ]
+      \node[box] (human) {人类高手棋谱};
+      \node[box, right=of human] (sl) {SL policy\\ $p_{\sigma}$};
+      \node[box, right=of sl] (rl) {RL policy\\ $p_{\rho}$};
+      \node[box, right=of rl] (selfplay) {自我对弈\\局面--胜负};
+      \node[box, below=of selfplay] (value) {value network\\ $v_{\theta}$};
+      \node[box, left=of value] (mcts) {MCTS 搜索};
+      \node[box, left=of mcts] (move) {最终落子};
+
+      \draw[arrow] (human) -- (sl);
+      \draw[arrow] (sl) -- (rl);
+      \draw[arrow] (rl) -- (selfplay);
+      \draw[arrow] (selfplay) -- (value);
+      \draw[arrow] (value) -- (mcts);
+      \draw[feedback] (value.north west) to[out=150,in=-35]
+        node[pos=0.52, above, font=\scriptsize, WarmOrange] {baseline} (rl.south east);
+      \draw[arrow] (sl.south east) to[out=-45,in=135]
+        node[pos=0.58, above, font=\scriptsize] {搜索先验} (mcts.north west);
+      \draw[arrow] (mcts) -- (move);
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item 先从人类棋谱获得强起点。
+    \item 再用强化学习把目标从“像人”改成“赢棋”。
+    \item $v_{\theta}$ 可作第二轮 RL 的 baseline，小幅增强 $p_{\rho}$。
+    \item 搜索时 $p_{\sigma}$ 给先验、$v_{\theta}$ 做评估；MCTS 不反向更新 $\rho$。
+  \end{itemize}
+\end{frame}
+
+\section{监督学习策略网络}
+
+\begin{frame}{Section 1：监督学习策略网络}
+  目标：训练一个网络 \slpolicy，模仿人类高手在局面 $s$ 下的落子选择。
+
+  \[
+    s = \text{当前棋盘局面}, \quad
+    a = \text{一个候选落子}
+  \]
+
+  \[
+    p_{\sigma}(a\mid s) = \text{网络认为高手会选择 } a \text{ 的概率}
+  \]
+
+  \begin{block}{训练样本}
+    \[
+      \text{输入：局面 } s
+      \qquad
+      \text{标签：人类高手实际落子 } a
+    \]
+  \end{block}
+\end{frame}
+
+\begin{frame}{训练目标：提高高手实际落子的概率}
+  论文中的更新方向：
+
+  \[
+    \Delta \sigma \propto
+    \frac{\partial \log p_{\sigma}(a\mid s)}{\partial \sigma}
+  \]
+
+  直观解释：
+
+  \begin{itemize}
+    \item 如果高手在局面 $s$ 下下了 $a$，就提高 $p_{\sigma}(a\mid s)$。
+    \item 这是一个多分类问题：从棋盘落点中预测专家选择哪一个。
+    \item 但围棋没有唯一标准答案；棋谱中的落子只是实际发生的选择。
+  \end{itemize}
+
+  \begin{alertblock}{标签噪声}
+    若人类棋手下了坏棋，监督学习会给出错误方向；AlphaGo 后续用强化学习和 MCTS 缓解这个问题。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{输入、输出与卷积结构}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{输入}
+        不是单纯黑白棋盘，而是：
+        \[
+          19 \times 19 \times 48
+        \]
+        多通道特征平面，包括棋子颜色、气数、提子、自吃、历史手、征子等。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{输出}
+        先得到 $19\times19$ 个落子分数，经全盘 softmax：
+        \[
+          p_{\sigma}(a\mid s)
+        \]
+        所有落点的概率相加为 1，不是每格独立二分类。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.4cm}
+  \begin{center}
+    \begin{tabular}{@{}p{0.22\textwidth}p{0.62\textwidth}@{}}
+      \toprule
+      层 & 配置 \\
+      \midrule
+      第 1 层 & $5\times5$ 卷积 \\
+      第 2--12 层 & $3\times3$ 卷积 \\
+      最后一层 & $1\times1$ 卷积：每点特征 $\to$ 1 个 logit；softmax 全盘归一化 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{卷积的直观理解}
+  \begin{block}{卷积 = 在棋盘上滑动局部观察窗口}
+    第一层 $5\times5$ 卷积核不是只看 $5\times5$ 黑白棋子，而是看：
+    \[
+      5 \times 5 \times 48
+    \]
+  \end{block}
+
+  \begin{itemize}
+    \item 浅层：学习局部棋形，如断点、连接、气紧、虎口。
+    \item 中层：组合局部模式，判断一片棋是否被攻击或是否有眼形。
+    \item 深层：逐渐扩大感受野，形成更全局的棋盘判断。
+    \item 最后的 $1\times1$ 卷积不再扩大感受野，只把每个位置已有的多通道特征压成落子分数。
+  \end{itemize}
+
+  \begin{block}{为什么使用卷积}
+    围棋中很多局部形状可以出现在棋盘任意位置；卷积的参数共享正好匹配这种平移结构。
+  \end{block}
+\end{frame}
+
+\begin{frame}{感受野：第 12 层看见多少棋盘}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.45\textwidth}
+      \begin{block}{理论感受野}
+        步长为 1 时：
+        \[
+          R_1 = 5,\qquad R_l = R_{l-1}+2
+        \]
+        所以：
+        \[
+          R_{12}=5+11\times2=27
+        \]
+      \end{block}
+
+      \begin{alertblock}{关键限定}
+        $27\times27$ 是以当前落点为中心的理论窗口；中心附近可覆盖全盘，边角位置不能直接看到对角远端。
+      \end{alertblock}
+    \end{column}
+
+    \begin{column}{0.51\textwidth}
+      \begin{center}
+        \begin{tikzpicture}[scale=0.13, every node/.style={font=\scriptsize}]
+          \fill[GoGreen!20] (0,0) rectangle (18,18);
+          \draw[step=1,gray!35,very thin] (0,0) grid (18,18);
+          \draw[DeepBlue,thick] (0,0) rectangle (18,18);
+          \fill[GoGreen] (9,9) circle (0.55);
+          \node[below] at (9,-1.7) {中心位置};
+          \node[below] at (9,-4.0) {裁剪后可覆盖全盘};
+
+          \begin{scope}[shift={(24,0)}]
+            \fill[WarmOrange!22] (5,5) rectangle (18,18);
+            \draw[step=1,gray!35,very thin] (0,0) grid (18,18);
+            \draw[DeepBlue,thick] (0,0) rectangle (18,18);
+            \fill[WarmOrange] (18,18) circle (0.55);
+            \fill[DeepBlue] (0,0) circle (0.45);
+            \node[below] at (9,-1.7) {右上角位置};
+            \node[below] at (9,-4.0) {看不到左下角};
+          \end{scope}
+        \end{tikzpicture}
+      \end{center}
+
+      \begin{block}{最后一层}
+        第 12 层给出每点特征 $h(i,j)$；$1\times1$ 卷积计算
+        \[
+          \ell(i,j)=w\cdot h(i,j)+b
+        \]
+        再对所有 logit $\ell$ 做 softmax。
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{监督学习阶段的结果与限制}
+  \small
+  论文结果：
+
+  \begin{itemize}
+    \item 使用 KGS Go Server 约 3000 万个局面训练。
+    \item 13 层策略网络在测试集上预测专家落子准确率达到 $57.0\%$。
+    \item 当时其他研究组最好结果约为 $44.4\%$。
+    \item fast rollout policy 也从人类棋谱训练：准确率较低，但选择一步约 $2\mu s$。
+  \end{itemize}
+
+  \begin{block}{fast rollout policy}
+    它不是 13 层策略网络，而是后续 MCTS rollout 的快速工具；这里先给出训练结果，搜索部分再说明它如何模拟到终局。
+  \end{block}
+
+  \begin{alertblock}{为什么还不够}
+    监督学习学的是“人类通常怎么下”，不是直接优化“怎样赢”。它只是 AlphaGo 的强初始化。
+  \end{alertblock}
+\end{frame}
+
+\section{强化学习策略网络}
+
+\begin{frame}{Section 2：从模仿高手到优化胜率}
+  监督学习策略网络：
+  \[
+    p_{\sigma}(a\mid s) \quad \text{模仿人类高手}
+  \]
+
+  强化学习策略网络：
+  \[
+    p_{\rho}(a\mid s) \quad \text{通过自我对弈优化胜率}
+  \]
+
+  初始化方式：
+  \[
+    \rho = \sigma
+  \]
+
+  \begin{block}{关键转变}
+    训练目标从“像人类”变为“赢棋”。
+  \end{block}
+\end{frame}
+
+\begin{frame}{自我对弈与奖励信号}
+  \small
+  论文采用：
+
+  \[
+    \text{当前策略 } p_{\rho}
+    \quad \text{vs} \quad
+    \text{历史版本策略 } p_{\rho^-}
+  \]
+
+  \begin{block}{什么是历史版本}
+    $p_{\rho^-}$ 表示训练过程中保存下来的旧策略。当前网络每训练一段时间，就把一个冻结副本放入对手池；之后自我对弈时随机抽一个旧版本作为对手。
+  \end{block}
+
+  \begin{itemize}
+    \item 对手不随当前网络同步变化，能减少策略振荡。
+    \item 随机面对多个旧版本，避免只针对单一对手过拟合。
+    \item 围棋中间没有即时奖励，只有终局胜负。
+  \end{itemize}
+
+  \footnotesize
+  下标 $t$ 表示第 $t$ 手；$z_t$ 是从第 $t$ 手当前玩家视角看的最终结果。
+  \normalsize
+  \[
+    z_t =
+    \begin{cases}
+      +1, & \text{当前玩家最终赢}\\
+      -1, & \text{当前玩家最终输}
+    \end{cases}
+  \]
+\end{frame}
+
+\begin{frame}{Policy Gradient 的直觉}
+  论文中的更新方向：
+
+  \[
+    \Delta \rho \propto
+    \frac{\partial \log p_{\rho}(a_t\mid s_t)}{\partial \rho}
+    z_t
+  \]
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{如果最后赢了}
+        提高本局中所下动作的概率。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{如果最后输了}
+        降低本局中所下动作的概率。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.4cm}
+  \begin{alertblock}{粗糙但有效}
+    赢棋不代表每一步都好，输棋也不代表每一步都坏；但大量自我对弈的统计平均会推动策略朝更高胜率移动。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{强化学习策略网络结果}
+  \small
+  论文报告：
+
+  \begin{itemize}
+    \item RL policy network 对 SL policy network 胜率超过 $80\%$。
+    \item 不使用搜索，只按 RL policy network 采样落子，对 Pachi 胜率达到 $85\%$。
+    \item 这说明神经网络本身已经学到很强的棋感，不只是依赖搜索。
+  \end{itemize}
+
+  \begin{block}{两个术语}
+    \begin{itemize}
+      \item 不使用搜索：不运行 MCTS，每步直接根据 $p_{\rho}(\cdot\mid s)$ 落子。
+      \item 采样落子：按概率随机抽一步；高概率点更可能被选，但不一定总选最大概率点。
+      \item Pachi：当时较强的开源围棋程序，基于 Monte Carlo 搜索，论文中约为 KGS 2 段（网络业余 2 段）水平。
+    \end{itemize}
+  \end{block}
+
+  \begin{block}{本节核心}
+    AlphaGo 用监督学习策略网络作为起点，再通过自我对弈和 policy gradient 直接优化胜率。
+  \end{block}
+\end{frame}
+
+\section{价值网络}
+
+\begin{frame}{Section 3：价值网络要回答什么}
+  \small
+  \begin{block}{直观问题}
+    策略网络回答“下一步下哪里”；价值网络回答“当前局面对当前玩家有多好？”
+  \end{block}
+
+  \vspace{-0.1cm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{价值函数}
+        \[
+          v^p(s)=\mathbb{E}[z_t\mid s_t=s,\ a_{t:T}\sim p]
+        \]
+        从局面 $s$ 开始，后续按策略 $p$ 下到终局，取最终胜负的平均值。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{$v_{\theta}(s)$ 的定义}
+        参数为 $\theta$ 的价值网络；输入局面 $s$，输出一个标量价值：
+        \[
+          v_{\theta}(s)\approx v^{p_{\rho}}(s)
+        \]
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{为什么需要近似}
+    $v^*(s)$ 表示最优价值，但完美下棋不可知；$v^{p_{\rho}}(s)$ 可以用 RL policy 自我对弈估计，但每个局面大量模拟到终局代价太大。训练 $v_{\theta}$ 后，一次前向计算即可评估局面。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{价值网络训练数据}
+  数据来自 RL policy 自我对弈：
+
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=1.2cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.9cm, minimum width=3.1cm},
+      arrow/.style={-{Latex[length=2.5mm]}, thick, DeepBlue}
+    ]
+      \node[box] (play) {$p_{\rho}$ 自我对弈};
+      \node[box, right=of play] (state) {抽取局面 $s$};
+      \node[box, right=of state] (outcome) {终局结果 $z$};
+      \node[box, below=of state] (train) {训练 $v_{\theta}(s)\approx z$};
+      \draw[arrow] (play) -- (state);
+      \draw[arrow] (state) -- (outcome);
+      \draw[arrow] (state) -- (train);
+      \draw[arrow] (outcome) -- (train);
+    \end{tikzpicture}
+  \end{center}
+
+  \[
+    \text{loss} = (z - v_{\theta}(s))^2
+  \]
+
+  \begin{alertblock}{避免过拟合}
+    不能直接使用一盘棋中的所有连续局面，因为它们高度相关且标签相同。论文从不同自我对弈棋局中构造约 3000 万个低相关局面。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{价值网络为什么重要}
+  若没有 value network，MCTS 常用 rollout 评估局面：
+
+  \[
+    \text{从当前局面快速模拟到终局，再看谁赢}
+  \]
+
+  但快速 rollout policy 较弱，终局结果噪声大。
+
+  \begin{block}{价值网络的作用}
+    用一次神经网络前向计算，直接估计局面胜负前景，减少搜索深度。
+  \end{block}
+
+  论文指出：单次 \valuefn 评估接近使用 RL policy rollout 的准确度，但计算量少约 $15000$ 倍。
+\end{frame}
+
+\begin{frame}{价值网络的直观：自我对弈棋谱}
+  \small
+  \begin{block}{机器给自己制造训练数据}
+    强化学习策略 $p_{\rho}$ 自己下大量棋，形成自我对弈棋谱；从棋谱中抽取局面 $s$，并记录这盘棋的最终胜负 $z$。
+  \end{block}
+
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.9cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.72cm, minimum width=2.6cm},
+      arrow/.style={-{Latex[length=2.2mm]}, thick, DeepBlue}
+    ]
+      \node[box] (policy) {$p_{\rho}$ 自我对弈};
+      \node[box, right=of policy] (games) {机器棋谱};
+      \node[box, right=of games] (sample) {抽取 $(s,z)$};
+      \node[box, right=of sample] (value) {训练 $v_{\theta}(s)$};
+
+      \draw[arrow] (policy) -- (games);
+      \draw[arrow] (games) -- (sample);
+      \draw[arrow] (sample) -- (value);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{itemize}
+    \item $p_{\rho}$ 负责产生棋局经验：从局面走到终局。
+    \item $v_{\theta}$ 从这些经验中学习：哪些棋形通常通向胜利。
+    \item 它不是背棋谱，而是学习可泛化的局面评估函数。
+  \end{itemize}
+
+  \begin{alertblock}{一句话}
+    $p_{\rho}$ 制造自我对弈棋谱，$v_{\theta}$ 把这些棋谱中的胜负经验压缩成一次前向计算可用的价值评估。
+  \end{alertblock}
+\end{frame}
+
+\section{MCTS 搜索}
+
+\begin{frame}{Section 4：把网络接入 MCTS}
+  \small
+  \begin{block}{边 $(s,a)$ 表示什么}
+    $s$ 是当前局面，$a$ 是一个候选落子；$(s,a)$ 表示“从局面 $s$ 选择动作 $a$”这条搜索边。固定 $s$ 后，$P(s,\cdot)$ 是关于所有候选动作的先验概率分布。
+  \end{block}
+
+  \begin{center}
+    \begin{tabular}{@{}p{0.20\textwidth}p{0.64\textwidth}@{}}
+      \toprule
+      量 & 含义 \\
+      \midrule
+      $P(s,a)$ & policy network 对动作 $a$ 的先验概率；$\sum_a P(s,a)=1$ \\
+      $N(s,a)$ & 搜索中这条边被访问的次数 \\
+      $Q(s,a)$ & 搜索后估计“下 $a$”的平均动作价值 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{alertblock}{直观理解}
+    $P$ 是第一印象，$N$ 是看过多少次，$Q$ 是看过之后觉得这步质量如何；MCTS 用搜索把 policy 的先验分布修正成更可靠的选择。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{MCTS 搜索树示意}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.64\textwidth}
+      \begin{center}
+        \begin{tikzpicture}[
+          scale=0.82,
+          root/.style={circle, draw=DeepBlue, fill=white, minimum size=3.3mm, inner sep=0pt, font=\tiny},
+          active/.style={circle, draw=DeepBlue, fill=SoftGray, minimum size=3.3mm, inner sep=0pt, font=\tiny},
+          legalnode/.style={circle, draw=gray!55, fill=gray!8, minimum size=3.3mm, inner sep=0pt},
+          legal/.style={-{Latex[length=1.1mm,width=0.8mm]}, dashed, thin, gray!55},
+          edge/.style={-{Latex[length=1.8mm]}, thick, DeepBlue},
+          hot/.style={-{Latex[length=1.4mm,width=1mm]}, semithick, WarmOrange},
+          stat/.style={font=\tiny, align=center, fill=white, inner sep=1pt}
+        ]
+          \node[root] (s) at (0,0) {$s$};
+          \node[active] (s1) at (-2.4,-1.45) {$s_1$};
+          \node[active] (s2) at (0,-1.45) {$s_2$};
+          \node[active] (s3) at (2.4,-1.45) {$s_3$};
+          \node[active] (s11) at (-3.05,-2.9) {};
+          \node[active] (s12) at (-1.75,-2.9) {};
+          \node[active] (s21) at (-0.55,-2.9) {};
+          \node[active] (s22) at (0.55,-2.9) {};
+
+          \foreach \x/\name in {-3.45/l1,-1.55/l2,-0.75/l3,0.75/l4,1.55/l5,3.45/l6}
+            \node[legalnode] (\name) at (\x,-1.45) {};
+          \foreach \x/\name in {-3.85/l11,-2.55/l12,-2.35/l13,-0.95/l14}
+            \node[legalnode] (\name) at (\x,-2.9) {};
+          \foreach \x/\name in {-1.15/l21,0.0/l22,1.15/l23}
+            \node[legalnode] (\name) at (\x,-2.9) {};
+          \foreach \x/\name in {1.7/l31,2.4/l32,3.1/l33}
+            \node[legalnode] (\name) at (\x,-2.9) {};
+
+          \node[above=1mm of s, DeepBlue] {\scriptsize 当前局面};
+
+          \foreach \n in {l1,l2,l3,l4,l5,l6}
+            \draw[legal] (s) -- (\n);
+          \foreach \n in {l11,l12,l13,l14}
+            \draw[legal] (s1) -- (\n);
+          \foreach \n in {l21,l22,l23}
+            \draw[legal] (s2) -- (\n);
+          \foreach \n in {l31,l32,l33}
+            \draw[legal] (s3) -- (\n);
+
+          \draw[edge] (s) -- node[stat, above, sloped] {$a_1$\\$(P,N,Q)$} (s1);
+          \draw[edge] (s) -- node[stat, right] {$a_2$\\$(P,N,Q)$} (s2);
+          \draw[edge] (s) -- node[stat, above, sloped] {$a_3$\\$(P,N,Q)$} (s3);
+
+          \draw[edge] (s1) -- node[stat, above, sloped] {$a_{11}$} (s11);
+          \draw[edge] (s1) -- node[stat, above, sloped] {$a_{12}$} (s12);
+          \draw[edge] (s2) -- node[stat, above, sloped] {$a_{21}$} (s21);
+          \draw[edge] (s2) -- node[stat, above, sloped] {$a_{22}$} (s22);
+
+          \draw[hot] ([yshift=-2pt]s) -- ([yshift=-2pt]s1);
+          \draw[hot] ([xshift=-2pt]s1) -- ([xshift=-2pt]s11);
+          \node[WarmOrange, below=1.5mm of s11] {\scriptsize 本次模拟路径};
+          \draw[legal] (1.6,-3.38) -- ++(0.55,0);
+          \node[gray!70, right] at (2.15,-3.38) {\tiny 合法候选};
+          \draw[edge] (-0.3,-3.38) -- ++(0.55,0);
+          \node[DeepBlue, right] at (0.25,-3.38) {\tiny MCTS 已激活};
+        \end{tikzpicture}
+      \end{center}
+    \end{column}
+
+    \begin{column}{0.34\textwidth}
+      \begin{block}{读图}
+        灰色虚线是合法候选动作空间；蓝色实线是 MCTS 已经访问并维护统计的分支。
+      \end{block}
+
+      \begin{block}{边上的统计}
+        对已展开局面，$P(s,\cdot)$ 给合法动作排序；只有被搜索选中的边才累积 $N,Q$。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{核心直觉}
+    策略网络先给合法动作分配先验；MCTS 只把其中有希望的分支逐步激活、访问并向更深处扩展。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{MCTS 四步}
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=1.0cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=1.0cm, minimum width=2.6cm},
+      arrow/.style={-{Latex[length=2.5mm]}, thick, DeepBlue}
+    ]
+      \node[box] (sel) {Selection\\选分支};
+      \node[box, right=of sel] (exp) {Expansion\\扩展};
+      \node[box, right=of exp] (eval) {Evaluation\\评估};
+      \node[box, right=of eval] (back) {Backup\\回传};
+      \draw[arrow] (sel) -- (exp);
+      \draw[arrow] (exp) -- (eval);
+      \draw[arrow] (eval) -- (back);
+      \draw[arrow] (back.south) |- ($(sel.south)+(0,-0.5)$) -| (sel.south);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{itemize}
+    \item Selection：选择 $Q(s,a)+u(s,a)$ 最大的分支。（$u(s,a)$ 说明见下一页）
+    \item Expansion：用 policy network 给新节点动作赋先验 $P$。
+    \item Evaluation：用 value network 和 rollout 评估叶节点。
+    \item Backup：更新路径上的访问次数和动作价值。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Selection：利用和探索的平衡}
+  每次模拟选择：
+
+  \[
+    a_t = \arg\max_a \left(Q(s_t,a) + u(s_t,a)\right)
+  \]
+
+  \begin{block}{Selection 的直观}
+    从根局面开始，反复按上式选择分支，沿当前搜索树一直走到边界；这个边界局面就是本次模拟的叶节点。
+  \end{block}
+
+  探索项近似满足：
+
+  \[
+    u(s,a) \propto \frac{P(s,a)}{1+N(s,a)}
+  \]
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.33\textwidth}
+      \begin{block}{$Q$ 高}
+        目前看起来好。
+      \end{block}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{block}{$P$ 高}
+        策略网络觉得有希望。
+      \end{block}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{block}{$N$ 低}
+        还没充分探索。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+\begin{frame}{Expansion：把边界向外扩一层}
+  \footnotesize
+  \setlength{\abovedisplayskip}{0.25em}
+  \setlength{\belowdisplayskip}{0.25em}
+  Selection 走到当前搜索树边界后，Expansion 决定是否把后继局面加入树。
+
+  \vspace{0.05cm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{什么时候扩展}
+        当某条边 $(s,a)$ 被访问得足够多：\(N(s,a) > n_{\mathrm{thr}}\)。论文参数中 \(n_{\mathrm{thr}}=40\)。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{扩展出什么}
+        把下完动作 $a$ 后的新局面 \(s'=f(s,a)\) 加入树；这个 \(s'\) 成为新的边界节点。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{block}{新节点如何初始化}
+    对新局面 \(s'\)，用 policy network 给所有候选动作 \(a'\) 赋先验：\(P(s',a') = p_{\sigma}(a'\mid s')\)。
+    后续模拟会在这些新边上继续积累 $N$ 和 $Q$。
+  \end{block}
+
+  \begin{alertblock}{直观理解}
+    Selection 负责沿已有树走到前沿；Expansion 负责把这个前沿向外长出一层。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Evaluation：混合 value network 和 rollout}
+  到达叶节点 $s_L$ 后，AlphaGo 用两种方式评估：
+
+  \begin{itemize}
+    \item value network：$v_{\theta}(s_L)$
+    \item fast rollout policy 模拟到终局：$z_L$
+  \end{itemize}
+
+  混合评估：
+
+  \[
+    V(s_L) = (1-\lambda)v_{\theta}(s_L) + \lambda z_L
+  \]
+
+  \begin{block}{原始 AlphaGo 的特点}
+    它同时使用 value network 和 rollout。后来的 AlphaGo Zero 去掉了 rollout，只依赖神经网络和 MCTS。
+  \end{block}
+\end{frame}
+
+\begin{frame}{最终落子：为什么选访问次数最多}
+  设 $s_0$ 是当前根局面。搜索完成后，AlphaGo 在根节点的候选动作中选择：
+
+  \[
+    \arg\max_a N(s_0,a)
+  \]
+
+  而不是：
+
+  \[
+    \arg\max_a Q(s_0,a)
+  \]
+
+  \begin{block}{不是在叶子节点中选}
+    叶节点只提供评估值；评估结果经过 backup 回传，累计到根节点各动作的 $N(s_0,a)$ 和 $Q(s_0,a)$。
+  \end{block}
+
+  \begin{itemize}
+    \item $Q$ 可能受少量模拟中的异常值影响。
+    \item $N$ 代表搜索反复确认后集中支持的动作，更稳健。
+    \item 可以理解为 MCTS 搜索后的“共识”。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{为什么搜索中用 SL policy 而不是 RL policy}
+  论文提到：在搜索先验中，监督学习策略网络 $p_{\sigma}$ 效果反而优于更强的 $p_{\rho}$。
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{SL policy}
+        学自人类棋谱，候选好点更多样，适合作为搜索先验。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{RL policy}
+        更倾向于单一最优选择，分布可能更尖锐。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.4cm}
+  MCTS 需要的不是直接给一个答案，而是给出高质量、多样的候选分支。
+\end{frame}
+
+\begin{frame}{四个模块之间的关系}
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=1.0cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.78cm, minimum width=2.65cm},
+      arrow/.style={-{Latex[length=2.3mm]}, thick, DeepBlue},
+      note/.style={font=\scriptsize, align=center, text=DeepBlue},
+      feedback/.style={-{Latex[length=2.1mm]}, thick, dashed, WarmOrange}
+    ]
+      \node[box] (sl) {SL policy\\$p_{\sigma}$};
+      \node[box, right=2.2cm of sl] (rl) {RL policy\\$p_{\rho}$};
+      \node[box, right=2.2cm of rl] (self) {自我对弈\\局面--胜负};
+      \node[box, below=1.0cm of self] (value) {value network\\$v_{\theta}$};
+      \node[box, left=2.2cm of value] (mcts) {MCTS\\搜索策略};
+      \node[box, left=2.2cm of mcts] (move) {最终落子\\$\arg\max_a N(s_0,a)$};
+
+      \draw[arrow] (sl) -- node[note, above] {初始化参数} (rl);
+      \draw[arrow] (rl) -- node[note, above] {优化赢棋} (self);
+      \draw[arrow] (self) -- node[note, right] {训练数据} (value);
+      \draw[arrow] (value) -- node[note, above] {叶点评估} (mcts);
+      \draw[arrow] (mcts) -- (move);
+      \draw[arrow] (sl.south east) to[out=-45,in=135]
+        node[note, above] {$P(s,a)$ 搜索先验} (mcts.north west);
+      \draw[feedback] (value.north west) to[out=155,in=-35]
+        node[pos=0.52, above, font=\scriptsize, WarmOrange] {baseline} (rl.south east);
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{0.12cm}
+  \begin{itemize}
+    \item $p_{\sigma}$ 给 $p_{\rho}$ 起点，也给 MCTS 的动作先验 $P(s,a)$。
+    \item $p_{\rho}$ 通过自我对弈生成数据，训练 $v_{\theta}$；$v_{\theta}$ 也可作第二轮 RL 的 baseline。
+    \item 实战落子由 MCTS 决定：综合 $P,Q,N,u,v_{\theta}$ 和 rollout，选择根节点访问次数最多的动作。
+  \end{itemize}
+\end{frame}
+
+\section{实验结果与意义}
+
+\begin{frame}{Section 5：棋力评估}
+  论文评估了：
+
+  \begin{itemize}
+    \item 单机版 AlphaGo。
+    \item 分布式版 AlphaGo。
+    \item AlphaGo 不同组件变体。
+    \item 其他围棋程序：Crazy Stone、Zen、Pachi、Fuego、GnuGo。
+    \item 人类职业棋手 Fan Hui。
+  \end{itemize}
+
+  \begin{block}{关键结果}
+    单机 AlphaGo 对其他围棋程序：494 胜 1 负，胜率 $99.8\%$。
+  \end{block}
+\end{frame}
+
+\begin{frame}{让子、分布式与组件消融}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{让四子测试}
+        \begin{itemize}
+          \item 对 Crazy Stone：胜率 $77\%$
+          \item 对 Zen：胜率 $86\%$
+          \item 对 Pachi：胜率 $99\%$
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{分布式版}
+        \begin{itemize}
+          \item 对单机版 AlphaGo：胜率 $77\%$
+          \item 对其他程序：胜率 $100\%$
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.4cm}
+  组件消融显示：只用 value network 已经很强，但 value network + rollout 混合最好。
+\end{frame}
+
+\begin{frame}{对 Fan Hui 的比赛}
+  Fan Hui：
+  \begin{itemize}
+    \item 职业二段。
+    \item 2013、2014、2015 欧洲围棋冠军。
+  \end{itemize}
+
+  正式比赛：
+  \[
+    2015\text{ 年 }10\text{ 月 }5\text{ 日} \sim 10\text{ 月 }9\text{ 日}
+  \]
+
+  结果：
+  \[
+    \text{AlphaGo } 5:0 \text{ Fan Hui}
+  \]
+
+  \begin{alertblock}{历史意义}
+    这是电脑围棋程序首次在 19 路无让子的正式条件下击败人类职业棋手。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Discussion：AlphaGo 的意义}
+  作者把贡献总结为：
+
+  \begin{itemize}
+    \item 深度神经网络实现有效的落子选择函数。
+    \item 深度神经网络实现有效的局面评估函数。
+    \item 树搜索把策略、评估和 rollout 结合到高性能系统中。
+  \end{itemize}
+
+  \begin{block}{和 Deep Blue 的差异}
+    AlphaGo 搜索的局面数远少于 Deep Blue，但用 policy network 更聪明地选择搜索位置，用 value network 更准确地评估局面。
+  \end{block}
+
+  \begin{block}{范式意义}
+    深度学习负责近似直觉和评估，树搜索负责推演和选择。
+  \end{block}
+\end{frame}
+
+\section{Methods 与复现评估}
+
+\begin{frame}{METHODS：从论文思想到工程系统}
+  METHODS 的作用不是提出新概念，而是把 AlphaGo 拆成可实现的工程模块。
+
+  \vspace{0.12cm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{它回答什么}
+        \begin{itemize}
+          \item 围棋状态、动作和价值如何定义？
+          \item MCTS 边上保存哪些统计量？
+          \item policy/value/rollout 如何异步接入搜索？
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{它补充什么}
+        \begin{itemize}
+          \item 三个网络的训练数据和目标。
+          \item rollout、对称性和输入特征。
+          \item 分布式搜索和比赛用时设置。
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.2cm}
+  \begin{center}
+    \large
+    原始 AlphaGo = 深度网络 + MCTS + rollout + 手工特征 + 分布式工程。
+  \end{center}
+\end{frame}
+
+\begin{frame}{Problem setting：把围棋写成数学对象}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.46\textwidth}
+      \begin{block}{基本对象}
+        \begin{itemize}
+          \item $s$：当前状态，包含棋盘和行棋方。
+          \item $A(s)$：状态 $s$ 下的合法动作集合。
+          \item $f(s,a)$：走 $a$ 后到达的新状态。
+          \item $p(a\mid s)$：策略，给出动作概率。
+          \item $z$：终局胜负结果。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{block}{价值函数}
+        \[
+          v^p(s)=\mathbb{E}[z\mid s,\ a_{t:T}\sim p]
+        \]
+        \[
+          v^*(s)=
+          \begin{cases}
+            z_T, & s=s_T\\
+            \max_a -v^*(f(s,a)), & \text{otherwise}
+          \end{cases}
+        \]
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.18cm}
+  \begin{itemize}
+    \item $v^*(s)$ 总从当前行棋方视角定义；走完 $a$ 后轮到对手，所以后继局面价值要取负。
+    \item $v^*(s)$ 是理论最优值，实际不可直接计算；AlphaGo 用可训练的价值近似接入 MCTS。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{几种价值函数的区别}
+  单独写 $v(s)$ 时，通常只是“局面价值函数”的泛称；严谨时要说明是哪一种价值。
+
+  \vspace{0.08cm}
+  \begin{center}
+    \begin{tabular}{p{0.22\textwidth}p{0.62\textwidth}}
+      \toprule
+      记号 & 含义 \\
+      \midrule
+      $v^p(s)$ & 按策略 $p$ 继续下棋时，当前行棋方最终胜负的期望 \\
+      $v^*(s)$ & 双方完美下棋时的最优价值，理论目标但不可直接获得 \\
+      $v_{\theta}(s)$ & 参数为 $\theta$ 的价值网络输出，是训练得到的近似函数 \\
+      $v(s)$ & 泛称：某个可计算的局面评估函数，需看上下文 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{0.14cm}
+  \begin{block}{原始 AlphaGo 中的关系}
+    \[
+      v_{\theta}(s) \approx v^{p_{\rho}}(s)
+      \quad \text{并希望} \quad
+      v^{p_{\rho}}(s) \approx v^*(s)
+    \]
+  \end{block}
+
+  \begin{center}
+    \small
+    所以 value network 不是直接知道 $v^*(s)$，而是学习强策略 $p_{\rho}$ 自我对弈下的价值。
+  \end{center}
+\end{frame}
+
+\begin{frame}{APV-MCTS：边上保存什么}
+  APV-MCTS = Asynchronous Policy and Value MCTS，即“异步策略与价值 MCTS”。每条边 $(s,a)$ 不只保存一个价值。
+
+  \vspace{0.1cm}
+  \begin{center}
+    \begin{tabular}{ll}
+      \toprule
+      统计量 & 含义 \\
+      \midrule
+      $P(s,a)$ & policy network 给出的动作先验 \\
+      $N_v(s,a)$ & value network 评估经过这条边的次数 \\
+      $N_r(s,a)$ & rollout 经过这条边的次数 \\
+      $W_v(s,a)$ & value network 评估累计值 \\
+      $W_r(s,a)$ & rollout 终局结果累计值 \\
+      $Q(s,a)$ & 混合后的平均动作价值 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \[
+    Q(s,a)=(1-\lambda)\frac{W_v(s,a)}{N_v(s,a)}
+    +\lambda\frac{W_r(s,a)}{N_r(s,a)}
+  \]
+
+  \begin{center}
+    \small
+    原始 AlphaGo 同时使用 value network 和 rollout，所以 METHODS 把两类统计分开维护。
+  \end{center}
+\end{frame}
+
+\begin{frame}{APV-MCTS：一次模拟如何走}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Selection}
+        从根节点出发，反复选择：
+        \[
+          a=\arg\max_a(Q(s,a)+u(s,a))
+        \]
+        \footnotesize
+        $u$ 偏好高先验 $P(s,a)$、低访问次数 $N_r(s,a)$ 的动作。
+      \end{block}
+
+      \begin{block}{Evaluation}
+        到达叶节点 $s_L$ 后：
+        \begin{itemize}
+          \item 送入 value network 队列。
+          \item 用 fast rollout policy 模拟到终局。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Backup}
+        rollout 结果和 value network 输出异步回传，更新 $N,W,Q$。
+      \end{block}
+
+      \begin{block}{Expansion}
+        当访问足够多：
+        \[
+          N_r(s,a)>n_{\mathrm{thr}}
+        \]
+        才把后继状态 $s'=f(s,a)$ 加进树，并异步计算新的 $P(s',a)$。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.12cm}
+  \begin{center}
+    \small
+    搜索树逐步长大；不是每个合法动作的后继局面都会立即展开。
+  \end{center}
+\end{frame}
+
+\begin{frame}{异步、rollout 与对称性}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.32\textwidth}
+      \begin{block}{异步搜索}
+        \footnotesize
+        \begin{itemize}
+          \item master 维护搜索树。
+          \item CPU workers 跑 rollout。
+          \item GPU workers 算 policy/value。
+          \item virtual loss 避免线程挤到同一路径。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Rollout policy}
+        \footnotesize
+        \begin{itemize}
+          \item 线性 softmax 快策略。
+          \item 基于局部棋形和手工特征。
+          \item 不追求最强，只追求能快速模拟到终局。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{Symmetries}
+        \footnotesize
+        \begin{itemize}
+          \item 围棋有 8 种旋转/翻转。
+          \item 训练时可做数据增强。
+          \item 搜索时随机取一种变换，让多次模拟自然平均。
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.24cm}
+  \begin{center}
+    \small
+    这些细节说明：原始 AlphaGo 不是纯神经网络，而是高性能异步搜索系统。
+  \end{center}
+\end{frame}
+
+\begin{frame}{Rollout policy：具体是什么}
+  AlphaGo 的 fast rollout policy 记作 $p_{\pi}(a\mid s)$，它不是深度卷积网络。
+
+  \vspace{0.08cm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{形式}
+        线性 softmax 策略：
+        \[
+          p_{\pi}(a\mid s)=
+          \frac{\exp(\pi\cdot\phi(s,a))}
+               {\sum_b \exp(\pi\cdot\phi(s,b))}
+        \]
+        \footnotesize
+        $\phi(s,a)$ 是特征函数，输出局面--动作特征向量；$\pi$ 是训练参数。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{特征}
+        \begin{itemize}
+          \item 候选点附近的 $3\times3$ 局部模式。
+          \item 上一手附近的 response pattern。
+          \item 颜色、气数、局部规则相关特征。
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.14cm}
+  \begin{itemize}
+    \item 用 Tygem 人类棋局约 800 万个局面监督训练。
+    \item 目标不是最强，而是每步极快，用于从叶节点模拟到终局得到 $z_L$。
+    \item 原始 AlphaGo 混合 $v_{\theta}(s_L)$ 和 rollout；AlphaGo Zero 后来去掉 rollout。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{三个训练过程}
+  \begin{center}
+    \begin{tabular}{p{0.22\textwidth}p{0.32\textwidth}p{0.34\textwidth}}
+      \toprule
+      阶段 & 训练目标 & 作用 \\
+      \midrule
+      SL policy $p_{\sigma}$ &
+      最大化人类落子 $\log p_{\sigma}(a\mid s)$ &
+      给 $p_{\rho}$ 初值；给 MCTS 搜索先验 $P(s,a)$ \\
+      \midrule
+      RL policy $p_{\rho}$ &
+      REINFORCE 自我对弈，优化最终胜负 &
+      把目标从“像人”改成“赢棋”；生成 value 数据 \\
+      \midrule
+      value network $v_{\theta}$ &
+      回归自我对弈局面最终胜负 $z$ &
+      评估叶节点；第二轮 RL 中可作 baseline \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{0.12cm}
+  \begin{itemize}
+    \item RL 对手从历史版本池抽样，避免训练目标剧烈震荡。
+    \item value 数据每盘只取一个样本，降低连续局面的强相关。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Value network 数据为什么这样生成}
+  论文没有直接从每盘棋取全部局面，而是构造低相关、多样化样本。
+
+  \begin{center}
+    \begin{tikzpicture}[
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.72cm, minimum width=2.45cm},
+      arrow/.style={-{Latex[length=2.2mm]}, thick, DeepBlue},
+      note/.style={font=\scriptsize, align=center}
+    ]
+      \node[box] (sl) {前 $U-1$ 手\\按 $p_{\sigma}$ 采样};
+      \node[box, right=1.15cm of sl] (rand) {第 $U$ 手\\随机合法落子};
+      \node[box, right=1.15cm of rand] (rl) {后续\\按 $p_{\rho}$ 下完};
+      \node[box, right=1.15cm of rl] (sample) {只保存\\$(s_{U+1},z)$};
+
+      \draw[arrow] (sl) -- (rand);
+      \draw[arrow] (rand) -- (rl);
+      \draw[arrow] (rl) -- (sample);
+      \node[note, below=0.25cm of rand] {制造多样局面};
+      \node[note, below=0.25cm of sample] {避免同局连续样本强相关};
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{0.1cm}
+  \begin{itemize}
+    \item 前半段更噪声，增加局面覆盖范围。
+    \item 后半段用 $p_{\rho}$ 下完，使目标仍对应 $v^{p_{\rho}}(s)$。
+    \item 训练目标：让 $v_{\theta}(s)$ 预测最终胜负 $z$。
+  \end{itemize}
+
+  \begin{center}
+    \small
+    直观理解：先制造足够多样的“题目”，再用强策略收尾得到可学习的“答案”。
+  \end{center}
+\end{frame}
+
+\begin{frame}{输入特征与网络结构}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{输入不是单张黑白图}
+        \begin{itemize}
+          \item $19\times19$ 多通道特征平面。
+          \item 棋子颜色、气数、可提子、自吃、合法性。
+          \item 征子特征、落子时间距离。
+          \item 相对当前行棋方表示：player / opponent。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{网络结构}
+        \begin{itemize}
+          \item policy：输入 $19\times19\times48$。
+          \item 第 1 层 $5\times5$ 卷积；第 2--12 层 $3\times3$ 卷积。
+          \item 输出层 $1\times1$ 卷积 + softmax。
+          \item value：后接全连接层，输出单个胜负倾向。
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.14cm}
+  \begin{center}
+    \small
+    原始 AlphaGo 仍使用规则特征；后来的 AlphaGo Zero 才大幅简化输入和训练流程。
+  \end{center}
+\end{frame}
+
+\begin{frame}{表 2：policy/value 网络输入特征}
+  \begin{center}
+    \scriptsize
+    \renewcommand{\arraystretch}{0.92}
+    \begin{tabular}{p{0.24\textwidth}cp{0.53\textwidth}}
+      \toprule
+      特征 & 平面数 & 含义 \\
+      \midrule
+      棋子颜色 & 3 & 我方棋子、对方棋子、空点。 \\
+      常数一 & 1 & 全部位置都为 1 的常数平面。 \\
+      距上次落子回合 & 8 & 该点距最近一次被落子已经过去多少手。 \\
+      气数 & 8 & 当前棋串相邻空点的数量。 \\
+      可提子数量 & 8 & 若在此落子，可以提掉多少对方棋子。 \\
+      自打吃数量 & 8 & 若在此落子，会让多少己方棋子处于被打吃风险。 \\
+      落子后气数 & 8 & 若在此落子，落子后棋串的气数。 \\
+      征吃 & 1 & 此处落子是否能成功征吃对方棋子。 \\
+      逃征 & 1 & 此处落子是否能成功逃征。 \\
+      合理性 & 1 & 落子是否合法，且不填自己的眼。 \\
+      常数零 & 1 & 全部位置都为 0 的常数平面。 \\
+      当前执黑 & 1 & 当前行棋方是否为黑；仅 value network 使用。 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{0.06cm}
+  \begin{center}
+    \scriptsize
+    “平面”就是一个 $19\times19$ 特征通道；多个平面按通道堆叠成网络输入。\\
+    policy network 使用前 48 个平面；value network 额外使用“当前执黑”，共 49 个平面。
+  \end{center}
+\end{frame}
+
+\begin{frame}{能否复现原始 AlphaGo}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{可以复现的层次}
+        \begin{itemize}
+          \item 论文公开的算法框架。
+          \item policy/value network + MCTS 的组合思想。
+          \item AlphaGo-like 或 AlphaGo Zero-like 系统。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{难以忠实复现的部分}
+        \begin{itemize}
+          \item 原始代码、权重和训练数据细节未公开。
+          \item rollout/tree policy 特征实现不完整。
+          \item MCTS 工程、分布式搜索和比赛版超参数未知。
+        \end{itemize}
+      \end{alertblock}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.18cm}
+  \begin{block}{严谨表述}
+    可以复现 AlphaGo 的公开算法框架；但无法忠实复现 DeepMind 原版 AlphaGo Fan / Lee Sedol 版系统。
+  \end{block}
+
+  \vspace{0.05cm}
+  \begin{center}
+    \small
+    实践上更适合参考 AlphaGo Zero / AlphaZero 路线：去掉 handcrafted rollout policy，系统更容易实现和验证。
+  \end{center}
+\end{frame}
+
+\begin{frame}{原始 AlphaGo 使用的资源}
+  论文中明确给出的训练资源：
+
+  \begin{center}
+    \begin{tabular}{lcc}
+      \toprule
+      阶段 & 硬件与时间 & 粗略 GPU-days \\
+      \midrule
+      监督学习策略网络 & 50 GPUs，约 3 周 & $\approx 1050$ \\
+      强化学习策略网络 & 50 GPUs，约 1 天 & $\approx 50$ \\
+      价值网络 & 50 GPUs，约 1 周 & $\approx 350$ \\
+      \midrule
+      合计 & 仅训练网络 & $\approx 1450$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  对局搜索资源：
+  \begin{itemize}
+    \item 单机版：48 CPUs + 8 GPUs。
+    \item 分布式版：1202 CPUs + 176 GPUs。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{复现可行性分层}
+  \begin{center}
+    \begin{tabular}{p{0.22\textwidth}p{0.3\textwidth}p{0.34\textwidth}}
+      \toprule
+      目标 & 资源 & 评价 \\
+      \midrule
+      教学版 & CPU 或 1 块普通 GPU；5x5/9x9 棋盘 & 可行，适合理解算法 \\
+      个人简化版 & 1--4 块 GPU；19 路简化系统 & 可行但工程量大，棋力有限 \\
+      论文级复现 & 数十到上百 GPU，大量 CPU，千级 GPU-days & 研究机构级任务 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{alertblock}{建议}
+    若目标是学习，应从小棋盘 AlphaGo Zero 风格实现开始，而不是直接复现原始 AlphaGo。
+  \end{alertblock}
+\end{frame}
+
+\section{总结}
+
+\begin{frame}{一张图总结 AlphaGo}
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.9cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.8cm, minimum width=2.5cm},
+      arrow/.style={-{Latex[length=2.3mm]}, thick, DeepBlue}
+    ]
+      \node[box] (board) {棋盘局面};
+      \node[box, above right=of board] (policy) {policy network\\候选落子};
+      \node[box, below right=of board] (value) {value network\\局面评估};
+      \node[box, right=3.8cm of board] (search) {MCTS\\搜索整合};
+      \node[box, right=of search] (move) {最终落子};
+
+      \draw[arrow] (board) -- (policy);
+      \draw[arrow] (board) -- (value);
+      \draw[arrow] (policy) -- (search);
+      \draw[arrow] (value) -- (search);
+      \draw[arrow] (search) -- (move);
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{0.4cm}
+  \begin{block}{核心句}
+    AlphaGo 用 policy network 缩小搜索宽度，用 value network 缩短搜索深度，用 MCTS 将二者整合成强决策。
+  \end{block}
+\end{frame}
+
+\begin{frame}{需要记住的五件事}
+  \begin{enumerate}
+    \item 原始 AlphaGo 不是单纯神经网络，而是神经网络 + MCTS。
+    \item SL policy 学“人类会怎么下”，RL policy 学“怎样更容易赢”。
+    \item value network 学当前局面最终胜负，替代大量低质量 rollout。
+    \item MCTS 最终选访问次数最多的动作，而不是直接选网络最高概率动作。
+    \item 原始 AlphaGo 仍有人工特征、rollout 和复杂工程；AlphaGo Zero 后来大幅简化。
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{参考资料}
+  \begin{itemize}
+    \item David Silver et al. \textit{Mastering the game of Go with deep neural networks and tree search}. Nature 529, 484--489, 2016.
+    \item David Silver et al. \textit{Mastering the game of Go without human knowledge}. Nature 550, 354--359, 2017.
+    \item David Silver et al. \textit{A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play}. Science 362, 1140--1144, 2018.
+    \item 本目录：\texttt{note.md}, \texttt{nature16961.pdf}, \texttt{nature24270.pdf}, \texttt{AlphaZero.pdf}
+  \end{itemize}
+\end{frame}
+
+\end{document}
