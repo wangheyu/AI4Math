@@ -1,0 +1,1393 @@
+\documentclass[UTF8,aspectratio=169,10pt]{ctexbeamer}
+
+\usetheme{Madrid}
+\usecolortheme{seahorse}
+\usefonttheme{professionalfonts}
+
+\usepackage{amsmath,amssymb,booktabs,array}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}[numbered]
+\setbeamercovered{transparent}
+
+\definecolor{DeepBlue}{RGB}{27,79,114}
+\definecolor{GoGreen}{RGB}{39,124,96}
+\definecolor{WarmOrange}{RGB}{196,104,40}
+\definecolor{SoftGray}{RGB}{245,247,249}
+
+\setbeamercolor{title}{fg=DeepBlue}
+\setbeamercolor{frametitle}{fg=DeepBlue}
+\setbeamercolor{structure}{fg=DeepBlue}
+\setbeamercolor{block title}{fg=white,bg=DeepBlue}
+\setbeamercolor{block body}{bg=SoftGray}
+
+\title[AlphaGo Zero 论文精读]{AlphaGo Zero 论文精读}
+\subtitle{Mastering the game of Go without human knowledge}
+\author{Crazyfsih}
+\date{\today}
+
+\newcommand{\mcts}{MCTS}
+\newcommand{\azero}{AlphaGo Zero}
+\newcommand{\alphago}{AlphaGo}
+\newcommand{\net}{$f_{\theta}$}
+\newcommand{\state}{$s$}
+\newcommand{\movea}{$a$}
+
+\AtBeginSection[]{
+  \begin{frame}{目录}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{阅读目标}
+  \begin{block}{主要目标}
+    理解 AlphaGo Zero 如何在不使用人类棋谱的情况下，通过自我对弈、神经网络和 MCTS 从零学会围棋。
+  \end{block}
+
+  \begin{itemize}
+    \item 看清它相对于原始 AlphaGo 的删减和重构。
+    \item 理解训练样本 $(s,\pi,z)$ 从哪里来。
+    \item 理解神经网络 $f_{\theta}(s)=(p,v)$ 和 MCTS 如何互相提升。
+    \item 读懂论文实验结果：3 天、40 天、架构消融和最终对局。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{核心记号：$(p,v)$ 与 $(s,\pi,z)$}
+  \small
+  \begin{block}{网络输出}
+    \[
+      f_{\theta}(s)=(p,v)
+    \]
+    这里不是两个独立网络，而是同一个网络的两个输出头。
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{$p$ 和 $v$}
+        \begin{itemize}
+          \item $p$：网络前向推理给出的原始动作概率分布。
+          \item $v$：当前玩家最终获胜的估计。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{$s,\pi,z$}
+        \begin{itemize}
+          \item $s$：某一步的棋盘局面。
+          \item $\pi$：MCTS 搜索后的动作分布。
+          \item $z$：最终胜负，从当前玩家视角看。
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{关键区别}
+    $p$ 是一次网络推理的原始策略；$\pi$ 是 MCTS 搜索改进后的目标。训练时让 $p$ 靠近 $\pi$，让 $v$ 靠近 $z$。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{目录}
+  \tableofcontents
+\end{frame}
+
+\section{论文主张}
+
+\begin{frame}{论文一句话}
+  \begin{block}{核心主张}
+    只给围棋规则，不给人类棋谱和人工围棋知识，程序可以从随机下棋开始，通过自我对弈训练到超人水平。
+  \end{block}
+
+  \vspace{0.2cm}
+  \begin{center}
+    \Large
+    \textbf{AlphaGo becomes its own teacher}
+  \end{center}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item 自己下棋，产生经验。
+    \item 用搜索改进当前策略。
+    \item 用搜索后的策略和最终胜负训练网络。
+    \item 新网络反过来让下一轮搜索更强。
+  \end{itemize}
+
+  \begin{alertblock}{本质：策略迭代式自我改进}
+    \[
+      \theta_k \xrightarrow{\text{MCTS + self-play}} (s,\pi,z)
+      \xrightarrow{\text{train}} \theta_{k+1}
+    \]
+    老师不是人类棋谱，而是上一轮网络加 MCTS 产生的搜索结果。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{从 AlphaGo 到 AlphaGo Zero}
+  \scriptsize
+  \begin{center}
+    \begin{tabular}{@{}p{0.19\textwidth}p{0.34\textwidth}p{0.38\textwidth}@{}}
+      \toprule
+      项目 & 原始 AlphaGo & AlphaGo Zero \\
+      \midrule
+      训练起点 & 人类棋谱监督学习 & 随机初始化 \\
+      人类数据 & 使用专家棋谱 & 不使用 \\
+      输入特征 & 大量人工设计特征 & 棋盘黑白子和历史 \\
+      网络主干 & 普通卷积网络，相对较浅 & 深层残差卷积网络 residual tower \\
+      神经网络 & policy / value 分离 & 共享主体 + policy/value 两个 head \\
+      搜索评估 & value network + rollout & 神经网络 value，无 rollout \\
+      MCTS 与训练 & 搜索使用已训练网络，不反馈训练 SL/RL 网络 & MCTS 产生 $\pi$，作为训练目标更新 $\theta$ \\
+      目标 & 先模仿，再赢棋 & 直接从自我对弈学赢棋 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{alertblock}{阅读重点}
+    两个网络层面的进步：深层残差卷积网络使网络可显著加深；“单网络双头”让 policy $p$ 和 value $v$ 共享棋盘表示。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{论文结构导览}
+  \begin{enumerate}
+    \item 引言：为什么要摆脱人类数据。
+    \item 强化学习算法：自我对弈、网络训练和 MCTS。
+    \item 实证分析：3 天训练、监督学习对比、架构对比。
+    \item 围棋知识：从零学出定式、布局、手筋等。
+    \item 最终性能：40 天训练，与 AlphaGo Master / Lee 等比较。
+    \item Methods：训练管线、搜索算法、网络结构和评估细节。
+  \end{enumerate}
+\end{frame}
+
+\section{自我对弈强化学习}
+
+\begin{frame}{核心对象：单个神经网络}
+  AlphaGo Zero 使用一个深度网络：
+
+  \[
+    (p,v)=f_{\theta}(s)
+  \]
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{policy 输出 $p$}
+        \[
+          p_a = \Pr(a\mid s)
+        \]
+        对所有合法落子，包括 pass，给出概率分布。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{value 输出 $v$}
+        \[
+          v \approx \Pr(\text{当前玩家胜}\mid s)
+        \]
+        估计当前局面的胜负前景。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{关键变化}
+    policy 和 value 不再是两个网络，而是同一个表示层上的两个输出头。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{训练样本从哪里来}
+  \small
+  每一盘自我对弈会产生一串局面：
+
+  \[
+    s_1,s_2,\ldots,s_T
+  \]
+
+  在每个局面 $s_t$，先运行 MCTS，得到搜索后的动作分布：
+
+  \[
+    \pi_t=\alpha_{\theta}(s_t)
+  \]
+
+  游戏结束后，得到最终胜负结果：
+
+  \[
+    z_t \in \{-1,+1\}
+  \]
+
+  因此训练数据是：
+
+  \[
+    (s_t,\pi_t,z_t)
+  \]
+
+  \begin{block}{直观理解}
+    $s_t$ 是题目，$\pi_t$ 是搜索后的更强答案，$z_t$ 是最终输赢给出的结果标签。
+  \end{block}
+\end{frame}
+
+\begin{frame}{训练闭环}
+  \small
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=1.2cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.9cm, minimum width=2.8cm},
+      arrow/.style={-{Latex[length=2.2mm]}, thick, DeepBlue}
+    ]
+      \node[box] (net) {网络 $f_{\theta}(s)$\\输出 $p_{\theta}(s),v_{\theta}(s)$};
+      \node[box, right=of net] (mcts) {MCTS 搜索\\得到 $\pi$};
+      \node[box, right=of mcts] (play) {自我对弈\\产生棋局};
+      \node[box, below=of play] (data) {训练数据\\$(s,\pi,z)$};
+      \node[box, left=of data] (train) {优化网络\\更新 $\theta$};
+
+      \draw[arrow] (net) -- (mcts);
+      \draw[arrow] (mcts) -- (play);
+      \draw[arrow] (play) -- (data);
+      \draw[arrow] (data) -- (train);
+      \draw[arrow] (train) -- (net);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{alertblock}{记号提醒}
+    Slide 中常简写为 $f_{\theta}(s)=(p,v)$；严格说，$p$ 和 $v$ 都隐含依赖局面 $s$ 与网络参数 $\theta$。
+  \end{alertblock}
+
+  \begin{block}{一句话}
+    MCTS 把当前网络变成更强的行动者；自我对弈把这个更强行动者留下的经验再压回网络。
+  \end{block}
+\end{frame}
+
+\begin{frame}{损失函数}
+  \small
+  论文训练网络使：
+
+  \begin{itemize}
+    \item value $v$ 接近最终胜负 $z$；
+    \item policy $p$ 接近 MCTS 搜索分布 $\pi$；
+    \item 参数不过度膨胀。
+  \end{itemize}
+
+  \[
+    (p,v)=f_{\theta}(s)
+  \]
+
+  \[
+    l=(z-v)^2-\pi^T\log p+c\|\theta\|^2
+  \]
+
+  \begin{center}
+    \begin{tabular}{@{}ll@{}}
+      \toprule
+      项 & 含义 \\
+      \midrule
+      $(z-v)^2$ & value 预测最终胜负 \\
+      $-\pi^T\log p$ & policy 模仿 MCTS 搜索分布 \\
+      $c\|\theta\|^2$ & L2 正则化：软惩罚大参数 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{alertblock}{正则化直观}
+    不是给 $\theta$ 设硬上限；而是 $\theta$ 越大，loss 额外惩罚越大。$c$ 控制惩罚强度。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{为什么 MCTS 是策略改进}
+  原始网络直接给出：
+
+  \[
+    p=f_{\theta}(s)
+  \]
+
+  MCTS 使用网络的 $p$ 和 $v$ 做大量搜索后，得到：
+
+  \[
+    \pi=\alpha_{\theta}(s)
+  \]
+
+  \begin{block}{论文的核心观点}
+    $\pi$ 通常比原始 $p$ 强，因此 MCTS 可以看成一个 policy improvement operator。
+  \end{block}
+
+  \begin{alertblock}{训练直觉}
+    网络不断学习 MCTS 的改进结果；下一轮 MCTS 又建立在更强的网络上，形成迭代提升。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{类比：$p$ 与 AlphaGo 的 SL policy}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{原始 AlphaGo}
+        \begin{itemize}
+          \item SL/RL policy network 直接给出落子先验。
+          \item 这个先验供 MCTS 搜索使用。
+          \item MCTS 搜索后选择实际落子。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{AlphaGo Zero}
+        \begin{itemize}
+          \item $p_{\theta}(s)$ 是 policy head 的原始策略。
+          \item MCTS 基于 $p_{\theta},v_{\theta}$ 搜索得到 $\pi$。
+          \item $\pi$ 反过来作为训练目标更新 $p_{\theta}$。
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{类比边界}
+    功能上，$p_{\theta}$ 类似 AlphaGo 中给 MCTS 用的策略先验；来源上，SL policy 来自人类棋谱，而 Zero 的 $p_{\theta}$ 来自自我对弈的 $\pi$。
+  \end{alertblock}
+
+  \[
+    p_{\theta}(s)\ \Longrightarrow\ \text{MCTS 搜索}\ \Longrightarrow\ \pi
+    \quad\text{再训练}\quad p_{\theta}
+  \]
+\end{frame}
+
+\section{MCTS 搜索}
+
+\begin{frame}{搜索树上的统计量}
+  每条边 $(s,a)$ 保存四个统计量：
+
+  \[
+    \{N(s,a), W(s,a), Q(s,a), P(s,a)\}
+  \]
+
+  \begin{center}
+    \begin{tabular}{@{}p{0.18\textwidth}p{0.68\textwidth}@{}}
+      \toprule
+      量 & 含义 \\
+      \midrule
+      $P(s,a)$ & 网络给出的先验概率 \\
+      $N(s,a)$ & 这条边被访问次数 \\
+      $W(s,a)$ & 累积动作价值 \\
+      $Q(s,a)$ & 平均动作价值，$Q=W/N$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{block}{和原始 AlphaGo 的延续}
+    仍然是在根局面展开搜索树，仍然在边上维护 $P,N,Q$；区别是叶子评估完全交给单个神经网络。
+  \end{block}
+\end{frame}
+
+\begin{frame}{$W$：AlphaGo Zero 显式引入的累积量}
+  \small
+  \begin{block}{$W$ 是什么}
+    $W(s,a)$ 是边 $(s,a)$ 上所有 backup 传回值的\textbf{累加和}，$Q=W/N$ 是平均值。
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{原始 AlphaGo（隐式）}
+        不显式存储 $W$，$Q$ 通过递推平均更新：
+        \[
+          Q \leftarrow Q + \frac{v-Q}{N}
+        \]
+        累积和信息隐含在 $Q$ 的逐步更新中。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{AlphaGo Zero（显式）}
+        显式存储 $W$，每次 backup：
+        \[
+          N\leftarrow N+1,\quad W\leftarrow W+v
+        \]
+        需要时实时计算 $Q=W/N$。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{数学上完全等价，工程上更清晰}
+    AlphaGo Zero 显式分离“累积值 $W$”和“平均值 $Q$”，符合 UCT 文献的标准记号，也便于检查和调试中间状态。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{一次 MCTS simulation}
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=1.0cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.9cm, minimum width=2.6cm},
+      arrow/.style={-{Latex[length=2.2mm]}, thick, DeepBlue}
+    ]
+      \node[box] (sel) {Select\\走到叶子};
+      \node[box, right=of sel] (eval) {Expand\\and evaluate};
+      \node[box, right=of eval] (bak) {Backup\\回传价值};
+      \node[box, right=of bak] (rep) {Repeat\\多次模拟};
+
+      \draw[arrow] (sel) -- (eval);
+      \draw[arrow] (eval) -- (bak);
+      \draw[arrow] (bak) -- (rep);
+    \end{tikzpicture}
+  \end{center}
+
+  \vspace{0.2cm}
+  \begin{enumerate}
+    \item 从根节点 $s_0$ 出发。
+    \item 按 $Q+U$ 选择边，直到叶节点 $s_L$。
+    \item 用网络评估并扩展叶节点。
+    \item 把 value 沿路径回传，更新 $N,W,Q$。
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Selection：选择 $Q+U$ 最大的分支}
+  \small
+  在树内每一步选择：
+
+  \[
+    a_t=\arg\max_a \left(Q(s_t,a)+U(s_t,a)\right)
+  \]
+
+  论文中的探索项：
+
+  \[
+    U(s,a)=c_{\mathrm{puct}}P(s,a)
+    \frac{\sqrt{\sum_b N(s,b)}}{1+N(s,a)}
+  \]
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.33\textwidth}
+      \begin{block}{$Q$ 高}
+        已经搜索后看起来好。
+      \end{block}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{block}{$P$ 高}
+        网络先验认为有希望。
+      \end{block}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \begin{block}{$N$ 低}
+        还没充分探索。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{和 AlphaGo 的关系}
+    $U$ 的 PUCT 骨架基本延续 AlphaGo；Zero 的变化在于 $P$ 来自 $p_{\theta}$、$Q$ 来自 $v_{\theta}$ 回传，并且搜索结果 $\pi$ 会反馈训练网络。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Expand and evaluate：一张网络同时做两件事}
+  到达叶节点 $s_L$ 后，AlphaGo Zero 调用网络：
+
+  \[
+    (p,v)=f_{\theta}(s_L)
+  \]
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Expand}
+        对 $s_L$ 的每个合法动作 $a$ 建立新边：
+        \[
+          P(s_L,a)=p_a
+        \]
+        同时初始化 $N,W,Q$。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Evaluate}
+        网络输出的 value：
+        \[
+          V(s_L)=v
+        \]
+        直接作为叶节点评估。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{和原始 AlphaGo 的差别}
+    没有 fast rollout policy；叶节点不再模拟到终局，而是直接由神经网络给出 value。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Backup：把叶子评估传回根节点}
+  如果一次 simulation 经过：
+
+  \[
+    (s_0,a_0),(s_1,a_1),\ldots,(s_{L-1},a_{L-1})
+  \]
+
+  叶子价值为 $v$，则路径上每条边更新：
+
+  \[
+    N(s_t,a_t) \leftarrow N(s_t,a_t)+1
+  \]
+
+  \[
+    W(s_t,a_t) \leftarrow W(s_t,a_t)+v
+  \]
+
+  \[
+    Q(s_t,a_t)=\frac{W(s_t,a_t)}{N(s_t,a_t)}
+  \]
+
+  \begin{block}{直观理解}
+    叶节点不直接决定最终落子；它的评估被回传，逐渐改变根节点候选动作的访问次数和平均价值。
+  \end{block}
+\end{frame}
+
+\begin{frame}{Play：用根节点访问次数形成搜索策略}
+  搜索完成后，根节点每个候选动作都有访问次数：
+
+  \[
+    N(s_0,a)
+  \]
+
+  AlphaGo Zero 生成搜索概率：
+
+  \[
+    \pi(a\mid s_0)=
+    \frac{N(s_0,a)^{1/\tau}}{\sum_b N(s_0,b)^{1/\tau}}
+  \]
+
+  \begin{itemize}
+    \item $\tau$ 大：更随机，利于探索。
+    \item $\tau \to 0$：$\pi$ 集中到最大分量；从 $\pi$ 随机抽样也趋于选择访问次数最多的动作。
+    \item 自我对弈前 30 手使用较高温度以增加多样性。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{搜索树复用}
+  \small
+  下出动作 $a$ 后：
+
+  \[
+    s_0 \xrightarrow{a} s_1
+  \]
+
+  AlphaGo Zero 不完全丢弃搜索树，而是：
+
+  \begin{itemize}
+    \item 把对应的子节点 $s_1$ 作为新的根节点。
+    \item 保留 $s_1$ 以下的子树统计。
+    \item 丢弃与实际落子无关的其他分支。
+  \end{itemize}
+
+  \begin{block}{直观理解}
+    已经花搜索成本看过的后续局面可以继续用；但现实落子之外的分支不再相关。
+  \end{block}
+
+  \begin{alertblock}{采样带来的后果}
+    早期若从 $\pi$ 抽到非最大分支，MCTS 会以该子树为新根继续增长；这是探索机制。抽样按访问次数分布而非均匀随机，坏分支概率低，最终 $z$ 会反馈其价值。
+  \end{alertblock}
+\end{frame}
+
+\section{网络结构}
+
+\begin{frame}{输入特征：$19\times19\times17$}
+  \small
+  输入不是 48 个手工特征平面，而是更接近原始棋盘：
+
+  \[
+    19\times19\times17
+  \]
+
+  \begin{center}
+    \begin{tabular}{@{}p{0.26\textwidth}p{0.52\textwidth}p{0.12\textwidth}@{}}
+      \toprule
+      特征 & 含义 & 平面数 \\
+      \midrule
+      当前玩家历史棋子 & 最近 8 个时刻当前玩家棋子位置 & 8 \\
+      对手历史棋子 & 最近 8 个时刻对手棋子位置 & 8 \\
+      当前执棋颜色 & 黑棋或白棋常数平面 & 1 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{alertblock}{为什么需要历史}
+    单看当前棋子不完全可观，因为围棋有打劫和重复局面限制；历史平面帮助网络判断局面合法性和上下文。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Residual tower}
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.9cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.75cm, minimum width=2.4cm},
+      arrow/.style={-{Latex[length=2mm]}, thick, DeepBlue}
+    ]
+      \node[box] (input) {输入\\$19\times19\times17$};
+      \node[box, right=of input] (conv) {$3\times3$ Conv\\256 filters};
+      \node[box, right=of conv] (res) {Residual blocks\\19 或 39 个};
+      \node[box, right=of res] (heads) {Policy / Value\\两个输出头};
+
+      \draw[arrow] (input) -- (conv);
+      \draw[arrow] (conv) -- (res);
+      \draw[arrow] (res) -- (heads);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{itemize}
+    \item 小模型：20-block，约 3 天训练。
+    \item 大模型：40-block，约 40 天训练。
+    \item 残差连接让网络可以更深，训练更稳定。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{为什么使用残差网络}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{普通深层网络的困难}
+        \begin{itemize}
+          \item 层数更深，不一定更容易优化。
+          \item 若某几层只需保留信息，也要学出近似恒等映射。
+          \item 深层训练容易出现退化：加层后训练误差反而更差。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{残差块的改法}
+        $H(x)$ 表示这个 block 最终要输出的整体映射：
+        \[
+          H(x)=x+F(x)
+        \]
+        网络不直接学完整映射 $H(x)$，而是学修正量：
+        \[
+          F(x)=H(x)-x
+        \]
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.85cm,
+      resbox/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.6cm, minimum width=1.8cm},
+      plus/.style={draw=WarmOrange, circle, fill=SoftGray, inner sep=1.5pt},
+      arrow/.style={-{Latex[length=1.8mm]}, thick, DeepBlue}
+    ]
+      \node[resbox] (x) {$x$};
+      \node[resbox, right=of x] (f) {$F(x)$\\两层卷积};
+      \node[plus, right=of f] (add) {$+$};
+      \node[resbox, right=of add] (h) {$H(x)$};
+
+      \draw[arrow] (x) -- (f);
+      \draw[arrow] (f) -- (add);
+      \draw[arrow] (add) -- (h);
+      \draw[arrow] (x.north) to[out=45,in=135] node[above]{\scriptsize skip} (add.north);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{alertblock}{直观}
+    如果不需要改变表示，可令 $F(x)\approx0$，则 $H(x)\approx x$；如果需要改进，只学习对当前棋盘表示的局部修正。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Residual tower：层数怎么数}
+  \small
+  Methods 中的精确定义：
+
+  \[
+    \text{residual tower}
+    =
+    \text{1 个 convolutional block}
+    +
+    \text{19 或 39 个 residual blocks}
+  \]
+
+  \begin{center}
+    \begin{tabular}{@{}lccc@{}}
+      \toprule
+      版本 & 初始 $3\times3$ Conv & residual blocks & $3\times3$ Conv 总数 \\
+      \midrule
+      20-block network & 1 & 19 & $1+19\times2=39$ \\
+      40-block network & 1 & 39 & $1+39\times2=79$ \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{block}{为什么会有这个数法}
+    每个 residual block 含两层 $3\times3$ 卷积；论文口头说 20/40-block network，Methods 中精确写成 1 个初始卷积块加 19/39 个残差块。
+  \end{block}
+\end{frame}
+
+\begin{frame}{网络分叉：共享主体到两个输出头}
+  \small
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.62cm and 0.78cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.58cm, minimum width=2.15cm},
+      head/.style={draw=GoGreen, rounded corners, fill=SoftGray, align=center, minimum height=0.58cm, minimum width=2.05cm},
+      outbox/.style={draw=WarmOrange, rounded corners, fill=SoftGray, align=center, minimum height=0.58cm, minimum width=2.05cm},
+      arrow/.style={-{Latex[length=1.8mm]}, thick, DeepBlue}
+    ]
+      \node[box] (s) {局面 $s$\\$19\times19\times17$};
+      \node[box, right=of s] (tower) {Residual tower\\共享棋盘表示 $h$};
+
+      \node[head, above right=0.55cm and 0.85cm of tower] (pc) {Policy head\\$1\times1$ Conv, 2};
+      \node[head, right=of pc] (pfc) {FC\\362 logits};
+      \node[outbox, right=of pfc] (pout) {softmax\\$p_{\theta}(s)$};
+
+      \node[head, below right=0.55cm and 0.85cm of tower] (vc) {Value head\\$1\times1$ Conv, 1};
+      \node[head, right=of vc] (vfc) {FC 256\\FC 1};
+      \node[outbox, right=of vfc] (vout) {tanh\\$v_{\theta}(s)$};
+
+      \draw[arrow] (s) -- (tower);
+      \draw[arrow] (tower.east) -- (pc.west);
+      \draw[arrow] (tower.east) -- (vc.west);
+      \draw[arrow] (pc) -- (pfc);
+      \draw[arrow] (pfc) -- (pout);
+      \draw[arrow] (vc) -- (vfc);
+      \draw[arrow] (vfc) -- (vout);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{alertblock}{双头不是两个独立网络}
+    前面的 residual tower 共享参数；只在最后分成 policy head 和 value head，因此 $f_{\theta}(s)=(p_{\theta}(s),v_{\theta}(s))$。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{一个 residual block}
+  \begin{center}
+    \begin{tikzpicture}[
+      scale=0.88,
+      transform shape,
+      node distance=0.85cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.65cm, minimum width=2.2cm},
+      smallbox/.style={draw=GoGreen, rounded corners, fill=SoftGray, align=center, minimum height=0.55cm, minimum width=1.7cm},
+      arrow/.style={-{Latex[length=2mm]}, thick, DeepBlue}
+    ]
+      \node[box] (x) {输入 $x$};
+      \node[smallbox, right=of x] (c1) {$3\times3$ Conv};
+      \node[smallbox, right=of c1] (bn1) {BN + ReLU};
+      \node[smallbox, right=of bn1] (c2) {$3\times3$ Conv};
+      \node[smallbox, right=of c2] (bn2) {BN};
+      \node[box, right=of bn2] (out) {$x+F(x)$\\ReLU};
+
+      \draw[arrow] (x) -- (c1);
+      \draw[arrow] (c1) -- (bn1);
+      \draw[arrow] (bn1) -- (c2);
+      \draw[arrow] (c2) -- (bn2);
+      \draw[arrow] (bn2) -- (out);
+      \draw[arrow] (x.north) to[out=45,in=135] node[above]{\scriptsize skip} (out.north);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{block}{直观理解}
+    每个 block 保持 $19\times19\times256$ 的棋盘表示尺寸，学习的是修正量 $F(x)$，最后输出 $\mathrm{ReLU}(x+F(x))$。
+  \end{block}
+\end{frame}
+
+\begin{frame}{BatchNorm：批归一化}
+  \small
+  对 mini-batch 中的激活值 $x_1,\ldots,x_m$：
+
+  \[
+    \mu_B=\frac{1}{m}\sum_{i=1}^m x_i,\qquad
+    \sigma_B^2=\frac{1}{m}\sum_{i=1}^m (x_i-\mu_B)^2
+  \]
+
+  \[
+    \hat{x}_i=\frac{x_i-\mu_B}{\sqrt{\sigma_B^2+\epsilon}},
+    \qquad
+    y_i=\gamma\hat{x}_i+\beta
+  \]
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{参数含义}
+        \begin{itemize}
+          \item $\epsilon$：防止除以 0。
+          \item $\gamma,\beta$：可学习的缩放和平移。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{卷积网络中}
+        通常按 channel 统计均值和方差；训练用当前 batch，推理用 running mean/variance。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{在残差块中的作用}
+    BN 放在卷积后，稳定每层数值尺度，使很深的 residual tower 更容易训练。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{两个输出头}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Policy head}
+        \begin{itemize}
+          \item $1\times1$ 卷积，2 个 filters。
+          \item BN + ReLU。
+          \item 全连接输出 $19^2+1=362$ 个 logits。
+          \item softmax 得到 $p_{\theta}(s)$。
+        \end{itemize}
+
+        \vspace{0.2cm}
+        {\small $19^2\!+\!1=362$：$19\times19$ 个棋盘落点，$+1$ 是 pass（停着）。}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Value head}
+        \begin{itemize}
+          \item $1\times1$ 卷积，1 个 filter。
+          \item 全连接到 256 hidden units + ReLU。
+          \item 再全连接输出 1 个标量。
+          \item tanh 得到 $v_{\theta}(s)\in[-1,1]$。
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{双头的含义}
+    同一套棋盘表示同时服务于“该下哪里”和“当前局面好不好”。
+  \end{alertblock}
+\end{frame}
+
+\section{训练管线}
+
+\begin{frame}{Methods：三条异步管线}
+  AlphaGo Zero 的训练系统包括三件并行发生的事：
+
+  \begin{enumerate}
+    \item Optimize：用最近自我对弈数据优化网络参数。
+    \item Evaluate：新 checkpoint 与当前最佳网络对战。
+    \item Self-play：当前最佳网络生成新的自我对弈数据。
+  \end{enumerate}
+
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=1.0cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.85cm, minimum width=2.8cm},
+      arrow/.style={-{Latex[length=2mm]}, thick, DeepBlue}
+    ]
+      \node[box] (self) {Self-play\\生成数据};
+      \node[box, right=of self] (opt) {Optimization\\训练 checkpoint};
+      \node[box, right=of opt] (eval) {Evaluator\\选当前最佳};
+      \draw[arrow] (self) -- (opt);
+      \draw[arrow] (opt) -- (eval);
+      \draw[arrow] (eval.south) to[out=-70,in=-110] node[below]{\scriptsize best player} (self.south);
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Optimization：如何训练网络}
+  \small
+  Methods 中的关键配置：
+
+  \begin{center}
+    \begin{tabular}{@{}p{0.32\textwidth}p{0.52\textwidth}@{}}
+      \toprule
+      项目 & 配置 \\
+      \midrule
+      框架 & TensorFlow on Google Cloud \\
+      并行 & 64 GPU workers + 19 CPU parameter servers \\
+      batch size & 每 worker 32，总 mini-batch 2048 \\
+      数据来源 & 最近 500,000 盘自我对弈中的局面 \\
+      优化器 & SGD + momentum，学习率退火 \\
+      momentum & 0.9 \\
+      L2 正则 & $c=10^{-4}$ \\
+      checkpoint & 每 1,000 training steps 产生一次 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Evaluator：为什么要筛选新网络}
+  每个新 checkpoint 不是自动成为自我对弈生成器，而是先和当前最佳网络比赛。
+
+  \begin{itemize}
+    \item 每次评估 400 盘。
+    \item 每步使用 1,600 次 MCTS simulations。
+    \item 温度 $\tau \to 0$，即确定性选择访问次数最多的动作。
+    \item 新网络胜率超过 $55\%$，才替换当前最佳网络。
+  \end{itemize}
+
+  \begin{block}{直观理解}
+    自我对弈数据质量取决于玩家质量；筛选机制避免因为训练噪声让较弱网络接管数据生成。
+  \end{block}
+\end{frame}
+
+\begin{frame}{Self-play：如何产生训练棋谱}
+  每轮由当前最佳玩家生成：
+
+  \[
+    25,000 \text{ games}
+  \]
+
+  每一步：
+
+  \[
+    1,600 \text{ MCTS simulations}
+  \]
+
+  \begin{itemize}
+    \item 前 30 手：$\tau=1$，按访问次数比例采样，增加多样性。
+    \item 之后：$\tau\to0$，选择访问次数最多的动作。
+    \item 根节点加入 Dirichlet noise，鼓励探索。
+    \item 明显败势可认输；系统监控错误认输率。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{根节点 Dirichlet noise}
+  自我对弈时，根节点先验被扰动：
+
+  \[
+    P(s,a)=(1-\epsilon)p_a+\epsilon\eta_a
+  \]
+
+  \[
+    \eta \sim \operatorname{Dir}(0.03),\qquad \epsilon=0.25
+  \]
+
+  \begin{block}{为什么加噪声}
+    如果完全按当前网络和搜索偏好走，训练会过早集中到少数路线；根节点噪声让更多候选步有机会被尝试。
+  \end{block}
+
+  \begin{alertblock}{但不是乱下}
+    噪声只进入先验，MCTS 仍然可以通过搜索否决明显差的动作。
+  \end{alertblock}
+\end{frame}
+
+\section{实验结果}
+
+\begin{frame}{3 天训练结果}
+  \small
+  论文首先训练 20-block AlphaGo Zero：
+
+  \begin{itemize}
+    \item 从随机行为开始。
+    \item 训练约 3 天。
+    \item 产生 4.9 million 盘自我对弈。
+    \item 每步 1,600 simulations，约 0.4 秒思考。
+    \item 用 700,000 个 mini-batches 更新参数。
+  \end{itemize}
+
+  \begin{alertblock}{关键结果}
+    约 36 小时后超过 AlphaGo Lee；72 小时后在同等 2 小时时限条件下 100--0 击败 AlphaGo Lee。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{监督学习对比}
+  论文还训练了一个使用人类棋谱的监督学习网络，架构与 AlphaGo Zero 相同。
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{监督学习更擅长}
+        预测人类职业棋手会怎么下。
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{自我对弈更擅长}
+        下出实际赢棋能力更强的策略。
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{alertblock}{论文结论}
+    人类落子预测准确率高，不等于棋力更高；模仿人类可能给性能设置上限。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{架构消融：dual-res 胜出}
+  论文比较四类网络：
+
+  \begin{center}
+    \begin{tabular}{@{}p{0.18\textwidth}p{0.32\textwidth}p{0.32\textwidth}@{}}
+      \toprule
+      名称 & policy/value & 主干结构 \\
+      \midrule
+      dual-res & 双头单网络 & residual tower \\
+      sep-res & 两个网络 & residual tower \\
+      dual-conv & 双头单网络 & 普通卷积 \\
+      sep-conv & 两个网络 & 普通卷积 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{block}{结论}
+    AlphaGo Zero 使用的 dual-res 架构综合效果最好：共享表示 + 残差网络带来更强棋力。
+  \end{block}
+\end{frame}
+
+\begin{frame}{学出的围棋知识}
+  AlphaGo Zero 从随机走子开始，逐渐学出许多围棋概念：
+
+  \begin{itemize}
+    \item 布局 fuseki
+    \item 手筋 tesuji
+    \item 死活 life-and-death
+    \item 打劫 ko
+    \item 官子 yose
+    \item 先手 sente
+    \item 形、势力、实地
+    \item 一些传统定式和新定式变体
+  \end{itemize}
+
+  \begin{alertblock}{有趣现象}
+    征子这类人类早期学习的知识，AlphaGo Zero 反而较晚才掌握。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{40 天大模型：结果}
+  \footnotesize
+  第二个更大实例：
+
+  \begin{itemize}
+    \item 40 residual blocks。
+    \item 训练约 40 天。
+    \item 产生 29 million 盘自我对弈。
+    \item 使用 3.1 million 个 mini-batches 更新。
+  \end{itemize}
+
+  \begin{block}{最终表现}
+    在 5 秒每步的内部锦标赛中，AlphaGo Zero Elo 约 5185，高于 AlphaGo Master、AlphaGo Lee 和 AlphaGo Fan。
+  \end{block}
+
+  \begin{alertblock}{与 AlphaGo Master 对战}
+    在 100 局、2 小时时限比赛中，AlphaGo Zero 以 89--11 击败 AlphaGo Master。
+  \end{alertblock}
+
+  \begin{block}{本页比较的对象}
+    Fan / Lee / Master 是 Zero 之前的 AlphaGo 版本；它们仍使用人类棋谱起步，下一页展开训练路线。
+  \end{block}
+\end{frame}
+
+\begin{frame}{比较对象：训练路线}
+  \scriptsize
+  \begin{block}{版本身份}
+    \begin{itemize}
+      \item AlphaGo Fan：2015 年 5--0 击败 Fan Hui 的原始 AlphaGo。
+      \item AlphaGo Lee：2016 年 4--1 击败李世石的版本。
+      \item AlphaGo Master：Lee 之后更强版本，Master/Magister 在线 60 连胜。
+    \end{itemize}
+  \end{block}
+
+  \begin{center}
+    \begin{tabular}{@{}p{0.18\textwidth}p{0.72\textwidth}@{}}
+      \toprule
+      版本 & 训练方法 \\
+      \midrule
+      Fan &
+      人类棋谱监督学习得到 policy；再由自我对弈强化学习改进 policy；用自我对弈结果训练 value；MCTS 结合 policy、value 和 fast rollout。 \\
+      Lee &
+      与 Fan 类似，但训练更充分、系统规模更大；value 网络使用 AlphaGo 自身快速自我对弈结果训练，棋力显著增强。 \\
+      Master &
+      更强的网络结构、强化学习和 MCTS；但仍由人类棋谱监督学习初始化，并使用人类数据 / 特征与 \mbox{rollout}，不是 AlphaGo Zero。 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{alertblock}{和 Zero 的分界}
+    Fan / Lee / Master：先学人类，再自我改进；Zero：随机初始化，只靠自我对弈和 MCTS 产生训练目标。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{raw network 的意义}
+  论文还评估了不使用 MCTS 的 raw neural network：
+
+  \[
+    a=\arg\max_a p_a
+  \]
+
+  \begin{itemize}
+    \item 直接按网络 policy 下棋。
+    \item 不做 lookahead。
+    \item 仍然达到很高棋力，但明显弱于带 MCTS 的 AlphaGo Zero。
+  \end{itemize}
+
+  \begin{block}{说明什么}
+    神经网络已经压缩了大量棋力；MCTS 进一步把这个棋力转化成更强的局部决策。
+  \end{block}
+\end{frame}
+
+\section{与原始 AlphaGo 的关系}
+
+\begin{frame}{删掉了什么}
+  AlphaGo Zero 删除了原始 AlphaGo 中几个关键部件：
+
+  \begin{itemize}
+    \item 人类棋谱监督学习。
+    \item 手工设计输入特征。
+    \item 分离的 policy network 和 value network。
+    \item fast rollout policy。
+    \item rollout 到终局的叶节点评估。
+    \item 动态 expansion 阈值。
+  \end{itemize}
+
+  \begin{alertblock}{不是简化就变弱}
+    删除这些部件后，训练闭环更纯粹，反而得到更强的最终性能。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{保留了什么}
+  AlphaGo Zero 仍然保留 AlphaGo 的核心思想：
+
+  \begin{itemize}
+    \item 用神经网络提供局面评估和动作先验。
+    \item 用 MCTS 做前瞻搜索。
+    \item 在搜索边上维护 $P,N,Q$ 等统计量。
+    \item 最终从根节点访问次数形成落子决策。
+  \end{itemize}
+
+  \begin{block}{关键转变}
+    原始 AlphaGo：网络帮助搜索下得更好。\\
+    AlphaGo Zero：搜索反过来成为训练网络的老师。
+  \end{block}
+\end{frame}
+
+\begin{frame}{AlphaGo Zero 到 AlphaZero}
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=1.25cm,
+      box/.style={draw=DeepBlue, rounded corners, fill=SoftGray, align=center, minimum height=0.9cm, minimum width=2.8cm},
+      arrow/.style={-{Latex[length=2.2mm]}, thick, DeepBlue}
+    ]
+      \node[box] (ag) {AlphaGo\\人类数据 + rollout};
+      \node[box, right=of ag] (agz) {AlphaGo Zero\\从零学围棋};
+      \node[box, right=of agz] (az) {AlphaZero\\chess / shogi / Go};
+
+      \draw[arrow] (ag) -- (agz);
+      \draw[arrow] (agz) -- (az);
+    \end{tikzpicture}
+  \end{center}
+
+  \begin{itemize}
+    \item AlphaGo Zero 证明围棋可以从零自我学习。
+    \item AlphaZero 证明这个思想不是围棋特例。
+    \item MuZero 进一步尝试不显式给出完整环境模型。
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{AlphaZero 之后：思想线的扩展}
+  \footnotesize
+  \begin{alertblock}{主线变化}
+    围棋版 AlphaGo 基本收束；后续重点从“更强围棋程序”转向更通用的强化学习、搜索和算法发现框架。
+  \end{alertblock}
+
+  \begin{center}
+    \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.22\textwidth}>{\raggedright\arraybackslash}p{0.31\textwidth}>{\raggedright\arraybackslash}p{0.35\textwidth}@{}}
+      \toprule
+      方向 & 代表工作 & 继承 / 扩展点 \\
+      \midrule
+      通用棋类 &
+      AlphaZero &
+      把 AlphaGo Zero 推广到 chess、shogi、Go。 \\
+      学习模型 &
+      MuZero &
+      不显式给完整规则，学习可用于规划的内部模型。 \\
+      复杂游戏 &
+      AlphaStar &
+      扩展到实时、多智能体、部分可观测环境。 \\
+      算法发现 &
+      AlphaTensor / AlphaDev &
+      用搜索与强化学习发现矩阵乘法、排序、哈希等算法。 \\
+      数学推理 &
+      AlphaProof / AlphaGeometry 2 &
+      把强化学习、搜索和形式化推理用于数学问题。 \\
+      社区复现 &
+      Leela Zero / Minigo / KataGo / Lc0 &
+      把 AlphaZero 风格训练管线开源化、工程化。 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{block}{学习路线}
+    AlphaGo $\rightarrow$ AlphaGo Zero $\rightarrow$ AlphaZero $\rightarrow$ MuZero；
+    复现围棋 AI 时，再对照 MiniZero / Minigo / KataGo 等实现。
+  \end{block}
+\end{frame}
+
+\begin{frame}{AlphaFold：问题与突破}
+  \small
+  \begin{block}{问题}
+    给定蛋白质氨基酸序列，预测其三维结构；结构决定功能，是结构生物学和药物研发中的核心问题。
+  \end{block}
+
+  \begin{itemize}
+    \item AlphaFold2 在 CASP14 中达到接近实验结构的精度。
+    \item Nature 2021 论文发表，标志蛋白结构预测进入深度学习主导阶段。
+    \item 不是搜索棋局动作，而是直接预测三维结构。
+  \end{itemize}
+
+  \begin{alertblock}{关键技术关键词}
+    多序列比对 MSA、pair representation、Evoformer、structure module、recycling。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{AlphaFold：影响与诺奖}
+  \footnotesize
+  \begin{block}{影响}
+    AlphaFold 把 AI 从“会下棋”推进到“帮助理解分子世界”，成为结构生物学和药物研发的重要工具。
+  \end{block}
+
+  \begin{itemize}
+    \item AlphaFold DB：与 EMBL-EBI 合作发布大规模结构预测数据库。
+    \item AlphaFold3：Nature 2024，使用 diffusion-based architecture，扩展到蛋白、核酸、小分子、离子和修饰残基等复合物。
+  \end{itemize}
+
+  \begin{alertblock}{2024 诺贝尔化学奖}
+    一半授予 David Baker ``for computational protein design''；另一半共同授予 Demis Hassabis 和 John Jumper ``for protein structure prediction''。
+  \end{alertblock}
+
+  {\tiny Sources: Nature 2021 AlphaFold2; NobelPrize.org Chemistry 2024; Nature 2024 AlphaFold3.}
+\end{frame}
+
+\begin{frame}{AlphaFold 与 AlphaZero：先给结论}
+  \small
+  \begin{alertblock}{先给结论}
+    AlphaFold 不是 AlphaZero 工具链的直接升级；但它延续了 DeepMind 的更大路线：用神经网络、结构化表示和推理/优化机制解决专家知识密集问题。
+  \end{alertblock}
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{AlphaZero}
+        \begin{itemize}
+          \item 规则明确的决策问题。
+          \item 自我对弈产生训练数据。
+          \item MCTS 是核心机制。
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{AlphaFold}
+        \begin{itemize}
+          \item 科学结构预测问题。
+          \item 从结构数据库和序列信息学习。
+          \item 无棋局动作树，无 MCTS。
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{block}{共同思想}
+    把专家经验很强的问题转化为可学习表示；用深度网络吸收大规模数据，并结合结构化推理或优化。
+  \end{block}
+\end{frame}
+
+\begin{frame}{AlphaFold 与 AlphaZero：机制对照}
+  \footnotesize
+  \begin{center}
+    \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.22\textwidth}>{\raggedright\arraybackslash}p{0.31\textwidth}>{\raggedright\arraybackslash}p{0.35\textwidth}@{}}
+      \toprule
+      维度 & AlphaZero & AlphaFold \\
+      \midrule
+      问题类型 &
+      规则明确的序贯决策：每步选择动作。 &
+      科学预测：从序列和进化信息预测三维结构。 \\
+      训练信号 &
+      自我对弈产生 $(s,\pi,z)$。 &
+      已知结构数据库、序列/MSA、几何和物理约束。 \\
+      搜索机制 &
+      MCTS 是核心，搜索结果反过来训练网络。 &
+      无棋局动作树，无 MCTS；核心是结构预测网络和迭代 refinement。 \\
+      网络输出 &
+      policy $p$ 和 value $v$。 &
+      原子坐标、距离/几何关系、置信度等结构信息。 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{block}{直观理解}
+    AlphaZero 展示“学习 + 搜索”能掌握规则世界；AlphaFold 展示“学习 + 几何/物理约束”能解决科学结构预测。
+  \end{block}
+\end{frame}
+
+\section{复现 AlphaZero 资源评估}
+
+\begin{frame}{AlphaZero 原始训练配置}
+  \footnotesize
+  \begin{center}
+    \begin{tabular}{@{}p{0.28\textwidth}p{0.55\textwidth}@{}}
+      \toprule
+      项目 & 配置 \\
+      \midrule
+      自我对弈生成 & 5,000 个第一代 TPU \\
+      神经网络训练 & 16 个第二代 TPU \\
+      训练步数 & 700,000 steps（mini-batch 4096）\\
+      国际象棋 & $\approx$ 9 小时 \\
+      将棋 & $\approx$ 12 小时 \\
+      围棋 & $\approx$ 13 天 \\
+      对局推理 & 4 个第一代 TPU + 44 CPU cores \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{alertblock}{论文脚注 24}
+    第一代 TPU 推理速度与 Titan V GPU 大致相当。按此换算，自我对弈端约需 \textbf{5,000 块 GPU}。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{复现层级与成本}
+  \small
+  \begin{center}
+    \begin{tabular}{@{}p{0.22\textwidth}p{0.30\textwidth}p{0.34\textwidth}@{}}
+      \toprule
+      级别 & 资源 & 评价 \\
+      \midrule
+      教学复现 & 1--4 GPU，9$\times$9 小棋盘 & 可行，适合理解算法 \\
+      中等近似 & 4--8 GPU，19 路简化 & 数周至数月，业余水平 \\
+      开源众包 & 社区分布式（如 Lc0） & 已达职业/超人水平 \\
+      论文级 & 数千 GPU/TPU & $ \approx \$200\text{k-}500\text{k}$ 云费用 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \begin{block}{核心瓶颈}
+    瓶颈在\textbf{自我对弈生成}：5000 TPU 持续生成数据，占训练总成本的主要部分。只做一种棋类可压缩至约 1/3。
+  \end{block}
+
+  \begin{alertblock}{个人最现实路线}
+    参考 Leela Chess Zero 的社区分布式训练，或从 9$\times$9 简化版开始验证算法再扩展。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{9$\times$9 Go 复现：推荐路线}
+  \footnotesize
+  \begin{block}{首选：MiniZero}
+    直接支持 9$\times$9 Go，可用 \texttt{train go az} 和 \texttt{env\_board\_size=9} 跑通 AlphaZero 风格训练。
+  \end{block}
+
+  \begin{block}{对照阅读：Minigo}
+    TensorFlow / Google 风格 AlphaGo Zero 复现；README 给出 9$\times$9 的 bootstrap、selfplay、train 一轮流程，适合读训练闭环。
+  \end{block}
+
+  \begin{block}{看 PyTorch 结构：michaelnny/alpha\_zero}
+    \texttt{training\_go.py} 面向 9$\times$9 Go；结构现代，但作者报告完整训练需要较多 GPU/CPU 资源。
+  \end{block}
+
+  \begin{alertblock}{建议路线}
+    先用 MiniZero 跑通 9$\times$9 自我对弈训练；再读 Minigo / PyTorch 版本对照实现细节。
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{9$\times$9 Go 复现：资料索引}
+  \scriptsize
+  \begin{center}
+    \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.33\textwidth}>{\raggedright\arraybackslash}p{0.27\textwidth}>{\raggedright\arraybackslash}p{0.28\textwidth}@{}}
+      \toprule
+      GitHub & 项目 & 适合用途 \\
+      \midrule
+      \texttt{github.com/\allowbreak rlglab/\allowbreak minizero} &
+      MiniZero &
+      9 路 AlphaZero 训练起点。 \\
+      \texttt{github.com/\allowbreak tensorflow/\allowbreak minigo} &
+      Minigo &
+      读清 AGZ 训练闭环。 \\
+      \texttt{github.com/\allowbreak michaelnny/\allowbreak alpha\_zero} &
+      PyTorch AlphaZero &
+      看现代 PyTorch 实现。 \\
+      \texttt{github.com/\allowbreak google-deepmind/\allowbreak open\_spiel} &
+      OpenSpiel &
+      研究通用博弈框架。 \\
+      \texttt{github.com/\allowbreak leela-zero/\allowbreak leela-zero} &
+      Leela Zero &
+      成熟 Go 引擎。 \\
+      \texttt{github.com/\allowbreak Tencent/\allowbreak PhoenixGo} &
+      PhoenixGo &
+      强棋力复现参考。 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\end{document}

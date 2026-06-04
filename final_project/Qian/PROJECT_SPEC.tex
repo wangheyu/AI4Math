@@ -68,7 +68,7 @@
 \maketitle
 
 \begin{abstract}
-\noindent 本项目要求学生在钱学森《星际航行概论》（2008 版）第 5--6 章建立的拼接圆锥曲线理论基础上，扩展求解一个完整的工程级行星际轨道问题：火箭从地球出发，借助月球引力做一次速度修正，进入日心椭圆转移轨道；绕过太阳后返回与地球相遇。学生需在 2026 年一年周期内搜索使总速度增量最小的发射窗口。项目融合理论建模、数值仿真、JPL Horizons 历表对比、参数优化与 AI 辅助开发五个层面，是对本课程主要技能的综合考核。
+\noindent 本项目要求你在钱学森《星际航行概论》（2008 版）第 5--6 章建立的拼接圆锥曲线理论基础上，扩展求解一个完整的工程级行星际轨道问题：火箭从地球出发，借助月球引力做一次速度修正，进入日心椭圆转移轨道；绕过太阳后返回与地球相遇。你需要在 2026 年一年周期内搜索使总速度增量最小的发射窗口。
 \end{abstract}
 
 \tableofcontents
@@ -82,7 +82,7 @@
 学院       & 浙江大学数学科学学院 \\
 学期       & 2025--2026 春季 \\
 项目形式   & \textbf{个人项目}，不允许团队合作 \\
-截止日期   & \textbf{考试周前一天 23:59} \\
+截止日期   & \textbf{2026 年 7 月 4 日 23:59}（以 Gitea 服务器 push 时间戳为准） \\
 \end{tabular}
 
 % ============================================================
@@ -98,22 +98,7 @@
     \item 未做与真实历表（如 JPL Horizons）的数值对照。
 \end{enumerate}
 
-本项目要求在钱先生的理论基础上，借助现代数值方法和真实历表数据，\textbf{补齐上述三项扩展}。
-
-% ============================================================
-\section{学习目标}
-
-完成本项目后，学生应能够：
-
-\begin{enumerate}[label=\textbf{L\arabic*.},leftmargin=*]
-    \item \textbf{理论建模}：将钱学森的拼接圆锥曲线法扩展到含月球借力的三段轨道；
-    \item \textbf{数值仿真}：用合适的数值积分方法实现 N-体引力问题的稳定数值传播；
-    \item \textbf{历表数据}：调用 JPL Horizons 系统获取真实天体星历，并与数值仿真对比；
-    \item \textbf{优化算法}：在一年周期内做参数扫描与精化，求解最优发射窗口；
-    \item \textbf{科学计算实践}：编写可重现、可验证、模块化的科学计算代码；
-    \item \textbf{AI 辅助开发}：使用 Claude Code、Cursor 等 AI 工具辅助代码编写与调试，并如实记录；
-    \item \textbf{学术写作}：用 LaTeX 撰写规范的学术报告，含公式、图表、文献引用。
-\end{enumerate}
+本项目要求你在钱先生的理论基础上，借助现代数值方法和真实历表数据，\textbf{补齐上述三项扩展}。
 
 % ============================================================
 \section{问题陈述}
@@ -183,7 +168,7 @@ $r_p$  & $[2R_{\text{sun}},\;0.4r_1]$ & 日心椭圆的近日点距离 \\
 \subsection{推荐数值方法}
 
 \begin{itemize}[leftmargin=*]
-    \item \textbf{积分器（推荐）}：Velocity-Verlet（2 阶辛积分器），主步长 $h = 3600$\,s，事件细化阶段可减至 $h = 60$\,s。学生可自行选择其他积分方案（如 RK4、辛 Yoshida 4 阶等），但须在报告中说明选择理由与守恒性验证；
+    \item \textbf{积分器（推荐）}：Velocity-Verlet（2 阶辛积分器），主步长 $h = 3600$\,s，事件细化阶段可减至 $h = 60$\,s。你可自行选择其他积分方案（如 RK4、辛 Yoshida 4 阶等），但须在报告中说明选择理由与守恒性验证；
     \item \textbf{优化算法（推荐）}：外层 365 个发射日期粗扫描 + 内层 $(r_m, r_p)$ 参数网格 + 黄金分割/二分精化；
     \item \textbf{守恒量监测（推荐）}：每 1000 步检查总能量与角动量相对漂移并记录日志。
 \end{itemize}
@@ -201,14 +186,14 @@ $r_p$  & $[2R_{\text{sun}},\;0.4r_1]$ & 日心椭圆的近日点距离 \\
 % ============================================================
 \section{必做项}
 
-学生必须完成以下各项。任何一项缺失或不达标，将\textbf{酌情扣分}。
+你必须完成以下各项。任何一项缺失或不达标，将\textbf{酌情扣分}。
 
 \begin{description}[leftmargin=2.5em,style=nextline]
     \item[M1\,拼接圆锥曲线代码化] 把现有 \texttt{report.tex} §3--§5 的步骤一至步骤六编码化为可调用的函数，输入近日距 $r_p$、地球轨道半径 $r_1$、日心引力常数 $K_s$，输出椭圆轨道根数与速度增量。要求与现 $r_p=0.2$\,AU 算例数值偏差 $\le 0.1\%$。
 
     \item[M2\,N-体数值积分器] 实现 Sun-Earth-Moon-Rocket 四体的数值积分模块，提供加速度计算、单步推进、整段传播三个核心接口。在二体圆轨道基准（$\mu = 4\pi^2$，无量纲）上验证 1 年内位置相对误差 $\le 10^{-4}$。
 
-    \item[M3\,JPL Horizons 历表对照] 仅用 N-体传播 Sun-Earth-Moon 一年，与 JPL Horizons 历表对比，输出每日位置与速度残差，要求所有天体位置残差 $\le 1000$\,km。
+    \item[M3\,JPL Horizons 历表对照] 仅用 N-体传播 Sun-Earth-Moon 一年，与 JPL Horizons 历表对比，输出每日位置与速度残差，要求所有天体位置残差 $\le 6000$\,km。
 
     \item[M4\,月球借力解析与数值实现] 实现月球借力的解析公式（双曲线偏折）与数值仿真两套实现，并对比验证。
 
@@ -218,7 +203,7 @@ $r_p$  & $[2R_{\text{sun}},\;0.4r_1]$ & 日心椭圆的近日点距离 \\
 
     \item[M7\,灵敏度与误差分析] 围绕最优解做近月距、发射日期偏移、积分步长三方面的灵敏度/收敛性分析。
 
-    \item[M8\,可视化与展示] 生成静态图（轨道、能量守恒、扫描曲线、残差等）与一段 30--60 秒的轨道动画 MP4，含关键事件 zoom-in。
+    \item[M8\,可视化与展示] 生成静态图（轨道、能量守恒、扫描曲线、残差等）。
 \end{description}
 
 \begin{warnbox}[关于 Horizons 查询]
@@ -239,19 +224,21 @@ $r_p$  & $[2R_{\text{sun}},\;0.4r_1]$ & 日心椭圆的近日点距离 \\
 
     \item[O4\,多次借力] 探索 Earth $\to$ Moon $\to$ Venus $\to$ Sun $\to$ Earth 等更复杂的多次借力轨道。
 
-    \item[O5\,实时交互演示] 仿照 \texttt{week9/src/two\_body\_realtime.py} 风格做一个 Tkinter 或 Web 实时交互演示。
+    \item[O5\,轨道动画] 生成一段 30--60 秒的轨道动画 MP4，含关键事件 zoom-in。
 
-    \item[O6\,其他创新] 任何与项目主题相关、有思考深度的扩展（如机器学习辅助轨道设计、并行计算加速扫描等）。
+    \item[O6\,实时交互演示] 仿照 \texttt{week9/src/two\_body\_realtime.py} 风格做一个 Tkinter 或 Web 实时交互演示。
+
+    \item[O7\,其他创新] 任何与项目主题相关、有思考深度的扩展（如机器学习辅助轨道设计、并行计算加速扫描等）。
 \end{description}
 
 % ============================================================
 \section{致谢要求}\label{sec:credits}
 
-报告须包含独立的\textbf{致谢}章节，如实声明以下两类信息：
+报告须包含独立的\textbf{致谢}章节，你需要如实声明以下两类信息：
 
 \subsection{他人帮助的声明}
 
-虽然本项目是\textbf{个人项目，不允许团队合作}，但学生可以从同学、助教、网络论坛等渠道获得概念性讨论或调试建议。\textbf{凡获得他人帮助者必须在致谢中声明}，例如：
+虽然本项目是\textbf{个人项目，不允许团队合作}，但你可以从同学、助教、网络论坛等渠道获得概念性讨论或调试建议。\textbf{凡获得他人帮助者必须在致谢中声明}，例如：
 
 \begin{lstlisting}
 感谢同学 XXX 与我讨论了月球 SOI 边界的坐标变换公式；
@@ -261,7 +248,7 @@ $r_p$  & $[2R_{\text{sun}},\;0.4r_1]$ & 日心椭圆的近日点距离 \\
 
 \subsection{AI 工具使用声明}
 
-允许使用 AI 工具，但\textbf{必须如实声明使用了哪些工具、提供了什么帮助}。声明粒度需具体到模块或步骤，例如：
+允许使用 AI 工具，但\textbf{必须如实声明你使用了哪些工具、它们提供了什么帮助}。声明粒度需具体到模块或步骤，例如：
 
 \begin{lstlisting}
 - Claude Code (Opus 4.7)：协助设计 `nbody.py` 的接口；生成 TikZ 图初稿；
@@ -276,12 +263,35 @@ $r_p$  & $[2R_{\text{sun}},\;0.4r_1]$ & 日心椭圆的近日点距离 \\
 % ============================================================
 \section{交付物}\label{sec:deliverables}
 
+\subsection{提交方式（Git 仓库）}
+
+本项目\textbf{不再接收压缩包}，统一通过 Git 提交至课程 Gitea 服务器。
+
+\begin{notebox}[仓库地址]
+\begin{itemize}[leftmargin=*,nosep]
+    \item \textbf{Gitea 服务器}：\url{http://10.72.190.121:3000/}
+    \item \textbf{仓库地址}：\texttt{http://10.72.190.121:3000/<学号>/FinalProject.git}
+    \item \textbf{账户名}：\textbf{必须为本人学号}（例如 \texttt{323011xxxx}），不得使用姓名拼音、昵称或其他形式
+\end{itemize}
+\end{notebox}
+
+\textbf{提交流程}：
+
+\begin{enumerate}[leftmargin=*,nosep]
+    \item 在 Gitea 上创建名为 \texttt{FinalProject} 的新仓库；\textbf{必须选择 \texttt{私有 (Private)}}，否则代码泄露后果自负；
+    \item 本地项目根目录初始化 \texttt{git init}，配置好 \texttt{.gitignore}（排除 \texttt{build/}、\texttt{*.aux}、\texttt{*.log}、大体积中间数据等）；
+    \item 将代码、文档、Makefile 等组织成如下目录结构；
+    \item 通过 \texttt{git push} 将最终提交版本推送至 Gitea 远端 \texttt{main}（或 \texttt{master}）分支；
+    \item \textbf{以 Gitea 服务器端记录的最接近 DDL（2026-07-04 23:59）的 \texttt{push} 时间作为提交时间}。超出 DDL 的 \texttt{push} 不予接收。
+\end{enumerate}
+
 \subsection{目录结构}
 
-提交一个压缩包 \texttt{学号\_姓名\_FinalProject.zip}，根目录\textbf{仅含}以下内容（多余文件请勿提交）：
+仓库根目录\textbf{仅含}以下内容（多余文件请勿提交，请在 \texttt{.gitignore} 中排除）：
 
 \begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-学号_姓名_FinalProject/
+FinalProject/
+├── .gitignore      排除 build/、*.aux、*.log、大体积数据等
 ├── report.tex      LaTeX 报告源文件
 ├── Makefile        构建脚本：make all 须生成 PDF + 图表 + 视频
 ├── README.md       5 分钟内可重现的运行说明
@@ -303,12 +313,13 @@ $r_p$  & $[2R_{\text{sun}},\;0.4r_1]$ & 日心椭圆的近日点距离 \\
 
 \texttt{make clean} 须清理所有生成文件。
 
-\subsection{大小与页数上限}
+\subsection{仓库大小与页数上限}
 
 \begin{itemize}[leftmargin=*]
-    \item \textbf{提交压缩包（make 前）}：$\le 50$\,MB；
+    \item \textbf{Git 仓库总大小（make 前，即未编译时）}：$\le \mathbf{10}$\,MB（请在 \texttt{.gitignore} 中排除 \texttt{build/}、\texttt{checkpoints/}、大体积 \texttt{.mp4}、\texttt{.json} 缓存等）；
     \item \textbf{\texttt{report.pdf}（make 后）}：$\le 40$ 页；
-    \item 超出上限的提交不予评分。必要时请精简代码、压缩数据缓存、控制图片分辨率。
+    \item 超出上限的提交不予评分。必要时请精简代码、压缩数据缓存、控制图片分辨率；
+    \item \textbf{严禁将大文件（如模型权重、完整历表原始数据）\texttt{git add} 进仓库}，否则会拖慢助教克隆速度。
 \end{itemize}
 
 % ============================================================
@@ -421,9 +432,9 @@ vec = obj.vectors()           # 返回 astropy Table, AU, AU/day
 
 \begin{center}
 \Large\bfseries\color{warn}
-考试周前一天 23:59
+2026 年 7 月 4 日 23:59（以 Gitea 服务器 push 时间戳为准）
 \end{center}
 
-逾期提交不予接收。建议预留至少 3 天进行最终编译测试与 \texttt{make all} 流程验证，避免临近 DDL 出现环境问题。
+超出 DDL 的 \texttt{git push} 将被忽略，不予评分。建议预留至少 3 天进行最终编译测试与 \texttt{make all} 流程验证，避免临近 DDL 出现环境问题。
 
 \end{document}
