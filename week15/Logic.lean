@@ -50,7 +50,7 @@ Lean 文件中有三类内容最常见：
 #eval "hello"
 #eval true
 /- 定义一个自然数常量，x 的值在之后的计算中不能修改-/
-def x : Nat := 42
+def x : Int := 42
 #eval x
 
 /-
@@ -97,7 +97,8 @@ def x : Nat := 42
 /-这是一个命题-/
 #check (∀ n : Nat, n = n)
 /-但 #eval 无法求值，因为这里全称量词作用对象 Nat 是无限的，无法形成一个可计算的判定-/
-#eval (∀ n : Nat, n = n)
+-- #eval 无法判定全称量词命题的可计算性，这里应该用 #check
+-- #eval (∀ n : Nat, n = n)
 
 /-!
 ===============================================================================
@@ -122,7 +123,7 @@ def x : Nat := 42
 Lean 的基本任务就是检查“某个项是否真的属于某个类型”。
 -/
 
-#check (0 : Nat)
+#check (0 : Int)
 #check (42 : Nat)
 #check (-3 : Int)
 #check (true : Bool)
@@ -217,6 +218,8 @@ def addOne (n : Nat) : Nat :=
 /-但本质上这样的函数类型是 Nat → Nat-/
 #check (addOne : Nat → Nat)
 
+#check Nat -> Nat
+
 /-!
 在 VS Code 的 Message/Infoview 中，`#check addOne` 可能显示为：
 
@@ -249,10 +252,10 @@ def addTwoNumbers (a b : Nat) : Nat :=
 /-函数参数不用加括号-/
 #eval addTwoNumbers 3 4
 #eval addTwoNumbers (3) (4)
-/-这个是错误的-/
-#eval addTwoNumbers (3 4)
+/-这个是错误的，addTwoNumbers 需要一个函数，但 (3 4) 尝试将 3 当作函数使用 -/
+-- #eval addTwoNumbers (3 4)
 
-#check addTwoNumbers
+#check (addTwoNumbers : Nat → Nat → Nat)
 
 /-!
 `addTwoNumbers` 的类型大致是：
@@ -294,7 +297,7 @@ def addTwoNumbers (a b : Nat) : Nat :=
 
 /-!
 ===============================================================================
-第 3 章：命题也是类型
+第 3 章：命题也是类型 Prop
 ===============================================================================
 
 现在进入逻辑。
@@ -305,13 +308,14 @@ def addTwoNumbers (a b : Nat) : Nat :=
   “3 < 1” 是一个命题。
   “所有自然数都等于自己” 是一个命题。
 
-命题可能真，也可能假。
+"命题可能真，也可能假。"
 
 在 Lean 中，命题的类型叫 `Prop`。
 -/
 
-#check True
-#check False
+#check true
+#check True   -- true
+#check False  -- false
 #check (2 + 2 = 4)
 #check (3 < 1)
 #check (0 = 0)
@@ -377,7 +381,7 @@ def addTwoNumbers (a b : Nat) : Nat :=
 
 #check (true : Bool)
 #check (True : Prop)
-#check (True.intro : True)
+#check (True.intro : True)  -- 5 : NAT
 #check (fun _ : Unit => True.intro)
 
 #check Prop
@@ -480,7 +484,7 @@ def addZeroByRfl (n : Nat) : n + 0 = n :=
 
 `rfl` 还可以证明：
 
-  n + 0 = n
+  n + 0 = n  ->   n = n
 
 这是因为 Lean 中自然数加法 `Nat.add` 的定义会对第二个参数递归。
 当第二个参数是 `0` 时，`n + 0` 会按定义直接化简成 `n`。
@@ -505,7 +509,7 @@ def proofTwoPlusTwo : 2 + 2 = 4 :=
 
 -- 取消下面这个定义的注释会报错：`rfl` 不能直接证明这个方向。
 -- def zeroAddByRflFails (n : Nat) : 0 + n = n :=
---   rfl
+--  rfl
 
 /-当然也有复杂的情况，需要使用归纳法或其他策略来证明。这个证明我们先不需要了解它的每一个细节：-/
 
@@ -513,7 +517,7 @@ theorem zeroAddByInduction (n : Nat) : 0 + n = n := by
   induction n with
   | zero =>
       rfl
-  | succ n ih =>
+  | succ n ih =>  -- 0 + (n + 1) = n + 1
       simp [ih]
 
 
@@ -658,6 +662,8 @@ def contradictionExample (h : 1 = 2) : False := by
 Lean 中很多类型是 inductive type（归纳类型）。
 归纳类型通过列出“构造器”来说明怎样制造它的值。
 -/
+
+-- Unit 是一个只有一个值的类型，叫 ()。
 
 inductive MyUnit : Type where
   | unit : MyUnit
@@ -880,7 +886,7 @@ def MycontradictionExample (h : 1 = 2) : MyEmpty := by
 def trueProofAgain : True :=
   True.intro
 
-def anotherTrueProof : True :=
+def anotherTrueProof : True := by
   trivial
 
 /-!
@@ -905,7 +911,8 @@ def anotherTrueProof : True :=
 
 逻辑中：
 
-  P → Q
+  P → Q  , 已知P成立，那么 Q 成立。
+            p : P, 从 p 构建 Q 的证据. ->  T(p) : Q
 
 读作“如果 P，那么 Q”。
 
@@ -921,6 +928,8 @@ Lean 把这两件事统一起来：
 def identityFunctionOnNat : Nat → Nat :=
   fun n => n
 
+-- n : Nat -> n : Nat
+
 #eval identityFunctionOnNat 5
 
 /-!
@@ -930,10 +939,12 @@ def identityFunctionOnNat : Nat → Nat :=
   输出 n : Nat
 
 现在看逻辑函数：命题 P 总是蕴含命题 P 自己。
+P -> P
 -/
 
 def identityProof (P : Prop) : P → P :=
   fun p => p
+   -- 已知P成立，则P有证明p, 那么p 也是 P的证明
 
 #check identityProof
 
@@ -962,10 +973,18 @@ def identityProof (P : Prop) : P → P :=
 这就是最基本的推理规则：假设可以直接使用。然后返回我要的结果类型的项，即完成了证明。
 -/
 
-/-在Hibert公理体系中，P->(Q->P) 是一个公理 -/
-def ignoreSecondProof (P Q : Prop) : P → Q → P :=
-  fun p _q => p
 
+
+/-在Hibert公理体系中，P->(Q->P) 是一个公理 -/
+-- P -> Q -> P, (p: P, q: Q) -> p : P
+
+-- 已知 P 成立，那么如果 Q 成立，那么 P 成立。
+-- 核心要掉是证明 P 成立，而已知条件是 P, Q 都成立。
+-- 因此证明的目标是从 P, Q 的证明中得到 P 的证明。
+def ignoreSecondProof (P Q : Prop) : P → Q → P := -- (p, q) ↦  p
+  fun p _q => p   -- 这里 p 和 _q 自动匹配两个已知的证明，p : P, _q : Q
+                  -- 因为我们不需要 Q 的证明，所以用 _q 来表示这个参数存在但不使用它。
+                  -- 如果不写下划线，Lean 会警告你，因为它会认为你忘了使用这个参数。
 /-!
 `P → Q → P` 读作：
 
@@ -976,13 +995,18 @@ def ignoreSecondProof (P Q : Prop) : P → Q → P :=
   输入 p : P (已知 P 成立)
   输入 _q : Q (已知 Q 成立，但我们不需要它)
   返回 p (找到了 P 的成立的证据)
-
-`_q` 前面的下划线表示：这个参数存在，但我不使用它。如果不写下划线会有一个警告，
-因为 Lean 会认为你忘了使用这个参数。
 -/
 
-def implicationTransitive (P Q R : Prop) : (P → Q) → (Q → R) → (P → R) :=
-  fun pq qr p => qr (pq p)
+-- 已知 P->Q 和 Q->R 成立，求证 P->R，即求证如果 P 成立，则 Q 成立。 （传递性）
+-- 因此已知条件其实是 P->Q, Q->R, P 成立，证明目标是 R 成立。
+-- pq : (P → Q) → qr : (Q → R) → p : P →  ??? R
+def implicationTransitive (P Q R : Prop) : (P → Q) → (Q → R) → P → R :=
+  fun pq qr p => qr (pq p)  -- pq 匹配到 P->Q 的证明，qr 匹配到 Q->R 的证明，p 匹配到 P 的证明
+                            -- pq 是 P -> Q 的证明，同时也是 P -> Q 的函数，因此 pq p 是 Q 的证明
+                            -- qr 是 Q -> R 的证明，同时也是 Q -> R 的函数，因此 qr (pq p) 就是是 R 的证明
+-- pq : P → Q, (pq p) : Q
+-- qr (pq p) -> r: R
+
 
 /-!
 这是蕴含传递：
@@ -1001,27 +1025,40 @@ def implicationTransitive (P Q R : Prop) : (P → Q) → (Q → R) → (P → R)
   qr (pq p) : R (已知 pq p : Q，qr 可以把它变成 R 的证明，因此 qr (pq p) 是 R 的证明)
 
 所以 `fun pq qr p => qr (pq p)` 就是整个定理的证明。
+
+总结一下，命题即类型，证明即通过已知条件的证明（项），用函数来表达逻辑推理，最终得到结论的一个证明（项）。
 -/
 
 
 /-!
 ===============================================================================
-第 9 章：用 theorem 写同样的东西
+第 9 章：用 theorem 和 example 写同样的东西
 ===============================================================================
 
-`def` 和 `theorem` 在这里的差别主要是意图：
+`def`、`theorem` 和 `example` 在这里的差别主要是意图：
 
   def     常用于定义数据或函数。
   theorem 常用于声明“这是一个命题的证明”。
+  example 常用于临时展示一个命题可以被证明，但不给它起全局名字。
 
-下面两个写法表达的证明非常接近。
+下面三个写法表达的证明非常接近。
 -/
 
+/-命题映射的角度看，函数即证明-/
 def idAsDef (P : Prop) : P → P :=
   fun p => p
 
+/-一个命题间的映射对应我们经典逻辑中的定理-/
 theorem idAsTheorem (P : Prop) : P → P :=
   fun p => p
+
+/-省略了定理名或函数名，就是 example，它可以用来快速展示一个命题（一条逻辑链）可以被证明，
+但不给它起全局名字。-/
+example (P : Prop) : P → P :=
+  fun p => p
+
+
+
 
 #check idAsDef
 #check idAsTheorem
@@ -1029,8 +1066,22 @@ theorem idAsTheorem (P : Prop) : P → P :=
 /-!
 Lean 关心的是右边是否真的构造出了左边类型要求的项。
 如果左边是一个命题，那么右边就是这个命题的证明。
+
+`example` 的特点是：Lean 会检查这个证明，但不会把它注册成一个
+可以在后面用名字调用的定理。它非常适合讲义、草稿和小练习。
+
+例如下面这个命题通过检查后，后面并没有一个叫 `thisExample` 的全局名字：
 -/
 
+example : 2 + 2 = 4 :=
+  rfl
+
+/-!
+所以你可以频繁使用 `example` 来确认自己理解的推理规则，而不用担心污染全局命名空间：
+-/
+
+example (P Q : Prop) : P → Q → P :=
+  fun p _q => p
 
 /-!
 ===============================================================================
@@ -1046,6 +1097,10 @@ Lean 也允许你用 tactic（策略）一步步构造证明。
 theorem idByTactic (P : Prop) : P → P := by
   intro p  -- 已知 P 成立，得到一个证明 p : P
   exact p  -- 直接用 p 作为证明完成目标
+
+example (P : Prop) : P → P := by
+  intro p
+  exact p
 
 /-!
 解释：
@@ -1073,8 +1128,8 @@ theorem idByTactic (P : Prop) : P → P := by
 -/
 
 theorem transByTactic (P Q R : Prop) : (P → Q) → (Q → R) → P → R := by
-  intro pq
-  intro qr
+--  intro pq qr p
+  intro pq qr
   intro p
   exact qr (pq p)
 
@@ -1084,8 +1139,8 @@ theorem transByTactic (P Q R : Prop) : (P → Q) → (Q → R) → P → R := by
   假设 pq : P → Q
   假设 qr : Q → R
   假设 p  : P
-  那么 pq p 得到 Q
-  再用 qr 得到 R
+  那么 pq p 是 Q 的证明
+  而 qr (pq p) 就是 R 的证明
 -/
 
 
@@ -1100,15 +1155,16 @@ theorem transByTactic (P Q R : Prop) : (P → Q) → (Q → R) → P → R := by
 
 要证明 `P ∧ Q`，必须同时给出：
 
-  P 的证明
-  Q 的证明
+  p : P 的证明
+  q :Q 的证明
 
 Lean 中 `P ∧ Q` 的构造器是 `And.intro`。
 -/
 
+-- 已知 P 和 Q 都成立，那么 P ∧ Q 也成立。
 def makeAnd (P Q : Prop) : P → Q → P ∧ Q :=
-  fun p q => And.intro p q
-
+  fun p q => And.intro p q  -- 这里 p : P 是 P 的证明，q : Q 是 Q 的证明
+                            -- 因此 And.intro p q 就是 P ∧ Q 的证明
 
 /-!
 也可以写成尖括号：
@@ -1121,10 +1177,17 @@ def makeAnd (P Q : Prop) : P → Q → P ∧ Q :=
 def makeAndShort (P Q : Prop) : P → Q → P ∧ Q :=
   fun p q => ⟨p, q⟩
 
+example (P Q : Prop) (p : P) (q : Q) : P ∧ Q :=
+  ⟨p, q⟩
+
+example (P Q : Prop) : P -> Q -> P ∧ Q := by
+  intro p q
+  exact ⟨p, q⟩
+
 /-!
 如果已有：
 
-  h : P ∧ Q
+  h : P ∧ Q   -> P 成立且 Q 成立
 
 那么可以取出左边证明和右边证明：
 
@@ -1135,11 +1198,23 @@ def makeAndShort (P Q : Prop) : P → Q → P ∧ Q :=
 def takeLeft (P Q : Prop) : P ∧ Q → P :=
   fun h => h.left
 
+example (P Q : Prop) : P ∧ Q → P := by
+  intro h
+  exact h.left
+
 def takeRight (P Q : Prop) : P ∧ Q → Q :=
   fun h => h.right
 
 def andCommutative (P Q : Prop) : P ∧ Q → Q ∧ P :=
   fun h => ⟨h.right, h.left⟩
+
+example (P Q : Prop) (h : P ∧ Q) : Q ∧ P :=
+  ⟨h.right, h.left⟩
+
+example (P Q : Prop) : P ∧ Q → Q ∧ P := by
+  intro h
+  exact ⟨h.right, h.left⟩
+
 
 /-!
 这就是合取交换律：
@@ -1151,13 +1226,21 @@ def andCommutative (P Q : Prop) : P ∧ Q → Q ∧ P :=
 /-策略 (tactic) 的动机不是让证明更加简单，而是提供另一种构造证明的方式，
 让证明更加直观，可读。-/
 
+/-比上面的 example 更加详细的策略版 -/
 theorem andCommutativeByTactic (P Q : Prop) : P ∧ Q → Q ∧ P := by
   intro h  -- 已知 P ∧ Q 有证据 h
-  constructor  -- 有定义，需证 Q 和 P 都成立，所以拆成两个小目标：
+  constructor  -- 由定义，需证 Q 和 P 都成立，所以拆成两个小目标：
                -- 1. 证明 Q
                -- 2. 证明 P
   exact h.right  -- h.right 是 Q 的证明，完成第一个小目标
   exact h.left   -- h.left 是 P 的证明，完成第二个小目标
+
+/- 详略由人 -/
+example (P Q : Prop) : P ∧ Q → Q ∧ P := by
+  intro h
+  constructor
+  exact h.right
+  exact h.left
 
 /-!
 策略版解释：
@@ -1202,6 +1285,8 @@ Lean 中有两个构造器：
 
   Or.inl p : P ∨ Q     如果你有 p : P
   Or.inr q : P ∨ Q     如果你有 q : Q
+
+都可以作为 P ∨ Q 的证明。
 -/
 
 def makeOrLeft (P Q : Prop) : P → P ∨ Q :=
@@ -1209,6 +1294,17 @@ def makeOrLeft (P Q : Prop) : P → P ∨ Q :=
 
 def makeOrRight (P Q : Prop) : Q → P ∨ Q :=
   fun q => Or.inr q
+
+example (P Q : Prop) (p : P) : P ∨ Q :=
+  Or.inl p
+
+example (P Q : Prop) (q : Q) : P ∨ Q :=
+  Or.inr q
+
+example (P Q : Prop) : Q → P ∨ Q := by
+  intro q
+  exact Or.inr q
+
 
 /-!
 使用析取时，必须分情况讨论：
@@ -1236,12 +1332,20 @@ def useOr (P Q R : Prop) : P ∨ Q → (P → R) → (Q → R) → R :=
 如果 h 是 `Or.inr q`，说明有 q : Q，于是 `qr q : R`。
 -/
 /-tactic 写法，注意连词是我脑补的，lean 不需要连词-/
+/-cases 这个策略相当于说，需要讨论-/
 theorem useOrByTactic (P Q R : Prop) (h : P ∨ Q) (pr : P → R) (qr : Q → R) : R := by
   cases h with  -- 很直接吧，对 h 的来源讨论
   | inl p =>      -- 若 h 是 inl p，说明有 p : P
       exact pr p    -- 则 pr p 是 R 的证明
   | inr q =>      -- 若 h 是 inr q，说明有 q : Q
       exact qr q    -- 则 qr q 是 R 的证明
+
+example (P Q R : Prop) (h : P ∨ Q) (pr : P → R) (qr : Q → R) : R := by
+  cases h with
+  | inl p =>
+      exact pr p
+  | inr q =>
+      exact qr q
 
 /-!
 `cases h` 对 h 的来源做情况分析。
@@ -1295,6 +1399,7 @@ Lean 的 `False.elim f` 表示：
 def falseImpliesTrue : False → True :=
   fun f => False.elim f
 
+-- 什么妖魔鬼怪都可以
 def falseImpliesAnyNat : False → Type 22 :=
   fun f => False.elim f
 
@@ -1312,6 +1417,7 @@ def falseImpliesAnyNat : False → Type 22 :=
 ===============================================================================
 
 `¬ P` 读作“非 P”。
+
 
 在 Lean 中，否定不是一个神秘的新概念。
 它只是下面这个函数类型的简写：
@@ -1331,7 +1437,8 @@ def falseImpliesAnyNat : False → Type 22 :=
 #check Not
 #check (Not : Prop → Prop)
 
-#eval (Not True) = False
+-- #eval 无法评估 Prop 级别的相等性，这里应该用 #check
+#check (Not True) = False
 
 -- ¬P 是 P → False 的简写
 -- ¬ False 就是 False → False 的简写
@@ -1360,9 +1467,12 @@ example : False -> False := fun f => f
   fun f => f
 -/
 
--- 自相矛盾(P ∧ ¬P)蕴含 False
+-- 自相矛盾(P ∧ ¬P) 蕴含 False
 def contradictionFromPAndNotP (P : Prop) : P ∧ ¬ P → False :=
   fun h => h.right h.left -- h.right 作用在 h.left 上，得到 False，二者不可交换
+
+example (P : Prop) (h : P ∧ ¬ P) : False :=
+  h.right h.left
 
 /-!
 逐步看：
@@ -1380,15 +1490,18 @@ def contradictionFromPAndNotP (P : Prop) : P ∧ ¬ P → False :=
   h.right h.left : False
 -/
 
-/-! 上面的命题的另一种写法就是排中律 em -/
+/-! 上面的命题的另一种写法就是排中律 em 。-/
 def notBothPAndNotP (P : Prop) : ¬ (P ∧ ¬ P) :=
   --要证 P ∧ ¬ P -> False
+  fun h => h.right h.left
+
+example (P : Prop) : ¬ (P ∧ ¬ P) :=
   fun h => h.right h.left
 
 /-!
 这就是矛盾律的一种形式：
 
-  P 和 非 P 不可能同时成立。
+  任何命题，P 和 非 P 不可能同时成立。
 -/
 
 
@@ -1409,18 +1522,42 @@ def notBothPAndNotP (P : Prop) : ¬ (P ∧ ¬ P) :=
 Lean 中可以用 `Iff.intro` 构造等价。
 -/
 
+-- 我们可以用 #print 来观察一个结构的内部构造
+#print Iff
+-- Iff 的构造器 intro (函数)需要有两个参数，一个提供 P → Q 的证明，另一个提供 Q → P 的证明
+
+-- 证明 P <-> P
 def iffRefl (P : Prop) : P ↔ P :=
-  Iff.intro
-    (fun p => p)
+  Iff.intro  -- 直接给构造
+    (fun p => p)  -- P -> P 的证明
+    (fun p => p)  -- P <- P 的证明
+
+-- 回顾： P -> P 的证明是 fun p => p
+example (P : Prop) : P -> P :=
     (fun p => p)
 
+-- 证明 P <-> Q 蕴含 Q <-> P
 def iffSymmExample (P Q : Prop) : (P ↔ Q) → (Q ↔ P) :=
-  fun h => Iff.intro h.mpr h.mp
+  fun h => Iff.intro h.mpr h.mp   -- h 是 P ↔ Q 的证明，h.mp 是 P -> Q 的证明，h.mpr 是 Q -> P 的证明
+                                  -- 现在要从 h 提供一个 Q ↔ P 的证明，所以需要提供 Q -> P 和 P -> Q 的证明
+                                  -- Q -> P 的证明就是 h.mpr，P -> Q 的证明就是 h.mp
 
+-- h:(P  ↔ Q), h.mp : P -> Q, h.mpr : Q -> P
+-- Q  ↔ P,  intro 需要 Q -> P 和 P -> Q 的证明, 分别是： h.mpr 和 h.mp
+-- 可以更进一步，证明 P <-> Q 当且仅当 Q <-> P
+
+example (P Q : Prop) : (P ↔ Q) ↔ (Q ↔ P) :=
+  Iff.intro
+    (fun h => Iff.intro h.mpr h.mp)
+    (fun h => Iff.intro h.mpr h.mp)
+
+-- 自己理解一下？
 def andCommIff (P Q : Prop) : P ∧ Q ↔ Q ∧ P :=
   Iff.intro
     (fun h => ⟨h.right, h.left⟩)
     (fun h => ⟨h.right, h.left⟩)
+
+
 
 /-!
 如果：
@@ -1450,6 +1587,12 @@ def andCommIff (P Q : Prop) : P ∧ Q ↔ Q ∧ P :=
 
 在 Lean 中，全称量词本质上是依赖函数类型。
 
+也就是说，P x 是一个依赖于 x 的命题，∀ x : A, P x 就是一个函数类型：
+
+  输入一个 x : A
+  输出一个 P x 的证明
+
+
 普通函数：
 
   Nat → Nat
@@ -1460,15 +1603,40 @@ def andCommIff (P Q : Prop) : P ∧ Q ↔ Q ∧ P :=
 
   ∀ n : Nat, n = n
 
-输入一个自然数 n，输出 `n = n` 的证明。
+输入一个自然数 n，输出 `n = n` 的证明。而 n = n 本身是一个命题，证明它的项就是 rfl。
 -/
 
+-- 这是一个命题，要证明它，先要引入一个 n : Nat，消除全称量词，然后证明 n = n。
+#check ∀ n : Nat, n = n
+
+example : ∀ n : Nat, n = n := by
+  intro n -- 引入一个 n : Nat，到这里上下文是 n : Nat,  n = n，相当于全称量词被消除了
+  exact rfl  -- rfl 是 n = n 的证明，这是熟悉的
+
+
+-- 对应函数式，相当于对参数 n，我们给了一个证明 n = n 的函数，
+-- 这个函数对任何 n 都返回 rfl 作为证明。
+
 def everyNatEqualsItself : ∀ n : Nat, n = n :=
+  fun _ => rfl -- 这里 _ 是一个占位符，表示我们不关心 n 的具体值，因为 rfl 对任何 n 都成立。
+
+example : ∀ n : Nat, n = n :=
   fun _ => rfl
 
+-- 如果换成一个具体的项，比如 p，它也可以工作，但会有一个未使用的参数警告。
+example : ∀ n : Nat, n = n :=
+  fun p => rfl
+
+
+
+-- 如果已知一个带全称量词的命题的证明，比如：
+-- 已知 everyNatEqualsItself 是 ∀ n : Nat, n = n 的证明
+#check (everyNatEqualsItself : ∀ n : Nat, n = n)
+-- 那么我们可以得到一个具体命题的证明，比如 0 = 0：
+
 #check everyNatEqualsItself
-#check everyNatEqualsItself 0
-#check everyNatEqualsItself 10
+#check everyNatEqualsItself 0 -- 具体化成 0 = 0 的证明
+#check everyNatEqualsItself 10 -- 具体化成 10 = 10 的证明
 
 /-!
 `everyNatEqualsItself 10` 的类型是：
@@ -1476,10 +1644,19 @@ def everyNatEqualsItself : ∀ n : Nat, n = n :=
   10 = 10
 
 所以它是命题 `10 = 10` 的证明。
+
+所以：
+
+  全称量词的使用方式 = 函数应用
 -/
 
+-- 直接应用全称证明来得到一个具体命题的证明。
 def applyForallExample (h : ∀ n : Nat, n = n) : 5 = 5 :=
-  h 5
+  h 5  -- 这里 h 是一个函数，输入一个 n : Nat，输出 n = n 的证明，所以 h 5 就是 5 = 5 的证明
+
+-- 也可以这样
+example : 5 = 5 :=
+  everyNatEqualsItself 5
 
 /-!
 使用全称命题就是函数应用。
@@ -1491,12 +1668,18 @@ def applyForallExample (h : ∀ n : Nat, n = n) : 5 = 5 :=
   h 5 : 5 = 5
 -/
 
+
+-- 这种带参数的命题还可以构建谓词关系：
+-- 例如：一个自然数集上的一元谓词（关系、子集），是否为零。
+
 def predicateExample (n : Nat) : Prop :=
   n = 0
 
 #check predicateExample
 #check predicateExample 0
 #check predicateExample 3
+
+-- 但在 Lean, 谓词关系只负责构造命题，不是一个直接判定，所以它的类型是 Prop，而不是 Bool。
 
 /-!
 `predicateExample : Nat → Prop`
@@ -1511,6 +1694,10 @@ def predicateExample (n : Nat) : Prop :=
 
 def zeroSatisfiesPredicate : predicateExample 0 :=
   rfl
+
+example : predicateExample 0 :=
+  rfl
+
 
 
 /-!
@@ -1537,7 +1724,11 @@ def zeroSatisfiesPredicate : predicateExample 0 :=
   证明：3 = 3
 -/
 
+-- 可以利用 Exists.intro 构造存在证明
 def existsThree : ∃ n : Nat, n = 3 :=
+  Exists.intro 3 rfl
+
+example : ∃ n : Nat, n = 3 :=
   Exists.intro 3 rfl
 
 /-!
@@ -1549,6 +1740,13 @@ def existsThreeShort : ∃ n : Nat, n = 3 :=
 
 def existsDoubleThree : ∃ n : Nat, n + n = 6 :=
   ⟨3, rfl⟩
+
+example : ∃ n : Nat, n + n = 6 :=
+  ⟨3, rfl⟩
+
+
+-- 使用存在构造器要同时提供见证和证明 <见证，证明>
+#print Exists
 
 /-!
 使用存在证明时，需要拆开：
@@ -1565,10 +1763,21 @@ def existsDoubleThree : ∃ n : Nat, n + n = 6 :=
 这是 Lean 区分“证明”和“程序数据”的重要设计。
 -/
 
+-- 已知 ∃ n : Nat, n = 3，那么它的一个证明 h ，包含一个具体的 n 和证明 n = 3 的 hn。
+-- 这个例子只是展示如何从存在证明中提取信息，对证明 True 没什么实际意义。
+-- 因为任何存在证明的命题都可以用来证明 True。
 def useExistsToProveTrue (h : ∃ n : Nat, n = 3) : True :=
-  Exists.elim h (fun _n _hn => True.intro)
+  Exists.elim h (fun _n _hn => True.intro) -- 用 Exists.elim 来处理存在证明，
+                                           -- _n 是存在的 n，_hn 是 n = 3 的证明，
+                                           -- 但我们实际上不需要它们，所以用 _n 和 _hn 来表示未使用的参数
 
+-- 这是一个更合理的例子：已知 ∃ n : Nat, n = 3，
+-- 那么我们可以从这个存在证明中提取出一个具体的 m，使得 m = 3。
 def useExistsToProveSelf (h : ∃ n : Nat, n = 3) : ∃ m : Nat, m = 3 :=
+  Exists.elim h (fun n hn => ⟨n, hn⟩) -- 不光匹配到 n 和 hn，还直接用它们构造了一个新的存在证明 ⟨n, hn⟩，
+                                     -- 说明存在一个 m（就是 n）使得 m = 3（就是 hn）
+
+example (h : ∃ n : Nat, n = 3) : ∃ m : Nat, m = 3 :=
   Exists.elim h (fun n hn => ⟨n, hn⟩)
 
 
@@ -1592,12 +1801,32 @@ def eqReflNat (n : Nat) : n = n :=
 def eqCalculation : 1 + 2 = 3 :=
   rfl
 
+example (n : Nat) : n = n :=
+  rfl
+
+example : 1 + 2 = 3 :=
+  rfl
+
 /-!
-如果有 `h : a = b`，可以把方向反过来：
+如果有 `h : a = b`，可以把方向反过来，
+那么 Eq.symm h 就是 b = a 的证明。
+等式有交换律。
 -/
 
+#print Eq
+
+#print Eq.symm
+
+#check Eq.symm
+
 def eqSymmNat (a b : Nat) : a = b → b = a :=
-  fun h => Eq.symm h
+  fun h => Eq.symm h  -- h : a = b 的证明，Eq.symm h 就是 b = a 的证明
+                      -- 可以理解为：若 a = b，那么 b = a 也是成立的。
+
+example (a b : Nat) (h : a = b) : b = a :=
+  Eq.symm h
+
+
 
 /-!
 如果有：
@@ -1608,10 +1837,21 @@ def eqSymmNat (a b : Nat) : a = b → b = a :=
 那么可以得到：
 
   a = c
+
+这个是等式的传递性，Lean 中对应的函数是 Eq.trans。
 -/
 
 def eqTransNat (a b c : Nat) : a = b → b = c → a = c :=
   fun h1 h2 => Eq.trans h1 h2
+
+example (a b c : Nat) (h1 : a = b) (h2 : b = c) : a = c :=
+  Eq.trans h1 h2
+
+/-策略证明-/
+example (a b c : Nat) : a = b -> b = c -> a = c := by
+  intro h1
+  intro h2
+  exact Eq.trans h1 h2
 
 /-!
 等式还可以用于“替换”。
@@ -1626,8 +1866,17 @@ def eqTransNat (a b c : Nat) : a = b → b = c → a = c :=
   P b
 -/
 
+-- 已知 P 是一个关于 Nat 的谓词（Lean 中的谓词未必是子集判定），a, b 是自然数，
+-- h 是 a = b 的证明，pa 是 P a 的证明，那么我们可以得到 P b 的证明。
 def eqSubstExample (P : Nat → Prop) (a b : Nat) (h : a = b) (pa : P a) : P b :=
+  h ▸ pa  -- 这里 h ▸ pa 的意思是根据等式 h 把 pa 中的 a 替换成 b，得到 P b 的证明
+
+-- 顺便说一句，▸ 在 Lean 中是一个特殊的符号，叫做“根据等式改写”，它的作用就是把等式左边的东西替换成右边的东西。
+-- 它的输入方法是 `\` 加 `t`
+
+example (P : Nat → Prop) (a b : Nat) (h : a = b) (pa : P a) : P b :=
   h ▸ pa
+
 
 /-!
 符号 `▸` 读作“根据等式改写”。
@@ -1657,19 +1906,32 @@ Bool 用来计算。
 Prop 用来证明。
 -/
 
+-- 是不是偶数，函数
 def isEvenBool (n : Nat) : Bool :=
   n % 2 == 0
 
 #eval isEvenBool 4
 #eval isEvenBool 5
 
+#check isEvenBool
+#check (isEvenBool : Nat -> Bool)
+
+
+-- 是不是偶数，命题
 def isEvenProp (n : Nat) : Prop :=
   n % 2 = 0
+
+-- 命题无法求值
+-- #eval isEvenProp 4
 
 #check isEvenProp
 #check isEvenProp 4
 #check isEvenProp 5
 
+#check (isEvenProp : Nat -> Prop)
+
+-- 要证明 4 是偶数，我们需要证明 isEvenProp 4 成立，也就是证明 4 % 2 = 0。
+-- = 左边 4 % 2 计算后确实是 0，所以这个证明可以用 rfl 来完成 0 = 0 的证明。
 def fourIsEvenProof : isEvenProp 4 :=
   rfl
 
@@ -1704,6 +1966,7 @@ Lean 不能让：
   Type : Type
 
 无限自包含会导致悖论。
+我们的经典逻辑在这个环节上就有漏洞。
 
 所以 Lean 使用宇宙层级：
 
@@ -1712,13 +1975,14 @@ Lean 不能让：
   Type 2 : Type 3
   ...
 
-平常写的 `Type` 通常可以理解成某个 `Type u`。
+平常写的 `Type` 通常可以理解成某个 `Type u`。u 是一个隐式参数，Lean 会自动推断它。
 -/
 
 #check Type
 #check Type 0
 #check Type 1
 #check Prop
+#check Sort
 #check Sort 0
 #check Sort 1
 
@@ -1737,25 +2001,24 @@ Lean 不能让：
 在日常 Lean 证明中，大多数时候 Lean 会自动处理宇宙。
 -/
 
-
 /-!
 ===============================================================================
 第 21 章：归纳类型和模式匹配
 ===============================================================================
 
-逻辑连接词之所以能工作，是因为它们背后是归纳类型。
-
 我们再看一个普通归纳类型，巩固“构造”和“拆解”的思想。
 -/
 
+-- 定义一个交通信号灯的类型，有三个构造器：红灯、黄灯、绿灯。它们都是 TrafficLight 的具体值（证明）。
 inductive TrafficLight : Type where
   | red : TrafficLight
   | yellow : TrafficLight
   | green : TrafficLight
-  deriving Repr
+  deriving Repr  -- 让 TrafficLight 可以被打印
 
+-- 定义一个函数，输入一个 TrafficLight 的值，输出下一个 TrafficLight 的值。
 def nextLight (light : TrafficLight) : TrafficLight :=
-  match light with
+  match light with  -- 对 light 的来源进行分析，看看它是哪个构造器来的
   | TrafficLight.red => TrafficLight.green
   | TrafficLight.yellow => TrafficLight.red
   | TrafficLight.green => TrafficLight.yellow
@@ -1789,6 +2052,28 @@ def nextLight (light : TrafficLight) : TrafficLight :=
   match h with
   | Or.inl p => ...
   | Or.inr q => ...
+-/
+
+/-
+  对于一个归纳类型，构造就是使用它的构造器制造项；
+  如果这个类型是命题，那么制造项就是给出证明。
+
+  拆解就是：在已经有一个该类型的项/证明项时，
+  按照它可能由哪个构造器生成来使用它，或者取出构造器携带的信息。
+
+  关键点：
+
+  构造：从部件得到整体。
+  拆解：从整体得到部件，或按整体的构造来源分情况。
+
+  例如：
+
+  And 构造：P 的证明 + Q 的证明 → P ∧ Q 的证明
+  And 拆解：P ∧ Q 的证明 → P 的证明 和 Q 的证明
+
+  Or 构造：P 的证明 → P ∨ Q 的证明
+         或 Q 的证明 → P ∨ Q 的证明
+  Or 拆解：P ∨ Q 的证明 → 分左、右两种情况讨论
 -/
 
 
@@ -1842,7 +2127,8 @@ def nextLight (light : TrafficLight) : TrafficLight :=
 消除：
 
   如果 h : P → Q，且 p : P，
-  那么 h p : Q。
+  那么 h p : Q。 （将 h 看作一个函数，作用于 p，得到 Q 的证明）
+
 
 -------------------------------------------------------------------------------
 合取 P ∧ Q
@@ -1850,12 +2136,17 @@ def nextLight (light : TrafficLight) : TrafficLight :=
 
 引入：
 
-  ⟨p, q⟩
+  ⟨p, q⟩  -- 也就是 And.intro p q, p 是 P 的证明，q 是 Q 的证明
+
+P 和 Q 都要有证明。
 
 消除：
 
   h.left  : P
   h.right : Q
+
+已知 h : P ∧ Q，那么 h.left 就是 P 的证明，h.right 就是 Q 的证明。
+已知 P ∧ Q，那么 P 和 Q 都成立，所以可以分别取出它们的证明。
 
 -------------------------------------------------------------------------------
 析取 P ∨ Q
@@ -1911,14 +2202,14 @@ Lean 的核心逻辑偏构造式。
 
   P ∨ ¬ P
 
-叫排中律。它在经典逻辑中成立，但在纯构造式逻辑中不是免费可得的。
+叫排中律。它在经典逻辑中成立，但在纯构造式逻辑中不是免费可得的。即必须接受一个额外的公理。
 
 Lean 允许你显式进入经典逻辑。
 -/
 
 theorem excludedMiddleClassical (P : Prop) : P ∨ ¬ P := by
-  classical
-  exact Classical.em P
+  classical   -- 进入经典逻辑
+  exact Classical.em P -- Classical.em 是排中律的证明（没有这个，构造式逻辑无法证明）
 
 /-!
 `classical` 表示：接下来的证明允许使用经典逻辑原则。
@@ -1935,6 +2226,72 @@ theorem excludedMiddleClassical (P : Prop) : P ∨ ¬ P := by
   Exists.intro / Exists.elim
 
 这些已经足够理解 Lean 证明的大部分基本形状。
+-/
+
+/-！
+
+在19世纪末到20世纪初的数学“基础危机”中，数学家们试图为数学寻找一个绝对可靠的基础，由此诞生了三大流派。
+以下是它们的核心思想与代表人物：
+
+### 1. 逻辑主义
+
+核心思想是：**数学可以完全归约为逻辑**。所有数学概念（如自然数、实数）都能通过纯粹的逻辑定义推导出来，
+所有数学定理也都能从逻辑公理中证明。数学是逻辑的延伸和分支。
+
+- **代表人物**：戈特洛布·弗雷格、伯特兰·罗素。弗雷格是奠基者，
+罗素及其老师怀特海在巨著《数学原理》中进行了系统化的宏大尝试。
+- **代表思想**：最著名的是罗素提出的**罗素悖论**，它直接动摇了康托尔集合论的基础，
+并促使逻辑主义者发展出“类型论”来规避悖论。他们试图用逻辑符号构建整个数学大厦。
+
+### 2. 直觉主义
+
+核心思想是：**数学存在于人的直觉构造中**。数学对象并非独立于思维而存在，
+而是心智根据直觉（特别是对自然数序列的“时间直觉”）构造出来的。
+只有能被有限步骤构造出来的东西（例如能写出前100位的圆周率）才是数学对象。
+因此，它坚决反对“实无穷”，只承认“潜无穷”，
+并因此**禁止使用排中律**（即不承认一个命题非真即假，除非我们能构造地证明它）。
+
+- **代表人物**：鲁伊兹·布劳威尔、阿伦特·海廷和利奥波德·克罗内克 (Leopold Kronecker)。
+布劳威尔是创始人，海廷为其直觉主义逻辑给出了形式化系统。
+- **代表思想**：布劳威尔的名言是**“存在即是被构造”**。
+一个经典例子：在直觉主义看来，“存在无理数a和b使得a^b是有理数”这个经典证明（通过√2^√2来论证）是无效的，
+因为它未具体构造出a和b分别是哪个数，仅利用了排中律。克罗内克是一位彻底的构造主义者，
+其核心思想由一句名言完美概括：“上帝创造了整数，其余一切都是人造的。”
+
+### 3. 形式主义
+
+核心思想是：**数学是无需赋予意义的符号游戏**。数学本身不讨论点、线、数的“本质”，
+而只讨论公理和推理规则下的符号变形。只要这个形式系统是**一致**（无矛盾）的，其数学内容就是合法的。
+数学的真理性等价于系统内推演的一致性。
+
+- **代表人物**：大卫·希尔伯特、约翰·冯·诺依曼。希尔伯特是领袖，提出了著名的“希尔伯特计划”。
+- **代表思想**：**希尔伯特纲领**：试图将全部数学形式化，然后用有限的、有穷的方法证明整个数学系统的一致性。
+这个雄心勃勃的计划最终被哥德尔的不完备性定理（即任何足够强的系统都无法证明自身无矛盾）所终结。
+
+### 简要对比
+
+| 流派 | 对“数学是什么”的回答 | 如何看待“无穷” |
+| :--- | :--- | :--- |
+| **逻辑主义** | 逻辑的延伸 | 接受实无穷（作为逻辑概念） |
+| **直觉主义** | 心智的构造活动 | 只接受潜无穷，排斥实无穷 |
+| **形式主义** | 纯粹的符号游戏 | 作为规则允许使用，但不追问其本体 |
+
+这三大流派的争论虽然未能给数学找到一个公认的绝对基础，但极大深化了我们对数学逻辑、可计算性以及形式系统局限性的理解，
+直接催生了数理逻辑的黄金时代。
+
+
+Lean 4 更接近**逻辑主义**。它通过强大的“命题即类型”思想，在计算机中实践了逻辑主义的梦想，
+同时也吸收了直觉主义的构造性内核。它与三大流派的具体关系如下：
+
+**核心：逻辑主义**：在罗素的分支类型论和“数学原理”基础上，
+通过更现代且实用的**依值类型论**为构造全部分数学提供了一个统一、内洽的逻辑框架。最具代表性的体现是**Curry-Howard 同构**（即“命题即类型，证明即程序”），它将数学、逻辑和计算完美统一，构建了一个庞大的形式化数学知识库（如Mathlib），切实还原了逻辑主义将数学建基于逻辑之上的初衷。
+**实践原则：构造主义（源自直觉主义）**：默认遵循了**构造主义**的传统。
+这意味着要证明一个命题存在，必须给出明确的构造实例，这与直觉主义的“存在即是被构造”思想完全吻合。
+不过，Lean 4 并未强制要求绝对构造主义，它仍是一个务实的工具，
+当需要经典数学理论时，可以通过 `by_contra` 或 `by_cases` 策略调用**排中律**，随时切换到经典数学模式。
+**方法工具：形式主义**：完美体现了形式主义“符号游戏”的实践方法。
+任何数学陈述都可以用其精确的形式语言表述，证明过程被视为在严密规则下对符号的转换，
+整个过程由计算机机械地检查。从这个角度看，Lean 4 堪称希尔伯特“形式主义纲领”在数字时代的终极实现。
 -/
 
 
@@ -1959,21 +2316,22 @@ theorem excludedMiddleClassical (P : Prop) : P ∨ ¬ P := by
 
   - 如果有 q : Q，那么用 p 和 q 得到 S。
   - 如果有 r : R，那么用 p 和 r 得到 S。
+
 -/
 
 theorem completeExample
-    (P Q R S : Prop)
-    (h : P ∧ (Q ∨ R))
-    (pqToS : P → Q → S)
-    (prToS : P → R → S) :
-    S := by
-  have p : P := h.left
-  have qr : Q ∨ R := h.right
-  cases qr with
-  | inl q =>
-      exact pqToS p q
-  | inr r =>
-      exact prToS p r
+    (P Q R S : Prop)        -- 假设 P, Q, R, S 是任意命题
+    (h : P ∧ (Q ∨ R))       -- 假设 h 是 P ∧ (Q ∨ R) 的证明，即已知 P 且 (Q 或 R) 成立
+    (pqToS : P → Q → S)     -- 假设 pqToS 是一个函数，输入 P 的证明和 Q 的证明，输出 S 的证明，即 P 且 Q 蕴含 S
+    (prToS : P → R → S) :   -- 假设 prToS 是一个函数，输入 P 的证明和 R 的证明，输出 S 的证明，即 P 且 R 蕴含 S
+    S := by                 -- 需证明 S， 通过
+  have p : P := h.left        -- 先从 h 中取出 P 的证明，并命名为 p (have)
+  have qr : Q ∨ R := h.right  -- 先从 h 中取出 Q ∨ R 的证明，并命名为 qr (have)
+  cases qr with               -- 对 qr 进行分情况讨论
+  | inl q =>                  -- 如果 qr 是 Q 的证明 q，
+      exact pqToS p q         -- 那么就用 p 和 q 通过 pqToS 可得到 S
+  | inr r =>                  -- 如果 qr 是 R 的证明 r，
+      exact prToS p r         -- 那么就用 p 和 r 通过 prToS 可得到 S
 
 /-!
 这里出现了 `have`。
